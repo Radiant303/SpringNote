@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Win11 极简办公小组件</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+            rel="stylesheet"
+        />
+
+        <style>
+            :root {
+                --bg-color: #ffffff;
+                --text-main: #0f172a;
+                --text-muted: #94a3b8;
+                --text-sub: #475569;
+                --accent-green: #10b981;
+                --accent-green-bg: #e6f4ea;
+                --border-color: #f1f5f9;
+            }
+
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            body {
+                background-color: #f8fafc; /* 仅作为演示背景，衬托组件的纯白 */
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                font-family:
+                    "Inter",
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    Roboto,
+                    sans-serif;
+                -webkit-font-smoothing: antialiased;
+            }
+
+            /* 小组件核心容器 */
+            .widget-container {
+                width: 260px;
+                height: 140px;
+                background-color: var(--bg-color);
+                border-radius: 12px;
+                padding: 14px 16px;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+
+                /* Win11 / Apple 风格的微弱弥散空气感阴影 */
+                box-shadow:
+                    0 4px 24px rgba(0, 0, 0, 0.04),
+                    0 1px 2px rgba(0, 0, 0, 0.02);
+                border: 1px solid rgba(0, 0, 0, 0.03);
+                position: relative;
+                overflow: hidden;
+            }
+
+            /* 顶部区域：状态与进度条 */
+            .top-section {
+                display: flex;
+                flex-direction: column;
+                gap: 5px;
+            }
+
+            .status-badge {
+                font-size: 11px;
+                font-weight: 500;
+                color: var(--text-muted);
+                letter-spacing: 0.3px;
+            }
+
+            .progress-bar-bg {
+                width: 100%;
+                height: 2px;
+                background-color: #f1f5f9;
+                border-radius: 1px;
+            }
+
+            .progress-bar-fill {
+                height: 100%;
+                width: 62%; /* 进度 */
+                background-color: #cbd5e1; /* 弱化存在感的淡灰色 */
+                border-radius: 1px;
+            }
+
+            /* 视觉中心：核心收益数据 */
+            .main-counter {
+                font-size: 44px;
+                font-weight: 500;
+                color: var(--text-main);
+                letter-spacing: -1.5px; /* 紧凑的高级感 */
+                line-height: 1;
+                font-feature-settings: "tnum"; /* 启用等宽数字对齐，防止数字跳动 */
+                margin-top: 2px;
+            }
+
+            /* 底部状态区 */
+            .bottom-section {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 11px;
+            }
+
+            /* 左侧：实时收益速率 */
+            .rate-indicator {
+                color: var(--accent-green);
+                font-weight: 600;
+                font-feature-settings: "tnum";
+            }
+
+            /* 底部状态区 */
+            .bottom-section {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 11px;
+            }
+
+            /* 左侧：实时收益速率 */
+            .rate-indicator {
+                color: var(--accent-green);
+                font-weight: 600;
+                font-feature-settings: "tnum";
+            }
+
+            /* 右侧：工作时长与状态点 */
+            .time-status {
+                display: flex;
+                align-items: center;
+                gap: 8px; /* 稍微拉开一点点间距，更具呼吸感 */
+                color: var(--text-sub);
+                font-size: 12px;
+                font-weight: 400;
+                font-feature-settings: "tnum";
+            }
+
+            /* 精致绿色状态点 */
+            .status-dot {
+                width: 5px;
+                height: 5px;
+                background-color: var(--accent-green);
+                border-radius: 50%;
+                position: relative;
+                /* 确保在弹性盒中不被挤压 */
+                flex-shrink: 0;
+            }
+
+            /* 极其微弱的呼吸效果 */
+            .status-dot::after {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: var(--accent-green);
+                border-radius: 50%;
+                animation: soft-pulse 3s infinite ease-in-out;
+                opacity: 0.4;
+            }
+
+            @keyframes soft-pulse {
+                0% {
+                    transform: scale(1);
+                    opacity: 0.4;
+                }
+                50% {
+                    transform: scale(2.5);
+                    opacity: 0;
+                }
+                100% {
+                    transform: scale(1);
+                    opacity: 0;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="widget-container">
+            <div class="top-section">
+                <div class="status-badge">Lv.7 实习生 (62%)</div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill"></div>
+                </div>
+            </div>
+
+            <div class="main-counter">1259.32</div>
+
+            <div class="bottom-section">
+                <div class="rate-indicator">+0.12 coin/s</div>
+                <div class="time-status">
+                    <span class="status-dot"></span>
+                    <span>02:35:18</span>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
