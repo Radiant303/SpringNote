@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>AI 智能便签 - 工作空间</title>
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+            rel="stylesheet"
+        />
+        <script src="https://cdn.jsdelivr.net/npm/@lucide/lab@latest/dist/lucide.min.js"></script>
+        <script src="https://unpkg.com/lucide@latest"></script>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        fontFamily: {
+                            sans: [
+                                "Inter",
+                                "SF Pro Display",
+                                "-apple-system",
+                                "BlinkMacSystemFont",
+                                "Segoe UI",
+                                "Roboto",
+                                "PingFang SC",
+                                "sans-serif",
+                            ],
+                            mono: [
+                                "JetBrains Mono",
+                                "ui-monospace",
+                                "monospace",
+                            ],
+                        },
+                        boxShadow: {
+                            premium:
+                                "0 4px 30px rgba(0, 0, 0, 0.015), 0 1px 3px rgba(0, 0, 0, 0.02)",
+                            "card-hover":
+                                "0 10px 40px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.02)",
+                            air: "0 20px 68px rgba(0, 0, 0, 0.02), 0 1px 2px rgba(0, 0, 0, 0.01)",
+                        },
+                    },
+                },
+            };
+        </script>
+        <style>
+            body {
+                background-color: #f8fafc;
+                color: #1e293b;
+                -webkit-font-smoothing: antialiased;
+            }
+            .no-scrollbar::-webkit-scrollbar {
+                display: none;
+            }
+            .no-scrollbar {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+
+            /* 平滑同步滚动与过渡 */
+            .sync-scroll-area {
+                scroll-behavior: smooth;
+                transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+            }
+
+            /* 预测文本闪烁光标 */
+            .ai-cursor::after {
+                content: "|";
+                animation: blink 1s infinite;
+                color: #10b981;
+                margin-left: 1px;
+            }
+            @keyframes blink {
+                0%,
+                100% {
+                    opacity: 1;
+                }
+                50% {
+                    opacity: 0;
+                }
+            }
+        </style>
+    </head>
+    <body
+        class="flex h-screen w-full overflow-hidden font-sans antialiased bg-[#f8fafc]"
+    >
+        <aside
+            class="w-60 h-full flex flex-col justify-between p-7 select-none z-10 shrink-0 border-r border-slate-200/40 bg-[#f8fafc]"
+        >
+            <div class="flex flex-col gap-9">
+                <div class="flex items-center gap-3 px-2">
+                    <div
+                        class="w-5 h-5 bg-black rounded flex items-center justify-center"
+                    >
+                        <div class="w-1.5 h-1.5 bg-white rounded-sm"></div>
+                    </div>
+                    <span
+                        class="text-sm font-medium tracking-tight text-slate-900"
+                        >AI 智能便签</span
+                    >
+                </div>
+
+                <button
+                    class="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl flex items-center justify-center gap-2 text-xs font-medium transition-colors"
+                >
+                    <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                    <span>新建</span>
+                </button>
+
+                <nav class="flex flex-col gap-1">
+                    <a
+                        href="#"
+                        class="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-800 hover:bg-slate-50 transition-colors"
+                    >
+                        <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                        <span>首页</span>
+                    </a>
+                    <a
+                        href="#"
+                        class="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-slate-900 bg-slate-100/80 transition-colors"
+                    >
+                        <i
+                            data-lucide="sticky-note"
+                            class="w-4 h-4 text-slate-800"
+                        ></i>
+                        <span>便签</span>
+                    </a>
+                    <a
+                        href="#"
+                        class="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-800 hover:bg-slate-50 transition-colors"
+                    >
+                        <i data-lucide="book-open" class="w-4 h-4"></i>
+                        <span>回忆本</span>
+                    </a>
+                    <a
+                        href="#"
+                        class="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-800 hover:bg-slate-50 transition-colors"
+                    >
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        <span>回收站</span>
+                    </a>
+                </nav>
+            </div>
+
+            <div class="flex flex-col gap-3">
+                <a
+                    href="#"
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-800 hover:bg-slate-50 transition-colors"
+                >
+                    <i data-lucide="settings" class="w-4 h-4"></i>
+                    <span>设置</span>
+                </a>
+                <div class="flex items-center gap-3 px-3 py-2">
+                    <img
+                        src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80"
+                        alt="Avatar"
+                        class="w-6 h-6 rounded-full object-cover"
+                    />
+                    <div class="flex flex-col overflow-hidden">
+                        <span
+                            class="text-xs font-medium text-slate-700 truncate"
+                            >Alex Morgan</span
+                        >
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <div class="flex-1 h-full flex overflow-hidden">
+            <section
+                class="w-64 h-full border-r border-slate-200/50 flex flex-col bg-[#f8fafc] shrink-0"
+            >
+                <div
+                    class="p-6 pb-3 flex items-center justify-between select-none"
+                >
+                    <div class="flex items-center gap-2">
+                        <span
+                            class="text-xs font-semibold text-slate-800 tracking-wide"
+                            >笔记本</span
+                        >
+                        <span
+                            class="text-[11px] px-1.5 py-0.5 bg-slate-200/60 text-slate-600 rounded-md font-medium"
+                            >日报</span
+                        >
+                    </div>
+                    <button
+                        class="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                    >
+                        <i
+                            data-lucide="more-horizontal"
+                            class="w-3.5 h-3.5"
+                        ></i>
+                    </button>
+                </div>
+
+                <div class="px-4 mb-4 select-none">
+                    <div
+                        class="relative flex items-center bg-slate-200/40 rounded-xl px-3 py-1.5 border border-transparent focus-within:border-slate-200/80 transition-all"
+                    >
+                        <i
+                            data-lucide="search"
+                            class="w-3.5 h-3.5 text-slate-400 mr-2 shrink-0"
+                        ></i>
+                        <input
+                            type="text"
+                            placeholder="搜索知识记录..."
+                            class="w-full bg-transparent text-xs text-slate-700 placeholder-slate-400 outline-none border-none"
+                        />
+                    </div>
+                </div>
+
+                <div
+                    class="flex-1 overflow-y-auto no-scrollbar px-3 space-y-1 pb-12"
+                >
+                    <div
+                        class="p-3.5 bg-blue-50/50 border border-blue-100/40 rounded-xl cursor-pointer transition-all"
+                    >
+                        <div class="flex items-center justify-between mb-1">
+                            <h4
+                                class="text-xs font-semibold text-slate-900 truncate pr-2"
+                            >
+                                周报与架构演进设计
+                            </h4>
+                            <span
+                                class="text-[10px] text-blue-500 font-medium font-mono shrink-0"
+                                >11:24</span
+                            >
+                        </div>
+                        <p
+                            class="text-[11px] text-slate-500 line-clamp-2 leading-relaxed"
+                        >
+                            重构微服务网关架构路由配置，对接 Rust Axum
+                            本地图片高性能渲染模块...
+                        </p>
+                    </div>
+
+                    <div
+                        class="p-3.5 bg-transparent hover:bg-slate-100/60 rounded-xl cursor-pointer transition-all group"
+                    >
+                        <div class="flex items-center justify-between mb-1">
+                            <h4
+                                class="text-xs font-medium text-slate-700 group-hover:text-slate-900 truncate pr-2"
+                            >
+                                工程思维决策分析大纲
+                            </h4>
+                            <span
+                                class="text-[10px] text-slate-400 font-mono shrink-0"
+                                >昨天</span
+                            >
+                        </div>
+                        <p
+                            class="text-[11px] text-slate-400 line-clamp-2 leading-relaxed"
+                        >
+                            关于高并发状态下本地图像数据缓存与内存回收策略的工程决策思考...
+                        </p>
+                    </div>
+
+                    <div
+                        class="p-3.5 bg-transparent hover:bg-slate-100/60 rounded-xl cursor-pointer transition-all group"
+                    >
+                        <div class="flex items-center justify-between mb-1">
+                            <h4
+                                class="text-xs font-medium text-slate-700 group-hover:text-slate-900 truncate pr-2"
+                            >
+                                Cocos场景切换器联调
+                            </h4>
+                            <span
+                                class="text-[10px] text-slate-400 font-mono shrink-0"
+                                >06-12</span
+                            >
+                        </div>
+                        <p
+                            class="text-[11px] text-slate-400 line-clamp-2 leading-relaxed"
+                        >
+                            自动化场景加载核心脚本配置完毕，下周一进入全链路边界压力测试。
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <section
+                class="flex-1 h-full bg-white shadow-air rounded-l-[28px] border-l border-slate-200/50 flex flex-col overflow-hidden relative"
+            >
+                <div
+                    class="h-14 px-8 border-b border-slate-100 flex items-center justify-between select-none shrink-0"
+                >
+                    <div class="flex items-center gap-1">
+                        <button
+                            class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all"
+                            title="文字样式"
+                        >
+                            <i data-lucide="type" class="w-4 h-4"></i>
+                        </button>
+                        <button
+                            class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all"
+                            title="插入代码块"
+                        >
+                            <i data-lucide="code-2" class="w-4 h-4"></i>
+                        </button>
+                        <button
+                            class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all"
+                            title="插入图片"
+                        >
+                            <i data-lucide="image" class="w-4 h-4"></i>
+                        </button>
+                        <button
+                            class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all"
+                            title="表格工具"
+                        >
+                            <i data-lucide="table" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span
+                            class="text-[11px] text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1"
+                        >
+                            <i data-lucide="sparkles" class="w-3 h-3"></i>AI
+                            实时补全已就绪
+                        </span>
+                    </div>
+                </div>
+
+                <div
+                    class="flex-1 overflow-y-auto no-scrollbar px-10 py-8 space-y-6 select-text max-w-[720px] mx-auto w-full"
+                    id="editorContainer"
+                >
+                    <input
+                        type="text"
+                        value="周报与架构演进设计"
+                        class="w-full text-2xl font-bold tracking-tight text-slate-900 border-none outline-none placeholder-slate-300 bg-transparent mb-2"
+                        placeholder="无标题"
+                    />
+
+                    <div
+                        class="text-sm text-slate-700 leading-relaxed space-y-4 outline-none border-none min-h-[400px]"
+                        contenteditable="true"
+                        spellcheck="false"
+                    >
+                        <p>
+                            本周重点推进了局部高性能架构设计，已重构微服务网关架构路由配置。为了消除外部浏览器内核依赖，采用了高性能的底层渲染底座。
+                        </p>
+
+                        <p>
+                            <span>下一阶段将针对 </span
+                            ><span
+                                class="text-slate-300 font-normal select-none pointer-events-none ai-cursor"
+                                >Rust Axum
+                                图片渲染服务进行极限压测，优化内存释放管道...</span
+                            >
+                        </p>
+
+                        <blockquote>
+                            整理工程思维决策分析大纲，确立统一的组件流淌动画编排方案。
+                        </blockquote>
+
+                        <div
+                            class="bg-[#F5F7FA] rounded-[20px] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.01)] my-5 font-mono text-[13px] text-slate-600 border border-slate-200/20 select-text"
+                            contenteditable="false"
+                        >
+                            <div
+                                class="flex items-center justify-between pb-2 mb-3 border-b border-slate-200/40 text-[11px] text-slate-400 select-none"
+                            >
+                                <span>axum_preview_service.rs</span>
+                                <span class="text-slate-400/70">Rust</span>
+                            </div>
+                            <span class="text-purple-500">let</span> app =
+                            Router::<span class="text-blue-500">new</span
+                            >().route(<span class="text-emerald-600"
+                                >"/preview"</span
+                            >, post(render_image));
+                        </div>
+
+                        <table
+                            class="w-full text-xs text-left text-slate-600 border-collapse my-4"
+                            contenteditable="false"
+                        >
+                            <thead>
+                                <tr
+                                    class="border-b border-slate-200 text-slate-400 font-medium"
+                                >
+                                    <th class="py-2 pr-4">组件模块</th>
+                                    <th class="py-2 px-4">吞吐指标</th>
+                                    <th class="py-2 pl-4">状态</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr>
+                                    <td
+                                        class="py-2.5 pr-4 font-medium text-slate-800"
+                                    >
+                                        Axum Core
+                                    </td>
+                                    <td class="py-2.5 px-4 font-mono">
+                                        14,250 req/s
+                                    </td>
+                                    <td
+                                        class="py-2.5 pl-4 text-emerald-500 font-medium"
+                                    >
+                                        Stable
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td
+                                        class="py-2.5 pr-4 font-medium text-slate-800"
+                                    >
+                                        Local PNG Render
+                                    </td>
+                                    <td class="py-2.5 px-4 font-mono">
+                                        2,800 req/s
+                                    </td>
+                                    <td
+                                        class="py-2.5 pl-4 text-amber-500 font-medium"
+                                    >
+                                        Optimizing
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section
+                class="w-[460px] h-full bg-white border-l border-slate-100 flex flex-col overflow-hidden shrink-0"
+            >
+                <div
+                    class="h-14 px-6 border-b border-slate-100 flex items-center justify-between select-none shrink-0 bg-white"
+                >
+                    <span
+                        class="text-xs font-medium text-slate-400 uppercase tracking-wider flex items-center gap-2"
+                    >
+                        <span
+                            class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"
+                        ></span
+                        >Live Preview · 实时预览
+                    </span>
+                    <button
+                        class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
+                    >
+                        <i data-lucide="expand" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+
+                <div
+                    class="flex-1 overflow-y-auto no-scrollbar px-8 py-8 space-y-6 bg-white sync-scroll-area select-text"
+                    id="previewContainer"
+                >
+                    <h1
+                        class="text-[32px] font-bold tracking-tight text-slate-900 leading-tight"
+                    >
+                        周报与架构演进设计
+                    </h1>
+
+                    <p
+                        class="text-[16px] text-slate-700 leading-[1.8] font-normal"
+                    >
+                        本周重点推进了局部高性能架构设计，已重构微服务网关架构路由配置。为了消除外部浏览器内核依赖，采用了高性能的底层渲染底座。
+                    </p>
+
+                    <p class="text-[16px] text-slate-700 leading-[1.8]">
+                        下一阶段将针对 Rust Axum
+                        图片渲染服务进行极限压测，优化内存释放管道...
+                    </p>
+
+                    <div
+                        class="pl-4 border-l-[3px] border-[#DCE3EB] bg-transparent my-6"
+                    >
+                        <p
+                            class="text-sm italic text-slate-500 leading-relaxed"
+                        >
+                            整理工程思维决策分析大纲，确立统一的组件流淌动画编排方案。
+                        </p>
+                    </div>
+
+                    <div
+                        class="bg-[#F5F7FA] rounded-[20px] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.015)] my-6 font-mono text-[13px] text-slate-600 border border-slate-200/10"
+                    >
+                        <div
+                            class="flex items-center justify-between pb-2 mb-3 border-b border-slate-200/40 text-[11px] text-slate-400 select-none"
+                        >
+                            <span>axum_preview_service.rs</span>
+                            <span>Rust</span>
+                        </div>
+                        <span class="text-purple-600">let</span> app =
+                        Router::<span class="text-blue-600">new</span
+                        >().route(<span class="text-emerald-600"
+                            >"/preview"</span
+                        >, post(render_image));
+                    </div>
+
+                    <div class="my-6 overflow-hidden">
+                        <table
+                            class="w-full text-sm text-left text-slate-600 border-collapse"
+                        >
+                            <thead>
+                                <tr
+                                    class="border-b border-slate-200 text-slate-400 font-medium text-xs uppercase tracking-wider"
+                                >
+                                    <th class="py-2.5 pr-4">组件模块</th>
+                                    <th class="py-2.5 px-4">吞吐指标</th>
+                                    <th class="py-2.5 pl-4">状态</th>
+                                </tr>
+                            </thead>
+                            <tbody
+                                class="divide-y divide-slate-100 text-[14px]"
+                            >
+                                <tr>
+                                    <td
+                                        class="py-3.5 pr-4 font-medium text-slate-900"
+                                    >
+                                        Axum Core
+                                    </td>
+                                    <td
+                                        class="py-3.5 px-4 font-mono text-xs text-slate-500"
+                                    >
+                                        14,250 req/s
+                                    </td>
+                                    <td
+                                        class="py-3.5 pl-4 text-emerald-600 font-medium text-xs"
+                                    >
+                                        Stable
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td
+                                        class="py-3.5 pr-4 font-medium text-slate-900"
+                                    >
+                                        Local PNG Render
+                                    </td>
+                                    <td
+                                        class="py-3.5 px-4 font-mono text-xs text-slate-500"
+                                    >
+                                        2,800 req/s
+                                    </td>
+                                    <td
+                                        class="py-3.5 pl-4 text-amber-600 font-medium text-xs"
+                                    >
+                                        Optimizing
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <script>
+            // 初始化极简现代图标
+            lucide.createIcons();
+
+            // 双向高联动双滚动微观体验控制
+            const editorContainer = document.getElementById("editorContainer");
+            const previewContainer =
+                document.getElementById("previewContainer");
+
+            let isEditingScrolling = false;
+            let isPreviewScrolling = false;
+
+            editorContainer.onscroll = () => {
+                if (isPreviewScrolling) {
+                    isPreviewScrolling = false;
+                    return;
+                }
+                isEditingScrolling = true;
+                const scrollPercentage =
+                    editorContainer.scrollTop /
+                    (editorContainer.scrollHeight -
+                        editorContainer.clientHeight);
+                previewContainer.scrollTop =
+                    scrollPercentage *
+                    (previewContainer.scrollHeight -
+                        previewContainer.clientHeight);
+            };
+
+            previewContainer.onscroll = () => {
+                if (isEditingScrolling) {
+                    isEditingScrolling = false;
+                    return;
+                }
+                isPreviewScrolling = true;
+                const scrollPercentage =
+                    previewContainer.scrollTop /
+                    (previewContainer.scrollHeight -
+                        previewContainer.clientHeight);
+                editorContainer.scrollTop =
+                    scrollPercentage *
+                    (editorContainer.scrollHeight -
+                        editorContainer.clientHeight);
+            };
+        </script>
+    </body>
+</html>
