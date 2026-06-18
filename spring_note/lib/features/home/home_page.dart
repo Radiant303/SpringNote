@@ -6,8 +6,10 @@ import '../../core/services/ai_client_service.dart';
 import '../../core/services/daily_note_service.dart';
 import '../../core/services/home_overview_service.dart';
 import '../../core/services/mock_ai_service.dart';
+import '../../core/services/stats_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/page_scaffold.dart';
+import '../../src/rust/stats.dart' as rust_stats;
 
 class HomePage extends StatefulWidget {
   const HomePage({
@@ -17,6 +19,7 @@ class HomePage extends StatefulWidget {
     this.dailyNoteService = const DailyNoteService(),
     this.homeOverviewService = const HomeOverviewService(),
     this.aiClientService = const AiClientService(),
+    this.statsService = const StatsService(),
   });
 
   final LocalDataState localDataState;
@@ -24,6 +27,7 @@ class HomePage extends StatefulWidget {
   final DailyNoteService dailyNoteService;
   final HomeOverviewService homeOverviewService;
   final AiClientService aiClientService;
+  final StatsService statsService;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -42,11 +46,14 @@ class _HomePageState extends State<HomePage> {
   bool _isSubmitting = false;
   String? _lastSavedPath;
   String? _aiNotice;
+  rust_stats.StatsSnapshot _todayStats = StatsService.emptySnapshot;
+  rust_stats.StatsSnapshot _activityStats = StatsService.emptySnapshot;
 
   @override
   void initState() {
     super.initState();
     _loadTodayOverview();
+    _loadHomeStats();
   }
 
   @override
@@ -55,6 +62,7 @@ class _HomePageState extends State<HomePage> {
     if (widget.localDataState.dataDirectory !=
         oldWidget.localDataState.dataDirectory) {
       _loadTodayOverview();
+      _loadHomeStats();
     }
   }
 
@@ -77,6 +85,29 @@ class _HomePageState extends State<HomePage> {
     } catch (_) {
       // Overview JSON is a UI cache; malformed or unavailable files should not
       // block daily note writing.
+    }
+  }
+
+  Future<void> _loadHomeStats() async {
+    final today = DateTime.now();
+    final activityStart = today.subtract(const Duration(days: 97));
+    final results = await Future.wait([
+      widget.statsService.readSnapshot(
+        localDataState: widget.localDataState,
+        start: today,
+        end: today,
+      ),
+      widget.statsService.readSnapshot(
+        localDataState: widget.localDataState,
+        start: activityStart,
+        end: today,
+      ),
+    ]);
+    if (mounted) {
+      setState(() {
+        _todayStats = results[0];
+        _activityStats = results[1];
+      });
     }
   }
 
@@ -135,6 +166,9 @@ class _HomePageState extends State<HomePage> {
         note: structured,
         mergedMarkdown: aiMergedMarkdown,
       );
+      await widget.statsService.recordHomeGeneration(
+        appDataDir: widget.localDataState.dataDirectory,
+      );
       StructuredWorkNote nextOverview;
       try {
         nextOverview = await widget.homeOverviewService.mergeAndSaveOverview(
@@ -159,6 +193,7 @@ class _HomePageState extends State<HomePage> {
             : null;
         _controller.clear();
       });
+      await _loadHomeStats();
       _focusNode.requestFocus();
     } finally {
       if (mounted) {
@@ -193,7 +228,11 @@ class _HomePageState extends State<HomePage> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(32, 0, 32, 32),
         children: [
-          const _TodayHeroCard(),
+          _TodayHeroCard(
+            todayStats: _todayStats,
+            activityStats: _activityStats,
+            dailyWorkHours: widget.localDataState.config.dailyWorkHours,
+          ),
           const SizedBox(height: 20),
           _QuickCaptureCard(
             controller: _controller,
@@ -218,7 +257,15 @@ class _HomePageState extends State<HomePage> {
 }
 
 class _TodayHeroCard extends StatelessWidget {
-  const _TodayHeroCard();
+  const _TodayHeroCard({
+    required this.todayStats,
+    required this.activityStats,
+    required this.dailyWorkHours,
+  });
+
+  final rust_stats.StatsSnapshot todayStats;
+  final rust_stats.StatsSnapshot activityStats;
+  final double dailyWorkHours;
 
   @override
   Widget build(BuildContext context) {
@@ -230,27 +277,35 @@ class _TodayHeroCard extends StatelessWidget {
           final narrow = constraints.maxWidth < 820;
 
           if (narrow) {
-            return const Column(
+            return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _IncomeSummary(),
-                SizedBox(height: 28),
-                _ActivityPreview(),
+                _IncomeSummary(
+                  stats: todayStats,
+                  dailyWorkHours: dailyWorkHours,
+                ),
+                const SizedBox(height: 28),
+                _ActivityPreview(stats: activityStats),
               ],
             );
           }
 
-          return const Row(
+          return Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Expanded(child: _IncomeSummary()),
-              SizedBox(width: 36),
-              SizedBox(
+              Expanded(
+                child: _IncomeSummary(
+                  stats: todayStats,
+                  dailyWorkHours: dailyWorkHours,
+                ),
+              ),
+              const SizedBox(width: 36),
+              const SizedBox(
                 height: 118,
                 child: VerticalDivider(color: Color(0xFFF1F5F9)),
               ),
-              SizedBox(width: 36),
-              Expanded(child: _ActivityPreview()),
+              const SizedBox(width: 36),
+              Expanded(child: _ActivityPreview(stats: activityStats)),
             ],
           );
         },
@@ -260,10 +315,20 @@ class _TodayHeroCard extends StatelessWidget {
 }
 
 class _IncomeSummary extends StatelessWidget {
-  const _IncomeSummary();
+  const _IncomeSummary({required this.stats, required this.dailyWorkHours});
+
+  final rust_stats.StatsSnapshot stats;
+  final double dailyWorkHours;
 
   @override
   Widget build(BuildContext context) {
+    final targetSeconds = ((dailyWorkHours <= 0 ? 8 : dailyWorkHours) * 3600)
+        .round();
+    final progress = targetSeconds == 0
+        ? 0.0
+        : (stats.summary.workSeconds / targetSeconds).clamp(0.0, 1.0);
+    final progressLabel = '${(progress * 100).round()}%';
+    final coins = stats.summary.coins;
     return Row(
       children: [
         SizedBox(
@@ -273,13 +338,13 @@ class _IncomeSummary extends StatelessWidget {
             alignment: Alignment.center,
             children: [
               CircularProgressIndicator(
-                value: 0.75,
+                value: progress,
                 strokeWidth: 5,
                 backgroundColor: const Color(0xFFEFF6FF),
                 color: const Color(0xFF3B82F6),
               ),
               Text(
-                '75%',
+                progressLabel,
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   color: const Color(0xFF2563EB),
                 ),
@@ -306,7 +371,7 @@ class _IncomeSummary extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '128',
+                  coins.round().toString(),
                   style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                     fontSize: 56,
                     fontWeight: FontWeight.w800,
@@ -339,7 +404,7 @@ class _IncomeSummary extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '累计总收益 14,250 coins',
+              '${_formatWorkDuration(stats.summary.workSeconds)} · 今日 ${stats.summary.summaries} 次生成',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ],
@@ -347,10 +412,24 @@ class _IncomeSummary extends StatelessWidget {
       ],
     );
   }
+
+  String _formatWorkDuration(int seconds) {
+    if (seconds <= 0) {
+      return '尚未记录工作时长';
+    }
+    final hours = seconds ~/ 3600;
+    final minutes = (seconds % 3600) ~/ 60;
+    if (hours > 0) {
+      return '已工作 ${hours}h ${minutes}m';
+    }
+    return '已工作 ${minutes}m';
+  }
 }
 
 class _ActivityPreview extends StatelessWidget {
-  const _ActivityPreview();
+  const _ActivityPreview({required this.stats});
+
+  final rust_stats.StatsSnapshot stats;
 
   static const _colors = [
     Color(0xFFF1F5F9),
@@ -362,6 +441,15 @@ class _ActivityPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final today = DateTime.now();
+    final activityByDate = {
+      for (final item in stats.activity) item.date: item.count,
+    };
+    final weekCount = List.generate(7, (index) {
+      final date = today.subtract(Duration(days: 6 - index));
+      return activityByDate[StatsService.formatDate(date)] ?? 0;
+    }).fold<int>(0, (sum, count) => sum + count);
+    final streak = _calculateStreak(today, activityByDate);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -389,8 +477,14 @@ class _ActivityPreview extends StatelessWidget {
           spacing: 4,
           runSpacing: 4,
           children: List.generate(98, (index) {
-            final color = _colors[_activityLevel(index)];
-            return _HeatCell(color: color);
+            final date = today.subtract(Duration(days: 97 - index));
+            final dateLabel = StatsService.formatDate(date);
+            final count = activityByDate[dateLabel] ?? 0;
+            final color = _colors[_activityLevel(count)];
+            return Tooltip(
+              message: '$dateLabel：$count 次记录',
+              child: _HeatCell(color: color),
+            );
           }),
         ),
         const SizedBox(height: 16),
@@ -398,8 +492,8 @@ class _ActivityPreview extends StatelessWidget {
           spacing: 22,
           runSpacing: 8,
           children: [
-            _ActivityMetric(label: '本周新增', value: '0 篇'),
-            _ActivityMetric(label: '连续记录', value: '0 天'),
+            _ActivityMetric(label: '本周新增', value: '$weekCount 次'),
+            _ActivityMetric(label: '连续记录', value: '$streak 天'),
             _ActivityMetric(label: '上次同步', value: '刚刚'),
           ],
         ),
@@ -407,20 +501,33 @@ class _ActivityPreview extends StatelessWidget {
     );
   }
 
-  int _activityLevel(int index) {
-    if (index % 29 == 0) {
+  int _activityLevel(int count) {
+    if (count >= 8) {
       return 4;
     }
-    if (index % 13 == 0) {
+    if (count >= 5) {
       return 3;
     }
-    if (index % 7 == 0) {
+    if (count >= 3) {
       return 2;
     }
-    if (index % 5 == 0) {
+    if (count >= 1) {
       return 1;
     }
     return 0;
+  }
+
+  int _calculateStreak(DateTime today, Map<String, int> activityByDate) {
+    var streak = 0;
+    for (var index = 0; index < 366; index++) {
+      final date = today.subtract(Duration(days: index));
+      final count = activityByDate[StatsService.formatDate(date)] ?? 0;
+      if (count <= 0) {
+        break;
+      }
+      streak++;
+    }
+    return streak;
   }
 }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 
 import '../../core/models/app_config.dart';
 import '../../core/models/local_data_state.dart';
@@ -6,7 +7,9 @@ import '../../core/models/model_config.dart';
 import '../../core/models/provider_config.dart';
 import '../../core/services/ai_client_service.dart';
 import '../../core/services/local_data_service.dart';
+import '../../core/services/stats_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../src/rust/stats.dart' as rust_stats;
 
 enum _SettingsSection {
   preferences('偏好设置', Icons.tune_rounded),
@@ -217,7 +220,9 @@ class _SettingsPageState extends State<SettingsPage> {
         config: _config,
         onChanged: _updateConfig,
       ),
-      _SettingsSection.stats => const _StatsPanel(),
+      _SettingsSection.stats => _StatsPanel(
+        localDataState: widget.localDataState.copyWith(config: _config),
+      ),
       _SettingsSection.about => const _AboutPanel(),
     };
   }
@@ -1058,90 +1063,454 @@ class _HotkeysPanel extends StatelessWidget {
   }
 }
 
-class _StatsPanel extends StatelessWidget {
-  const _StatsPanel();
+class _StatsPanel extends StatefulWidget {
+  const _StatsPanel({required this.localDataState});
+
+  final LocalDataState localDataState;
+
+  @override
+  State<_StatsPanel> createState() => _StatsPanelState();
+}
+
+class _StatsPanelState extends State<_StatsPanel> {
+  final StatsService _statsService = const StatsService();
+  late Future<_StatsPanelData> _future = _loadStats();
+
+  @override
+  void didUpdateWidget(covariant _StatsPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.localDataState.dataDirectory !=
+        oldWidget.localDataState.dataDirectory) {
+      _future = _loadStats();
+    }
+  }
+
+  Future<_StatsPanelData> _loadStats() async {
+    final today = DateTime.now();
+    final trendStart = today.subtract(const Duration(days: 29));
+    final heatmapStart = today.subtract(const Duration(days: 364));
+    final results = await Future.wait([
+      _statsService.readSnapshot(
+        localDataState: widget.localDataState,
+        start: trendStart,
+        end: today,
+      ),
+      _statsService.readSnapshot(
+        localDataState: widget.localDataState,
+        start: heatmapStart,
+        end: today,
+      ),
+    ]);
+    return _StatsPanelData(recent: results[0], yearly: results[1]);
+  }
 
   @override
   Widget build(BuildContext context) {
-    const metrics = [
-      '总结数',
-      '编辑补全次数',
-      '总记录数',
-      '日报数',
-      '周报数',
-      '月报数',
-      '输入 Tokens',
-      '输出 Tokens',
-      '缓存 Tokens',
-      '应用启动次数',
-    ];
-    return _SettingsScrollFrame(
-      maxWidth: 1120,
-      children: [
-        Row(
+    return FutureBuilder<_StatsPanelData>(
+      future: _future,
+      builder: (context, snapshot) {
+        final data = snapshot.data;
+        final recent = data?.recent ?? StatsService.emptySnapshot;
+        final yearly = data?.yearly ?? StatsService.emptySnapshot;
+        final loading = snapshot.connectionState != ConnectionState.done;
+
+        return _SettingsScrollFrame(
+          maxWidth: 1120,
           children: [
-            for (final label in ['全部', '最近30天', '上个月', '上个季度', '自定义'])
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Chip(label: Text(label)),
-              ),
-          ],
-        ),
-        _SettingsCard(
-          title: '聊天热力图',
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(18),
-              child: Wrap(
-                spacing: 4,
-                runSpacing: 4,
-                children: List.generate(120, (index) {
-                  final colors = [
-                    const Color(0xFFF1F5F9),
-                    const Color(0xFFDCFCE7),
-                    const Color(0xFFBBF7D0),
-                    const Color(0xFF86EFAC),
-                    const Color(0xFF4ADE80),
-                  ];
-                  return Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: colors[index % colors.length],
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  );
-                }),
-              ),
+            Row(
+              children: [
+                const Chip(label: Text('最近30天')),
+                const SizedBox(width: 8),
+                Chip(
+                  label: Text(loading ? '读取中' : '已同步 SQLite'),
+                  backgroundColor: const Color(0xFFF8FAFC),
+                ),
+                const Spacer(),
+                IconButton(
+                  tooltip: '刷新统计',
+                  onPressed: () => setState(() => _future = _loadStats()),
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                ),
+              ],
             ),
-          ],
-        ),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            for (final metric in metrics)
-              SizedBox(
-                width: 190,
-                child: _MetricCard(label: metric, value: '0'),
-              ),
-          ],
-        ),
-        _SettingsCard(
-          title: '用量趋势',
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(18),
-              child: Text(
-                '真实统计将在第七阶段接入。',
+            _SettingsCard(
+              title: '年度热力图',
+              trailing: Text(
+                '365 天',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 4, 18, 18),
+                  child: _YearHeatmap(activity: yearly.activity),
+                ),
+              ],
             ),
+            _StatsMetricsGrid(snapshot: recent),
+            _SettingsCard(
+              title: '模型用量趋势',
+              trailing: Text(
+                '最近 30 天',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 4, 18, 18),
+                  child: _UsageTrendChart(snapshot: recent),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _StatsPanelData {
+  const _StatsPanelData({required this.recent, required this.yearly});
+
+  final rust_stats.StatsSnapshot recent;
+  final rust_stats.StatsSnapshot yearly;
+}
+
+class _StatsMetricsGrid extends StatelessWidget {
+  const _StatsMetricsGrid({required this.snapshot});
+
+  final rust_stats.StatsSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = snapshot.summary;
+    final metrics = [
+      ('总结数', summary.summaries),
+      ('编辑补全次数', summary.fimCompletions),
+      ('总记录数', summary.totalRecords),
+      ('日报数', summary.dailyNotes),
+      ('周报数', summary.weeklyNotes),
+      ('月报数', summary.monthlyNotes),
+      ('输入 Tokens', summary.inputTokens),
+      ('输出 Tokens', summary.outputTokens),
+      ('缓存 Tokens', summary.cachedTokens),
+      ('应用启动次数', summary.appLaunches),
+    ];
+
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: [
+        for (final metric in metrics)
+          SizedBox(
+            width: 190,
+            child: _MetricCard(
+              label: metric.$1,
+              value: _formatNumber(metric.$2),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _YearHeatmap extends StatelessWidget {
+  const _YearHeatmap({required this.activity});
+
+  final List<rust_stats.DailyActivity> activity;
+
+  static const _colors = [
+    Color(0xFFF1F5F9),
+    Color(0xFFDCFCE7),
+    Color(0xFFBBF7D0),
+    Color(0xFF86EFAC),
+    Color(0xFF4ADE80),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final today = DateTime.now();
+    final start = today.subtract(const Duration(days: 364));
+    final activityByDate = {for (final item in activity) item.date: item.count};
+    final weeks = <List<DateTime>>[];
+    var cursor = start;
+    while (!cursor.isAfter(today)) {
+      if (weeks.isEmpty || weeks.last.length == 7) {
+        weeks.add([]);
+      }
+      weeks.last.add(cursor);
+      cursor = cursor.add(const Duration(days: 1));
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final week in weeks)
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: Column(
+                children: [
+                  for (final date in week)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: _HeatmapCell(
+                        date: date,
+                        count:
+                            activityByDate[StatsService.formatDate(date)] ?? 0,
+                        colors: _colors,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeatmapCell extends StatelessWidget {
+  const _HeatmapCell({
+    required this.date,
+    required this.count,
+    required this.colors,
+  });
+
+  final DateTime date;
+  final int count;
+  final List<Color> colors;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: '${StatsService.formatDate(date)}：$count 次记录',
+      child: Container(
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(
+          color: colors[_level(count)],
+          borderRadius: BorderRadius.circular(3),
+        ),
+      ),
+    );
+  }
+
+  int _level(int count) {
+    if (count >= 8) {
+      return 4;
+    }
+    if (count >= 5) {
+      return 3;
+    }
+    if (count >= 3) {
+      return 2;
+    }
+    if (count >= 1) {
+      return 1;
+    }
+    return 0;
+  }
+}
+
+class _UsageTrendChart extends StatefulWidget {
+  const _UsageTrendChart({required this.snapshot});
+
+  final rust_stats.StatsSnapshot snapshot;
+
+  @override
+  State<_UsageTrendChart> createState() => _UsageTrendChartState();
+}
+
+class _UsageTrendChartState extends State<_UsageTrendChart> {
+  final ScrollController _controller = ScrollController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final today = DateTime.now();
+    final usageByDate = {
+      for (final item in widget.snapshot.tokenUsage) item.date: item,
+    };
+    final days = List.generate(30, (index) {
+      final date = today.subtract(Duration(days: 29 - index));
+      return _DailyUsagePoint(
+        date: date,
+        usage: usageByDate[StatsService.formatDate(date)],
+      );
+    });
+    final maxTokens = days.fold<int>(
+      1,
+      (max, point) => point.totalTokens > max ? point.totalTokens : max,
+    );
+    final models = _topModelUsage(widget.snapshot.providerUsage);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Listener(
+          onPointerSignal: _handlePointerSignal,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final contentWidth = (days.length * 34).toDouble();
+              return SingleChildScrollView(
+                controller: _controller,
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: contentWidth < constraints.maxWidth
+                      ? constraints.maxWidth
+                      : contentWidth,
+                  height: 210,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      for (final point in days)
+                        Expanded(
+                          child: _UsageBar(point: point, maxTokens: maxTokens),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            if (models.isEmpty)
+              Text('暂无模型调用记录', style: Theme.of(context).textTheme.bodyMedium)
+            else
+              for (final model in models)
+                Chip(
+                  label: Text(
+                    '${model.label} · ${_formatNumber(model.tokens)}',
+                  ),
+                  backgroundColor: const Color(0xFFF8FAFC),
+                ),
           ],
         ),
       ],
     );
   }
+
+  void _handlePointerSignal(PointerSignalEvent event) {
+    if (event is! PointerScrollEvent ||
+        !_controller.hasClients ||
+        _controller.position.maxScrollExtent <= 0) {
+      return;
+    }
+    final next = (_controller.offset + event.scrollDelta.dy).clamp(
+      0.0,
+      _controller.position.maxScrollExtent,
+    );
+    _controller.jumpTo(next);
+  }
+
+  List<_ModelUsageTotal> _topModelUsage(
+    List<rust_stats.ProviderTokenUsage> usage,
+  ) {
+    final totals = <String, int>{};
+    for (final item in usage) {
+      final key = '${item.providerName}/${item.modelId}';
+      totals[key] = (totals[key] ?? 0) + item.tokens;
+    }
+    final result = [
+      for (final entry in totals.entries)
+        _ModelUsageTotal(label: entry.key, tokens: entry.value),
+    ];
+    result.sort((left, right) => right.tokens.compareTo(left.tokens));
+    return result.take(4).toList();
+  }
+}
+
+class _DailyUsagePoint {
+  const _DailyUsagePoint({required this.date, this.usage});
+
+  final DateTime date;
+  final rust_stats.DailyTokenUsage? usage;
+
+  int get totalTokens => usage?.totalTokens ?? 0;
+}
+
+class _UsageBar extends StatelessWidget {
+  const _UsageBar({required this.point, required this.maxTokens});
+
+  final _DailyUsagePoint point;
+  final int maxTokens;
+
+  @override
+  Widget build(BuildContext context) {
+    final usage = point.usage;
+    final heightFactor = point.totalTokens <= 0
+        ? 0.03
+        : (point.totalTokens / maxTokens).clamp(0.08, 1.0);
+    final date = StatsService.formatDate(point.date);
+    final label =
+        '$date\n输入 ${usage?.inputTokens ?? 0}\n输出 ${usage?.outputTokens ?? 0}\n缓存 ${usage?.cachedTokens ?? 0}';
+
+    return Tooltip(
+      message: label,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Expanded(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: FractionallySizedBox(
+                  heightFactor: heightFactor,
+                  child: Container(
+                    width: 14,
+                    decoration: BoxDecoration(
+                      color: point.totalTokens == 0
+                          ? const Color(0xFFE2E8F0)
+                          : const Color(0xFF3B82F6),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              point.date.day.toString().padLeft(2, '0'),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppTheme.textSubtle),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ModelUsageTotal {
+  const _ModelUsageTotal({required this.label, required this.tokens});
+
+  final String label;
+  final int tokens;
+}
+
+String _formatNumber(int value) {
+  final text = value.toString();
+  final buffer = StringBuffer();
+  for (var index = 0; index < text.length; index++) {
+    final position = text.length - index;
+    buffer.write(text[index]);
+    if (position > 1 && position % 3 == 1) {
+      buffer.write(',');
+    }
+  }
+  return buffer.toString();
 }
 
 class _AboutPanel extends StatelessWidget {

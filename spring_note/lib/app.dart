@@ -3,15 +3,31 @@ import 'package:flutter/material.dart';
 import 'core/models/local_data_state.dart';
 import 'core/router/app_shell.dart';
 import 'core/services/local_data_service.dart';
+import 'core/services/stats_service.dart';
 import 'core/theme/app_theme.dart';
 
-class SpringNoteApp extends StatelessWidget {
+class SpringNoteApp extends StatefulWidget {
   const SpringNoteApp({
     super.key,
     this.localDataService = const LocalDataService(),
+    this.statsService = const StatsService(),
   });
 
   final LocalDataService localDataService;
+  final StatsService statsService;
+
+  @override
+  State<SpringNoteApp> createState() => _SpringNoteAppState();
+}
+
+class _SpringNoteAppState extends State<SpringNoteApp> {
+  late final Future<LocalDataState> _initFuture = _initialize();
+
+  Future<LocalDataState> _initialize() async {
+    final state = await widget.localDataService.initialize();
+    await widget.statsService.recordAppStartup(appDataDir: state.dataDirectory);
+    return state;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +36,7 @@ class SpringNoteApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       home: FutureBuilder<LocalDataState>(
-        future: localDataService.initialize(),
+        future: _initFuture,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return AppStartupError(error: snapshot.error.toString());

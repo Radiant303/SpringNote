@@ -5,12 +5,14 @@
 
 import 'ai.dart';
 import 'api/ai_api.dart';
+import 'api/stats_api.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
 import 'frb_generated.io.dart'
     if (dart.library.js_interop) 'frb_generated.web.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+import 'stats.dart';
 
 /// Main entrypoint of the Rust API
 class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
@@ -67,7 +69,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.12.0';
 
   @override
-  int get rustContentHash => -154967618;
+  int get rustContentHash => -341204124;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -101,6 +103,15 @@ abstract class RustLibApi extends BaseApi {
     required ReportRequest request,
   });
 
+  Future<StatsSnapshot> crateApiStatsApiGetStatsSnapshot({
+    required String appDataDir,
+    required String dailyNotesDir,
+    required String weeklyNotesDir,
+    required String monthlyNotesDir,
+    required String startDate,
+    required String endDate,
+  });
+
   Future<void> crateApiAiApiInitApp();
 
   Future<AiTextResult> crateApiAiApiMemoryChat({
@@ -109,6 +120,18 @@ abstract class RustLibApi extends BaseApi {
 
   Future<AiTextResult> crateApiAiApiMergeDailyNote({
     required DailyMergeRequest request,
+  });
+
+  Future<bool> crateApiStatsApiRecordAppStartup({required String appDataDir});
+
+  Future<bool> crateApiStatsApiRecordHomeGeneration({
+    required String appDataDir,
+  });
+
+  Future<bool> crateApiStatsApiRecordWorkTime({
+    required String appDataDir,
+    required int workSeconds,
+    required double coins,
   });
 
   Future<ProviderTestResult> crateApiAiApiTestProviderConnection({
@@ -294,6 +317,63 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<StatsSnapshot> crateApiStatsApiGetStatsSnapshot({
+    required String appDataDir,
+    required String dailyNotesDir,
+    required String weeklyNotesDir,
+    required String monthlyNotesDir,
+    required String startDate,
+    required String endDate,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(appDataDir, serializer);
+          sse_encode_String(dailyNotesDir, serializer);
+          sse_encode_String(weeklyNotesDir, serializer);
+          sse_encode_String(monthlyNotesDir, serializer);
+          sse_encode_String(startDate, serializer);
+          sse_encode_String(endDate, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 6,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_stats_snapshot,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiStatsApiGetStatsSnapshotConstMeta,
+        argValues: [
+          appDataDir,
+          dailyNotesDir,
+          weeklyNotesDir,
+          monthlyNotesDir,
+          startDate,
+          endDate,
+        ],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiStatsApiGetStatsSnapshotConstMeta =>
+      const TaskConstMeta(
+        debugName: "get_stats_snapshot",
+        argNames: [
+          "appDataDir",
+          "dailyNotesDir",
+          "weeklyNotesDir",
+          "monthlyNotesDir",
+          "startDate",
+          "endDate",
+        ],
+      );
+
+  @override
   Future<void> crateApiAiApiInitApp() {
     return handler.executeNormal(
       NormalTask(
@@ -302,7 +382,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 7,
             port: port_,
           );
         },
@@ -332,7 +412,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 8,
             port: port_,
           );
         },
@@ -362,7 +442,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 9,
             port: port_,
           );
         },
@@ -379,6 +459,107 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiAiApiMergeDailyNoteConstMeta =>
       const TaskConstMeta(debugName: "merge_daily_note", argNames: ["request"]);
+
+  @override
+  Future<bool> crateApiStatsApiRecordAppStartup({required String appDataDir}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(appDataDir, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 10,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiStatsApiRecordAppStartupConstMeta,
+        argValues: [appDataDir],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiStatsApiRecordAppStartupConstMeta =>
+      const TaskConstMeta(
+        debugName: "record_app_startup",
+        argNames: ["appDataDir"],
+      );
+
+  @override
+  Future<bool> crateApiStatsApiRecordHomeGeneration({
+    required String appDataDir,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(appDataDir, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 11,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiStatsApiRecordHomeGenerationConstMeta,
+        argValues: [appDataDir],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiStatsApiRecordHomeGenerationConstMeta =>
+      const TaskConstMeta(
+        debugName: "record_home_generation",
+        argNames: ["appDataDir"],
+      );
+
+  @override
+  Future<bool> crateApiStatsApiRecordWorkTime({
+    required String appDataDir,
+    required int workSeconds,
+    required double coins,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(appDataDir, serializer);
+          sse_encode_i_32(workSeconds, serializer);
+          sse_encode_f_64(coins, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 12,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiStatsApiRecordWorkTimeConstMeta,
+        argValues: [appDataDir, workSeconds, coins],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiStatsApiRecordWorkTimeConstMeta =>
+      const TaskConstMeta(
+        debugName: "record_work_time",
+        argNames: ["appDataDir", "workSeconds", "coins"],
+      );
 
   @override
   Future<ProviderTestResult> crateApiAiApiTestProviderConnection({
@@ -398,7 +579,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 13,
             port: port_,
           );
         },
@@ -523,6 +704,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  DailyActivity dco_decode_daily_activity(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return DailyActivity(
+      date: dco_decode_String(arr[0]),
+      count: dco_decode_i_32(arr[1]),
+    );
+  }
+
+  @protected
   DailyMergeRequest dco_decode_daily_merge_request(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -540,6 +733,27 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       date: dco_decode_String(arr[8]),
       apiLogEnabled: dco_decode_bool(arr[9]),
     );
+  }
+
+  @protected
+  DailyTokenUsage dco_decode_daily_token_usage(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return DailyTokenUsage(
+      date: dco_decode_String(arr[0]),
+      inputTokens: dco_decode_i_32(arr[1]),
+      outputTokens: dco_decode_i_32(arr[2]),
+      cachedTokens: dco_decode_i_32(arr[3]),
+      totalTokens: dco_decode_i_32(arr[4]),
+    );
+  }
+
+  @protected
+  double dco_decode_f_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as double;
   }
 
   @protected
@@ -577,9 +791,27 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<DailyActivity> dco_decode_list_daily_activity(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_daily_activity).toList();
+  }
+
+  @protected
+  List<DailyTokenUsage> dco_decode_list_daily_token_usage(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_daily_token_usage).toList();
+  }
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
+  }
+
+  @protected
+  List<ProviderTokenUsage> dco_decode_list_provider_token_usage(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_provider_token_usage).toList();
   }
 
   @protected
@@ -626,6 +858,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  ProviderTokenUsage dco_decode_provider_token_usage(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return ProviderTokenUsage(
+      date: dco_decode_String(arr[0]),
+      providerName: dco_decode_String(arr[1]),
+      modelId: dco_decode_String(arr[2]),
+      tokens: dco_decode_i_32(arr[3]),
+    );
+  }
+
+  @protected
   ReportRequest dco_decode_report_request(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -638,6 +884,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       sourceMarkdown: dco_decode_String(arr[3]),
       periodLabel: dco_decode_String(arr[4]),
       apiLogEnabled: dco_decode_bool(arr[5]),
+    );
+  }
+
+  @protected
+  StatsSnapshot dco_decode_stats_snapshot(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return StatsSnapshot(
+      summary: dco_decode_stats_summary(arr[0]),
+      activity: dco_decode_list_daily_activity(arr[1]),
+      tokenUsage: dco_decode_list_daily_token_usage(arr[2]),
+      providerUsage: dco_decode_list_provider_token_usage(arr[3]),
+    );
+  }
+
+  @protected
+  StatsSummary dco_decode_stats_summary(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 12)
+      throw Exception('unexpected arr length: expect 12 but see ${arr.length}');
+    return StatsSummary(
+      summaries: dco_decode_i_32(arr[0]),
+      fimCompletions: dco_decode_i_32(arr[1]),
+      totalRecords: dco_decode_i_32(arr[2]),
+      dailyNotes: dco_decode_i_32(arr[3]),
+      weeklyNotes: dco_decode_i_32(arr[4]),
+      monthlyNotes: dco_decode_i_32(arr[5]),
+      inputTokens: dco_decode_i_32(arr[6]),
+      outputTokens: dco_decode_i_32(arr[7]),
+      cachedTokens: dco_decode_i_32(arr[8]),
+      appLaunches: dco_decode_i_32(arr[9]),
+      workSeconds: dco_decode_i_32(arr[10]),
+      coins: dco_decode_f_64(arr[11]),
     );
   }
 
@@ -806,6 +1088,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  DailyActivity sse_decode_daily_activity(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_date = sse_decode_String(deserializer);
+    var var_count = sse_decode_i_32(deserializer);
+    return DailyActivity(date: var_date, count: var_count);
+  }
+
+  @protected
   DailyMergeRequest sse_decode_daily_merge_request(
     SseDeserializer deserializer,
   ) {
@@ -832,6 +1122,29 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       date: var_date,
       apiLogEnabled: var_apiLogEnabled,
     );
+  }
+
+  @protected
+  DailyTokenUsage sse_decode_daily_token_usage(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_date = sse_decode_String(deserializer);
+    var var_inputTokens = sse_decode_i_32(deserializer);
+    var var_outputTokens = sse_decode_i_32(deserializer);
+    var var_cachedTokens = sse_decode_i_32(deserializer);
+    var var_totalTokens = sse_decode_i_32(deserializer);
+    return DailyTokenUsage(
+      date: var_date,
+      inputTokens: var_inputTokens,
+      outputTokens: var_outputTokens,
+      cachedTokens: var_cachedTokens,
+      totalTokens: var_totalTokens,
+    );
+  }
+
+  @protected
+  double sse_decode_f_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getFloat64();
   }
 
   @protected
@@ -886,10 +1199,52 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<DailyActivity> sse_decode_list_daily_activity(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <DailyActivity>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_daily_activity(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<DailyTokenUsage> sse_decode_list_daily_token_usage(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <DailyTokenUsage>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_daily_token_usage(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
     return deserializer.buffer.getUint8List(len_);
+  }
+
+  @protected
+  List<ProviderTokenUsage> sse_decode_list_provider_token_usage(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <ProviderTokenUsage>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_provider_token_usage(deserializer));
+    }
+    return ans_;
   }
 
   @protected
@@ -944,6 +1299,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  ProviderTokenUsage sse_decode_provider_token_usage(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_date = sse_decode_String(deserializer);
+    var var_providerName = sse_decode_String(deserializer);
+    var var_modelId = sse_decode_String(deserializer);
+    var var_tokens = sse_decode_i_32(deserializer);
+    return ProviderTokenUsage(
+      date: var_date,
+      providerName: var_providerName,
+      modelId: var_modelId,
+      tokens: var_tokens,
+    );
+  }
+
+  @protected
   ReportRequest sse_decode_report_request(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_appDataDir = sse_decode_String(deserializer);
@@ -959,6 +1331,52 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       sourceMarkdown: var_sourceMarkdown,
       periodLabel: var_periodLabel,
       apiLogEnabled: var_apiLogEnabled,
+    );
+  }
+
+  @protected
+  StatsSnapshot sse_decode_stats_snapshot(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_summary = sse_decode_stats_summary(deserializer);
+    var var_activity = sse_decode_list_daily_activity(deserializer);
+    var var_tokenUsage = sse_decode_list_daily_token_usage(deserializer);
+    var var_providerUsage = sse_decode_list_provider_token_usage(deserializer);
+    return StatsSnapshot(
+      summary: var_summary,
+      activity: var_activity,
+      tokenUsage: var_tokenUsage,
+      providerUsage: var_providerUsage,
+    );
+  }
+
+  @protected
+  StatsSummary sse_decode_stats_summary(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_summaries = sse_decode_i_32(deserializer);
+    var var_fimCompletions = sse_decode_i_32(deserializer);
+    var var_totalRecords = sse_decode_i_32(deserializer);
+    var var_dailyNotes = sse_decode_i_32(deserializer);
+    var var_weeklyNotes = sse_decode_i_32(deserializer);
+    var var_monthlyNotes = sse_decode_i_32(deserializer);
+    var var_inputTokens = sse_decode_i_32(deserializer);
+    var var_outputTokens = sse_decode_i_32(deserializer);
+    var var_cachedTokens = sse_decode_i_32(deserializer);
+    var var_appLaunches = sse_decode_i_32(deserializer);
+    var var_workSeconds = sse_decode_i_32(deserializer);
+    var var_coins = sse_decode_f_64(deserializer);
+    return StatsSummary(
+      summaries: var_summaries,
+      fimCompletions: var_fimCompletions,
+      totalRecords: var_totalRecords,
+      dailyNotes: var_dailyNotes,
+      weeklyNotes: var_weeklyNotes,
+      monthlyNotes: var_monthlyNotes,
+      inputTokens: var_inputTokens,
+      outputTokens: var_outputTokens,
+      cachedTokens: var_cachedTokens,
+      appLaunches: var_appLaunches,
+      workSeconds: var_workSeconds,
+      coins: var_coins,
     );
   }
 
@@ -1126,6 +1544,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_daily_activity(DailyActivity self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.date, serializer);
+    sse_encode_i_32(self.count, serializer);
+  }
+
+  @protected
   void sse_encode_daily_merge_request(
     DailyMergeRequest self,
     SseSerializer serializer,
@@ -1141,6 +1566,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_list_String(self.plans, serializer);
     sse_encode_String(self.date, serializer);
     sse_encode_bool(self.apiLogEnabled, serializer);
+  }
+
+  @protected
+  void sse_encode_daily_token_usage(
+    DailyTokenUsage self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.date, serializer);
+    sse_encode_i_32(self.inputTokens, serializer);
+    sse_encode_i_32(self.outputTokens, serializer);
+    sse_encode_i_32(self.cachedTokens, serializer);
+    sse_encode_i_32(self.totalTokens, serializer);
+  }
+
+  @protected
+  void sse_encode_f_64(double self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putFloat64(self);
   }
 
   @protected
@@ -1182,6 +1626,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_daily_activity(
+    List<DailyActivity> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_daily_activity(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_daily_token_usage(
+    List<DailyTokenUsage> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_daily_token_usage(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
     SseSerializer serializer,
@@ -1189,6 +1657,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     serializer.buffer.putUint8List(self);
+  }
+
+  @protected
+  void sse_encode_list_provider_token_usage(
+    List<ProviderTokenUsage> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_provider_token_usage(item, serializer);
+    }
   }
 
   @protected
@@ -1229,6 +1709,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_provider_token_usage(
+    ProviderTokenUsage self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.date, serializer);
+    sse_encode_String(self.providerName, serializer);
+    sse_encode_String(self.modelId, serializer);
+    sse_encode_i_32(self.tokens, serializer);
+  }
+
+  @protected
   void sse_encode_report_request(ReportRequest self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.appDataDir, serializer);
@@ -1237,6 +1729,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.sourceMarkdown, serializer);
     sse_encode_String(self.periodLabel, serializer);
     sse_encode_bool(self.apiLogEnabled, serializer);
+  }
+
+  @protected
+  void sse_encode_stats_snapshot(StatsSnapshot self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_stats_summary(self.summary, serializer);
+    sse_encode_list_daily_activity(self.activity, serializer);
+    sse_encode_list_daily_token_usage(self.tokenUsage, serializer);
+    sse_encode_list_provider_token_usage(self.providerUsage, serializer);
+  }
+
+  @protected
+  void sse_encode_stats_summary(StatsSummary self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.summaries, serializer);
+    sse_encode_i_32(self.fimCompletions, serializer);
+    sse_encode_i_32(self.totalRecords, serializer);
+    sse_encode_i_32(self.dailyNotes, serializer);
+    sse_encode_i_32(self.weeklyNotes, serializer);
+    sse_encode_i_32(self.monthlyNotes, serializer);
+    sse_encode_i_32(self.inputTokens, serializer);
+    sse_encode_i_32(self.outputTokens, serializer);
+    sse_encode_i_32(self.cachedTokens, serializer);
+    sse_encode_i_32(self.appLaunches, serializer);
+    sse_encode_i_32(self.workSeconds, serializer);
+    sse_encode_f_64(self.coins, serializer);
   }
 
   @protected

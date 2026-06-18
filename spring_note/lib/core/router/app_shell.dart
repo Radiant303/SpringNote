@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../features/home/home_page.dart';
@@ -5,6 +7,7 @@ import '../../features/memory/memory_page.dart';
 import '../../features/notes/notes_page.dart';
 import '../../features/settings/settings_page.dart';
 import '../models/local_data_state.dart';
+import '../services/stats_service.dart';
 import '../theme/app_theme.dart';
 
 enum AppSection { home, notes, memory, settings }
@@ -19,8 +22,18 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
+  static const _workTick = Duration(minutes: 1);
+
   AppSection _section = AppSection.home;
   late LocalDataState _localDataState = widget.localDataState;
+  final StatsService _statsService = const StatsService();
+  Timer? _workTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startWorkTimer();
+  }
 
   @override
   void didUpdateWidget(covariant AppShell oldWidget) {
@@ -28,6 +41,30 @@ class _AppShellState extends State<AppShell> {
     if (widget.localDataState != oldWidget.localDataState) {
       _localDataState = widget.localDataState;
     }
+  }
+
+  @override
+  void dispose() {
+    _workTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startWorkTimer() {
+    _workTimer = Timer.periodic(_workTick, (_) => _recordWorkTick());
+  }
+
+  Future<void> _recordWorkTick() async {
+    final workHours = _localDataState.config.dailyWorkHours;
+    final secondsPerDay = (workHours <= 0 ? 8 : workHours) * 3600;
+    final coins =
+        _localDataState.config.dailySalary *
+        _workTick.inSeconds /
+        secondsPerDay;
+    await _statsService.recordWorkTime(
+      appDataDir: _localDataState.dataDirectory,
+      workSeconds: _workTick.inSeconds,
+      coins: coins,
+    );
   }
 
   @override

@@ -5,11 +5,13 @@
 
 import 'ai.dart';
 import 'api/ai_api.dart';
+import 'api/stats_api.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi' as ffi;
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
+import 'stats.dart';
 
 abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   RustLibApiImplPlatform({
@@ -58,7 +60,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  DailyActivity dco_decode_daily_activity(dynamic raw);
+
+  @protected
   DailyMergeRequest dco_decode_daily_merge_request(dynamic raw);
+
+  @protected
+  DailyTokenUsage dco_decode_daily_token_usage(dynamic raw);
+
+  @protected
+  double dco_decode_f_64(dynamic raw);
 
   @protected
   FimCompleteRequest dco_decode_fim_complete_request(dynamic raw);
@@ -73,7 +84,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<AiModel> dco_decode_list_ai_model(dynamic raw);
 
   @protected
+  List<DailyActivity> dco_decode_list_daily_activity(dynamic raw);
+
+  @protected
+  List<DailyTokenUsage> dco_decode_list_daily_token_usage(dynamic raw);
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  List<ProviderTokenUsage> dco_decode_list_provider_token_usage(dynamic raw);
 
   @protected
   MemoryChatRequest dco_decode_memory_chat_request(dynamic raw);
@@ -85,7 +105,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ProviderTestResult dco_decode_provider_test_result(dynamic raw);
 
   @protected
+  ProviderTokenUsage dco_decode_provider_token_usage(dynamic raw);
+
+  @protected
   ReportRequest dco_decode_report_request(dynamic raw);
+
+  @protected
+  StatsSnapshot dco_decode_stats_snapshot(dynamic raw);
+
+  @protected
+  StatsSummary dco_decode_stats_summary(dynamic raw);
 
   @protected
   StructuredNoteRequest dco_decode_structured_note_request(dynamic raw);
@@ -146,9 +175,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  DailyActivity sse_decode_daily_activity(SseDeserializer deserializer);
+
+  @protected
   DailyMergeRequest sse_decode_daily_merge_request(
     SseDeserializer deserializer,
   );
+
+  @protected
+  DailyTokenUsage sse_decode_daily_token_usage(SseDeserializer deserializer);
+
+  @protected
+  double sse_decode_f_64(SseDeserializer deserializer);
 
   @protected
   FimCompleteRequest sse_decode_fim_complete_request(
@@ -165,7 +203,22 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<AiModel> sse_decode_list_ai_model(SseDeserializer deserializer);
 
   @protected
+  List<DailyActivity> sse_decode_list_daily_activity(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<DailyTokenUsage> sse_decode_list_daily_token_usage(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  List<ProviderTokenUsage> sse_decode_list_provider_token_usage(
+    SseDeserializer deserializer,
+  );
 
   @protected
   MemoryChatRequest sse_decode_memory_chat_request(
@@ -181,7 +234,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  ProviderTokenUsage sse_decode_provider_token_usage(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   ReportRequest sse_decode_report_request(SseDeserializer deserializer);
+
+  @protected
+  StatsSnapshot sse_decode_stats_snapshot(SseDeserializer deserializer);
+
+  @protected
+  StatsSummary sse_decode_stats_summary(SseDeserializer deserializer);
 
   @protected
   StructuredNoteRequest sse_decode_structured_note_request(
@@ -254,10 +318,22 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_daily_activity(DailyActivity self, SseSerializer serializer);
+
+  @protected
   void sse_encode_daily_merge_request(
     DailyMergeRequest self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_daily_token_usage(
+    DailyTokenUsage self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_f_64(double self, SseSerializer serializer);
 
   @protected
   void sse_encode_fim_complete_request(
@@ -275,8 +351,26 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_list_ai_model(List<AiModel> self, SseSerializer serializer);
 
   @protected
+  void sse_encode_list_daily_activity(
+    List<DailyActivity> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_daily_token_usage(
+    List<DailyTokenUsage> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_provider_token_usage(
+    List<ProviderTokenUsage> self,
     SseSerializer serializer,
   );
 
@@ -299,7 +393,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_provider_token_usage(
+    ProviderTokenUsage self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_report_request(ReportRequest self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_stats_snapshot(StatsSnapshot self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_stats_summary(StatsSummary self, SseSerializer serializer);
 
   @protected
   void sse_encode_structured_note_request(
