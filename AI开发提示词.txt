@@ -1,0 +1,741 @@
+你是一个资深 Rust + Flutter 桌面应用开发助手。请在当前仓库中开发 Windows 桌面应用 SpringNote。
+
+这是开发实现提示词，不是产品介绍。你需要直接阅读项目文件、原型文件和开发需求文档，然后分阶段实现可运行应用。
+
+
+一、当前项目情况
+
+项目根目录：
+
+* D:\GitHub\happywork
+
+应用工程目录：
+
+* D:\GitHub\happywork\spring_note
+
+当前技术栈：
+
+* Flutter
+* Rust
+* flutter_rust_bridge
+* Windows 桌面应用优先
+
+当前状态：
+
+* spring_note 已经是 Flutter 项目骨架
+* spring_note/rust 已经是 Rust crate 骨架
+* Flutter 当前还是默认 Counter 示例
+* 需要从骨架开始实现 SpringNote
+
+重要参考文档：
+
+* 原型页面/产品设计.txt
+* 原型页面/首页/首页设计.txt
+* 原型页面/首页/首页原型.html
+* 原型页面/便签/便签界面设计.txt
+* 原型页面/便签/便签原型.html
+* 原型页面/回忆书/回忆书界面设计.txt
+* 原型页面/回忆书/回忆书原型.html
+* 原型页面/设置/设置界面设计.txt
+* 原型页面/设置/设置原型.html
+* 原型页面/组件/组件设计.txt
+* 原型页面/组件/组件原型.html
+
+开发前必须先阅读：
+
+1. 原型页面/产品设计.txt
+2. 当前要实现页面对应的设计 txt
+3. 当前要实现页面对应的 html 原型
+
+功能逻辑以 原型页面/产品设计.txt 为准。
+
+视觉风格以各页面的界面设计 txt 和 html 原型为准。
+
+
+二、开发总目标
+
+实现一个名为 SpringNote 的 Windows 桌面应用。
+
+SpringNote 是给实习生用的 AI 智能便签，核心功能是：
+
+* 首页随手记录工作内容
+* AI 将随手记录结构化为完成事项、问题记录、明日计划
+* 自动合并写入当日日报 Markdown
+* 生成日报、周报、月报
+* 便签页编辑 Markdown 源码并实时预览
+* 便签页支持 FIM 编辑补全
+* 回忆书支持基于历史记录的 AI 问答
+* 设置页支持偏好设置、供应商、默认模型、快捷键、统计、关于
+* 桌面组件支持工作计时、金币收益、左键暂停/开始、右键打开首页
+
+不要做成普通聊天软件，也不要做成任务管理器。它是 AI 驱动的工作记录、日报生成和 Markdown 编辑工具。
+
+
+三、工程原则
+
+1. Flutter 负责 UI 和交互。
+
+2. Rust 负责本地核心能力，至少包括：
+
+* 文件系统读写
+* config.json 读写
+* Markdown 文件管理
+* SQLite 统计数据读写
+* AI 模型调用
+* 三种 AI 协议接口适配
+* 必要的 Windows 本地能力封装
+
+3. AI HTTP 请求、供应商协议适配、Token 统计、调用日志、错误归一化必须放在 Rust 层实现。Flutter 不直接请求 AI API。
+
+4. Flutter 与 Rust 通过 flutter_rust_bridge 通信。
+
+5. 不要把所有逻辑堆到 main.dart。
+
+6. 不要直接把 HTML 原型塞进 WebView。HTML 只是视觉参考，真实应用应使用 Flutter Widget 实现。
+
+7. UI 不要使用 Flutter 默认紫色 Material 风格。必须贴近原型中的极简、浅色、Slate 灰阶、Apple / Linear / OpenAI 风格。
+
+8. 先实现可运行 MVP，再逐步完善 AI、统计、组件和复杂交互。
+
+9. 每次实现一个阶段后必须运行检查：
+
+* flutter analyze
+* flutter test
+* cargo fmt
+* cargo test
+
+如果某项暂时无法运行，必须说明原因，并保证代码结构不阻塞后续开发。
+
+
+四、推荐目录结构
+
+在 spring_note/lib 下建议组织为：
+
+* app.dart
+* main.dart
+* core/
+* core/theme/
+* core/router/
+* core/models/
+* core/services/
+* core/widgets/
+* features/home/
+* features/notes/
+* features/memory/
+* features/settings/
+* features/widget/
+* bridge/
+
+推荐 Dart 文件方向：
+
+* core/theme/app_theme.dart
+* core/models/config.dart
+* core/models/provider_config.dart
+* core/models/model_config.dart
+* core/models/note_file.dart
+* core/models/stats.dart
+* core/services/ai_client.dart
+* core/services/config_service.dart
+* core/services/note_service.dart
+* core/services/stats_service.dart
+* core/services/timer_service.dart
+* features/home/home_page.dart
+* features/notes/notes_page.dart
+* features/memory/memory_page.dart
+* features/settings/settings_page.dart
+* features/widget/desktop_widget_window.dart
+
+Rust 侧建议组织为：
+
+* rust/src/lib.rs
+* rust/src/config.rs
+* rust/src/notes.rs
+* rust/src/stats.rs
+* rust/src/ai.rs
+* rust/src/ai_openai.rs
+* rust/src/ai_gemini.rs
+* rust/src/ai_claude.rs
+* rust/src/models.rs
+* rust/src/fs.rs
+
+如果 flutter_rust_bridge 需要生成绑定文件，按当前项目的 FRB v2 推荐方式补齐生成配置和命令。
+
+
+五、本地数据目录规则
+
+Windows 默认数据目录建议：
+
+* %APPDATA%/SpringNote
+
+目录结构：
+
+* config.json
+* springnote.db
+* remember.json
+* notes/daily/
+* notes/weekly/
+* notes/monthly/
+
+Markdown 文件命名：
+
+* 日报：YYYY-MM-DD.md
+* 周报：YYYY-WW.md
+* 月报：YYYY-MM.md
+
+正文内容必须以 Markdown 文件为主存储。
+
+SQLite 不保存日报、周报、月报正文，只保存统计和结构化数据。
+
+config.json 保存用户可改配置。
+
+remember.json 保存回忆书对话记录。新建对话时清空 remember.json。
+
+
+六、config.json 结构要求
+
+config.json 至少包含：
+
+* dailyWorkHours
+* dailySalary
+* industry
+* appFont
+* fontScale
+* autoStart
+* showUpdates
+* showDesktopWidget
+* providers
+* defaultModels
+* hotkeys
+
+defaultModels 只保留三个：
+
+* intelligentGenerationModel
+* editCompletionModel
+* memoryBookModel
+
+providers 中的模型配置要区分：
+
+* protocol：供应商协议，取值为 openaiCompatible / gemini / claude
+* modelId：不可修改，调用 API 时使用
+* displayName：可修改，只用于界面展示
+* modelTypes：chat / completion，可单选或双选
+* inputModes：text / image，可单选或双选
+* capabilities：tools / reasoning，可单选或双选
+
+
+七、SQLite 统计要求
+
+SQLite 至少支持以下统计：
+
+* 工作时间
+* 金币收益
+* 首页智能生成次数
+* 便签编辑补全次数
+* 总记录数
+* 日报数
+* 周报数
+* 月报数
+* 输入 Tokens
+* 输出 Tokens
+* 缓存 Tokens
+* 应用启动次数
+* 热力图活跃数据
+* 模型调用记录
+
+统计页面需要能读取这些数据并展示。
+
+
+八、AI 调用规则
+
+AI 调用必须在 Rust 层实现。
+
+Flutter 只能调用 Rust 暴露的方法，例如：
+
+* generate_structured_note
+* merge_daily_note
+* generate_weekly_report
+* generate_monthly_report
+* fim_complete
+* memory_chat
+* test_provider_connection
+* fetch_provider_models
+
+Flutter 不允许直接保存 API Key 后自己发 HTTP 请求。
+
+Rust 侧需要实现统一 AI service，并在内部适配三种协议接口：
+
+1. OpenAI 兼容协议
+
+用于 OpenAI、OpenRouter、本地 OpenAI-compatible 服务、DeepSeek、Qwen 兼容服务等。
+
+配置字段：
+
+* baseUrl
+* apiPath
+* apiKey
+* modelId
+
+调用方向：
+
+* 聊天：/chat/completions 或用户配置的 apiPath
+* 补全 / FIM：/completions 或供应商配置的补全路径
+
+2. Google Gemini 协议
+
+用于 Google / Gemini 供应商。
+
+Rust 侧需要把统一请求转换为 Gemini generateContent / streamGenerateContent 风格。
+
+配置字段：
+
+* baseUrl
+* apiKey
+* modelId
+
+modelId 用于拼接 Gemini 模型路径或请求参数。
+
+3. Anthropic Claude 协议
+
+用于 Claude 供应商。
+
+Rust 侧需要把统一请求转换为 Anthropic Messages API 风格。
+
+配置字段：
+
+* baseUrl
+* apiKey
+* modelId
+
+请求需要由 Rust 侧补齐 Anthropic 需要的 Header，例如版本 Header。不要在 Flutter 层处理这些协议细节。
+
+Rust 侧统一 AI service 需要对外屏蔽协议差异。Flutter 只传业务意图、模型 ID、上下文和用户输入，不关心底层协议。
+
+供应商配置字段：
+
+* enabled
+* name
+* protocol
+* apiKey
+* baseUrl
+* apiPath
+* models
+
+不要在添加供应商弹窗中实现 Use Responses API。
+
+AI 客户端需要支持：
+
+* 三种协议接口：OpenAI 兼容、Google Gemini、Anthropic Claude
+* chat 类调用
+* FIM 补全调用
+* 历史记录问答调用
+* 供应商连接测试
+* 模型列表获取
+* token 用量记录
+* 错误处理
+
+Token 统计、模型调用记录、错误记录应在 Rust 层写入 SQLite。
+
+如果某协议暂时无法精确获取 Token 用量，应在 Rust 层做兼容处理，允许记录 0 或估算值，但不能让 UI 崩溃。
+
+如果某供应商接口不可用，UI 应显示低打扰错误，不要崩溃。
+
+
+九、首页实现要求
+
+首页参考：
+
+* 原型页面/首页/首页设计.txt
+* 原型页面/首页/首页原型.html
+
+必须实现：
+
+* 左侧全局图标栏
+* 今日收益卡片
+* 活跃度热力图
+* AI 随手记录输入框
+* 今日工作概览三栏：完成事项、问题记录、明日计划
+
+首页输入提交流程：
+
+1. 用户输入原始工作记录。
+2. 调用智能生成模型。
+3. 输出结构化内容。
+4. 更新首页今日工作概览。
+5. 读取当日日报 Markdown。
+6. 将新结构化内容和旧日报交给 AI 合并整理。
+7. 写回 notes/daily/YYYY-MM-DD.md。
+8. 更新统计：智能生成次数、token、热力图活跃度。
+
+如果未配置模型，先使用本地 mock 结构化结果，保证应用可运行。
+
+
+十、便签页实现要求
+
+便签页参考：
+
+* 原型页面/便签/便签界面设计.txt
+* 原型页面/便签/便签原型.html
+
+必须实现：
+
+* 最左全局图标栏
+* 左侧便签列表
+* 中间 Markdown 源码编辑区
+* 右侧 Markdown 实时预览区
+* 中间和右侧等宽
+* 左侧栏右上角三个点用于切换日报、周报、月报
+* 当前选中便签列表项使用 bg-slate-100/80 风格
+* 未选中项 hover 使用 hover:bg-slate-100/60 风格
+
+Markdown 编辑规则：
+
+* 中间显示 Markdown 源码
+* 右侧显示 Markdown 渲染
+* 编辑区变化后立即刷新预览
+* 支持标题、段落、引用、列表、表格、代码块、图片、链接、数学公式
+
+FIM 补全规则：
+
+* 用户停止输入 300ms 后调用编辑补全模型
+* 用户继续输入时隐藏上一次预测
+* 光标变化或内容变化时旧预测失效
+* AI 预测内容用浅色字体显示
+* Tab 接受全部预测
+* Ctrl + L 接收单行预测
+* Ctrl + K 接收单个字
+
+如果暂时无法真实实现 inline ghost text，可先实现内部补全状态和快捷键处理，再迭代 UI 展示。
+
+
+十一、回忆书实现要求
+
+回忆书参考：
+
+* 原型页面/回忆书/回忆书界面设计.txt
+* 原型页面/回忆书/回忆书原型.html
+
+必须实现：
+
+* 入口态
+* 问答态
+* 左上模型切换
+* 右上新对话图标
+* 输入框发送后从入口态进入问答态
+* 新对话清空 remember.json 并返回入口态
+
+回忆书不是追加记忆入口。
+
+它是基于历史日报、周报、月报的 AI 问答入口。
+
+对话记录写入 remember.json，记录 user / ai / tool 等消息。
+
+
+十二、设置页实现要求
+
+设置页参考：
+
+* 原型页面/设置/设置界面设计.txt
+* 原型页面/设置/设置原型.html
+
+必须实现以下页面：
+
+* 偏好设置
+* 供应商
+* 默认模型
+* 快捷键
+* 统计
+* 关于
+
+偏好设置：
+
+* 个人信息：每日工作时长、日薪、所在行业
+* 字体与显示：应用字体、字体大小
+* 行为与启动：开机自启动、显示更新
+* 组件设置：显示桌面组件
+
+供应商页面：
+
+* 左侧供应商列表
+* 右侧供应商详情
+* 添加供应商弹窗
+* 模型列表
+* 模型编辑弹窗
+
+添加供应商弹窗：
+
+* 不包含 Use Responses API
+* 只提供 OpenAI / Google / Claude 模板
+* 字段：是否启用、名称、API Key、Base URL、API 路径
+
+模型编辑弹窗：
+
+* 点击模型行右侧 sliders-horizontal 图标打开
+* 标题：编辑模型
+* 不要基本设置 / 高级设置 / 内置工具页签
+* 模型 ID：只读，不可改，用于 API 调用
+* 模型名称：可改，用于展示
+* 模型类型：聊天、补全，可单选或双选
+* 输入模式：文本、图片，可单选或双选
+* 能力：工具、推理，可单选或双选
+
+默认模型页面：
+
+只保留三个：
+
+* 智能生成模型
+* 编辑补全模型
+* 回忆书模型
+
+快捷键页面：
+
+只保留：
+
+* 显示/隐藏页面
+
+统计页面：
+
+* 聊天热力图必须是一年范围
+* 热力图配色参考首页
+* 统计指标包含总结数、编辑补全次数、总记录数、日报数、周报数、月报数、输入 Tokens、输出 Tokens、缓存 Tokens、应用启动次数
+* 用量趋势默认展示最近 30 天
+* 如果天数很多，需要横向滚动
+
+
+十三、桌面组件实现要求
+
+组件参考：
+
+* 原型页面/组件/组件设计.txt
+* 原型页面/组件/组件原型.html
+
+桌面组件规则：
+
+* 鼠标左键单击：开始 / 暂停计时
+* 当前开始时，左键单击后暂停
+* 当前暂停时，左键单击后开始
+* 每天第一次启动软件默认开始
+* 鼠标右键单击：打开 SpringNote APP 首页
+* 开始状态累计工作时间和金币收益
+* 暂停状态不累计工作时间和金币收益
+
+如果 Windows 桌面悬浮组件需要单独窗口或原生能力，优先封装到 Rust / Windows runner 层，再通过 Flutter 控制显示。
+
+P0 阶段可以先在主窗口内实现组件逻辑和状态服务，P2 再做真正桌面悬浮组件。
+
+
+十四、视觉实现要求
+
+整体视觉：
+
+* 浅色主题
+* Slate 灰阶
+* 极简、安静、低饱和
+* 不使用紫色 Material 默认风格
+* 不使用高饱和大色块
+* 常驻内容块不使用阴影
+* 只有弹窗、tooltip、悬浮层允许阴影
+* 圆角、留白、字体大小参考原型
+
+全局侧边栏：
+
+* 只显示图标
+* 不显示 Logo
+* 不显示产品名
+* 不显示新建按钮
+* 不显示用户头像昵称
+* 顶部：首页、便签、回忆本
+* 底部：设置
+
+
+十五、分阶段实现计划
+
+第一阶段：应用基础和本地存储
+
+目标：
+
+* 替换默认 Flutter Counter
+* 建立 SpringNote AppShell
+* 实现全局左侧图标导航
+* 实现基本路由：首页、便签、回忆书、设置
+* 实现 config.json 读写
+* 实现 notes 目录和 Markdown 文件读写
+* 实现基础主题
+
+验收：
+
+* flutter run -d windows 可以启动
+* 可以在页面间切换
+* 首次启动自动创建数据目录
+* config.json 存在默认配置
+* notes/daily 等目录存在
+
+第二阶段：首页和日报写入
+
+目标：
+
+* 实现首页 UI
+* 实现随手记录输入
+* 实现 mock AI 结构化输出
+* 实现当日日报 Markdown 写入
+* 实现首页底部今日概览
+
+验收：
+
+* 输入记录后首页显示完成事项、问题记录、明日计划
+* notes/daily/YYYY-MM-DD.md 被创建或更新
+* 没有真实 API Key 时也能用 mock 跑通流程
+
+第三阶段：便签页
+
+目标：
+
+* 实现便签列表
+* 实现日报/周报/月报切换
+* 实现 Markdown 源码编辑区
+* 实现 Markdown 实时预览
+* 实现保存 Markdown
+
+验收：
+
+* 能打开日报 Markdown
+* 编辑后立即刷新预览
+* 文件内容可保存
+
+第四阶段：设置页
+
+目标：
+
+* 实现偏好设置
+* 实现供应商配置
+* 实现默认模型配置
+* 实现快捷键页面
+* 实现统计页面 UI 骨架
+* 实现添加供应商弹窗
+* 实现编辑模型弹窗
+
+验收：
+
+* 设置修改能写入 config.json
+* 供应商和模型配置能增删改
+* 默认模型只能选择三个业务模型
+
+第五阶段：AI 接入
+
+目标：
+
+* 在 Rust 层实现统一 AI service
+* 在 Rust 层实现 OpenAI 兼容协议
+* 在 Rust 层实现 Google Gemini 协议
+* 在 Rust 层实现 Anthropic Claude 协议
+* 实现智能生成模型调用
+* 实现日报合并整理
+* 记录 token 用量
+* 增加错误处理
+
+验收：
+
+* 配置 API 后可以真实调用
+* Flutter 侧不直接发起 AI HTTP 请求
+* AI 调用统一经过 flutter_rust_bridge 进入 Rust
+* 三种协议接口至少有清晰 adapter 结构和可测试 mock
+* 调用失败不崩溃
+* token 和调用记录进入 SQLite
+
+第六阶段：FIM 补全
+
+目标：
+
+* 实现 300ms 防抖
+* 实现预测状态
+* 实现 Tab / Ctrl+L / Ctrl+K 接收规则
+* 实现旧预测失效规则
+
+验收：
+
+* 连续输入不重复调用模型
+* 停止输入后触发补全
+* 快捷键接收逻辑正确
+
+第七阶段：统计和热力图
+
+目标：
+
+* SQLite 统计完整落地
+* 首页热力图
+* 设置页统计热力图
+* 模型用量趋势
+
+验收：
+
+* 统计数据可持久化
+* 热力图按日期正确显示
+* 用量趋势默认最近 30 天
+
+第八阶段：回忆书和桌面组件
+
+目标：
+
+* 实现回忆书入口态和问答态
+* 实现 remember.json
+* 实现新对话清空
+* 实现桌面组件开始/暂停/右键打开首页
+
+验收：
+
+* 回忆书能保存对话记录
+* 新对话会清空 remember.json
+* 桌面组件计时和金币收益规则正确
+
+
+十六、开发过程要求
+
+每次开发前：
+
+1. 先阅读相关文档。
+2. 检查当前代码结构。
+3. 明确本次实现范围。
+
+每次开发中：
+
+1. 不要一次性大改所有模块。
+2. 优先保证可运行。
+3. 数据模型和服务层先稳定，再做复杂 UI。
+4. 不要引入无关依赖。
+
+每次开发后：
+
+1. 运行 dart format。
+2. 运行 flutter analyze。
+3. 运行 flutter test。
+4. Rust 改动后运行 cargo fmt 和 cargo test。
+5. 如果检查失败，优先修复。
+
+
+十七、禁止事项
+
+* 不要继续保留 Flutter Counter 示例。
+* 不要使用默认紫色 Material 主题。
+* 不要把 Markdown 正文主存储放入 SQLite。
+* 不要把所有逻辑写在 main.dart。
+* 不要忽略 config.json 和 SQLite 的职责边界。
+* 不要在 Flutter/Dart 层直接调用 AI 供应商 HTTP API。
+* 不要把 AI 协议适配写在 Flutter/Dart 层。
+* 不要把回忆书做成追加记忆入口。
+* 不要在添加供应商弹窗加入 Use Responses API。
+* 不要把编辑模型弹窗做成多页签。
+* 不要让 FIM 每输入一个字符就调用模型。
+* 不要让 AI 生成内容不可编辑。FIM
+
+
+十八、最先执行的任务
+
+请从第一阶段开始：
+
+1. 替换 spring_note/lib/main.dart 中的默认 Counter 示例。
+2. 建立 SpringNote 应用入口、主题和 AppShell。
+3. 实现左侧全局图标导航。
+4. 建立首页、便签页、回忆书页、设置页的页面骨架。
+5. 建立 config.json 默认配置和本地数据目录初始化。
+6. 保证 flutter run -d windows 可以启动。
+
+完成第一阶段后，再继续第二阶段，不要跳到后面的复杂 AI 和桌面组件。

@@ -1,0 +1,496 @@
+SpringNote 分阶段开发提示词
+
+使用方式：
+
+每次只复制一个阶段的提示词发给 AI 编码助手。
+
+不要一次性把所有阶段都发给 AI 执行，否则它容易跨阶段乱做。
+
+每个阶段开始前，都要求 AI 先阅读：
+
+* AI开发提示词.txt
+* 原型页面/产品设计.txt
+* 当前阶段相关页面的设计 txt 和 html 原型
+
+
+第一阶段提示词：应用基础和本地存储
+
+请先阅读 `AI开发提示词.txt` 和 `原型页面/产品设计.txt`，然后只执行第一阶段：应用基础和本地存储。
+
+本阶段目标：
+
+* 替换 `spring_note/lib/main.dart` 中的 Flutter Counter 示例
+* 建立 SpringNote 应用入口、主题和 AppShell
+* 实现左侧全局图标导航
+* 建立首页、便签页、回忆书页、设置页的页面骨架
+* 实现基本页面切换
+* 建立本地数据目录初始化
+* 创建默认 `config.json`
+* 创建 `notes/daily/`、`notes/weekly/`、`notes/monthly/`
+
+约束：
+
+* 不要实现 AI 调用
+* 不要实现 FIM
+* 不要实现统计图
+* 不要实现桌面组件
+* 不要把所有代码写在 `main.dart`
+* 不要使用 Flutter 默认紫色 Material 风格
+* Windows 桌面优先
+
+验收：
+
+* `flutter run -d windows` 可以启动
+* 左侧全局导航可以切换页面
+* 首次启动能创建本地数据目录
+* `config.json` 存在默认配置
+* notes 目录存在
+
+完成后请运行：
+
+* `dart format .`
+* `flutter analyze`
+* `flutter test`
+* 如果改了 Rust，运行 `cargo fmt` 和 `cargo test`
+
+最后汇报：
+
+* 修改了哪些文件
+* 当前已完成什么
+* 哪些检查通过
+* 是否有未解决问题
+* 下一阶段建议
+
+
+第二阶段提示词：首页和日报写入
+
+请先阅读 `AI开发提示词.txt`、`原型页面/产品设计.txt`、`原型页面/首页/首页设计.txt` 和 `原型页面/首页/首页原型.html`，然后只执行第二阶段：首页和日报写入。
+
+本阶段目标：
+
+* 实现首页主体 UI
+* 实现今日收益卡片基础展示
+* 实现首页热力图基础展示
+* 实现随手记录输入框
+* 实现今日工作概览三栏：完成事项、问题记录、明日计划
+* 用户提交输入后，先用 mock AI 生成结构化内容
+* 将结构化内容写入当天日报 Markdown
+* 如果当天日报文件不存在，则创建 `notes/daily/YYYY-MM-DD.md`
+* 如果当天日报文件已存在，则先做简单合并写入，真实 AI 合并留到后续阶段
+
+约束：
+
+* 先使用 mock，不要真实调用 AI
+* 不要实现 FIM
+* 不要实现周报、月报
+* 不要实现复杂统计图
+* Markdown 正文必须写入文件，不要写入 SQLite
+
+验收：
+
+* 首页输入内容后，今日工作概览会更新
+* `notes/daily/YYYY-MM-DD.md` 会被创建或更新
+* 没有 API Key 时流程也能跑通
+* 页面视觉贴近首页原型，不使用默认 Material 紫色风格
+
+完成后请运行：
+
+* `dart format .`
+* `flutter analyze`
+* `flutter test`
+* 如果改了 Rust，运行 `cargo fmt` 和 `cargo test`
+
+最后汇报修改文件、验证结果和下一阶段建议。
+
+
+第三阶段提示词：便签页 Markdown 编辑和预览
+
+请先阅读 `AI开发提示词.txt`、`原型页面/产品设计.txt`、`原型页面/便签/便签界面设计.txt` 和 `原型页面/便签/便签原型.html`，然后只执行第三阶段：便签页 Markdown 编辑和预览。
+
+本阶段目标：
+
+* 实现便签页左侧便签列表
+* 实现日报 / 周报 / 月报类型切换入口
+* 实现中间 Markdown 源码编辑区
+* 实现右侧 Markdown 实时预览区
+* 中间编辑区和右侧预览区等宽
+* 切换便签时加载对应 Markdown 文件
+* 编辑内容后保存回 Markdown 文件
+* 编辑区变化后立即刷新右侧预览
+
+约束：
+
+* 中间区域必须是 Markdown 源码，不是富文本编辑器
+* 右侧区域必须是 Markdown 渲染预览，不是源码展示
+* 不要实现 FIM 真实调用
+* 不要实现 AI 生成
+* 不要把 Markdown 正文写入 SQLite
+* 便签列表选中态使用 `bg-slate-100/80` 风格，未选中 hover 使用 `hover:bg-slate-100/60` 风格
+
+Markdown 预览至少支持：
+
+* 标题
+* 段落
+* 引用
+* 有序列表
+* 无序列表
+* 表格
+* 行内代码
+* 代码块
+* 链接
+
+数学公式和图片如果本阶段依赖较多，可以先留接口和 TODO，但不要破坏现有预览。
+
+验收：
+
+* 能打开日报 Markdown
+* 编辑后右侧立即刷新
+* 内容能保存回文件
+* 重新进入页面后能读到保存内容
+
+完成后请运行：
+
+* `dart format .`
+* `flutter analyze`
+* `flutter test`
+* 如果改了 Rust，运行 `cargo fmt` 和 `cargo test`
+
+最后汇报修改文件、验证结果和下一阶段建议。
+
+
+第四阶段提示词：设置页和配置管理
+
+请先阅读 `AI开发提示词.txt`、`原型页面/产品设计.txt`、`原型页面/设置/设置界面设计.txt` 和 `原型页面/设置/设置原型.html`，然后只执行第四阶段：设置页和配置管理。
+
+本阶段目标：
+
+* 实现设置页二级导航
+* 实现偏好设置页面
+* 实现供应商页面
+* 实现默认模型页面
+* 实现快捷键页面
+* 实现统计页面 UI 骨架
+* 实现关于页面
+* 实现添加供应商弹窗
+* 实现编辑模型弹窗
+* 设置修改能读写 `config.json`
+
+偏好设置包含：
+
+* 个人信息：每日工作时长、日薪、所在行业
+* 字体与显示：应用字体、字体大小
+* 行为与启动：开机自启动、显示更新
+* 组件设置：显示桌面组件
+
+供应商页面要求：
+
+* 添加供应商弹窗不包含 Use Responses API
+* 添加供应商只提供 OpenAI / Google / Claude 模板
+* 字段：是否启用、名称、API Key、Base URL、API 路径
+* 供应商模型支持增删改
+
+编辑模型弹窗要求：
+
+* 点击模型行右侧 `sliders-horizontal` 图标打开
+* 标题为“编辑模型”
+* 不要基本设置 / 高级设置 / 内置工具页签
+* 模型 ID：只读，不可改，用于 API 调用
+* 模型名称：可改，用于展示
+* 模型类型：聊天、补全，可单选或双选
+* 输入模式：文本、图片，可单选或双选
+* 能力：工具、推理，可单选或双选
+* FIM 模式只保留：none / completions
+
+默认模型页面只保留：
+
+* 智能生成模型
+* 编辑补全模型
+* 回忆书模型
+
+快捷键页面只保留：
+
+* 显示/隐藏页面
+
+约束：
+
+* 不要真实调用 AI
+* 不要实现 FIM
+* 不要实现真实统计计算
+* 常驻内容块不要阴影，只有弹窗和 tooltip 可以有阴影
+
+验收：
+
+* 设置页所有子页面可切换
+* 修改配置能写入 `config.json`
+* 重启应用后配置能读取回来
+* 供应商和模型配置能增删改
+
+完成后请运行：
+
+* `dart format .`
+* `flutter analyze`
+* `flutter test`
+* 如果改了 Rust，运行 `cargo fmt` 和 `cargo test`
+
+最后汇报修改文件、验证结果和下一阶段建议。
+
+
+第五阶段提示词：Rust AI 接入和三种协议
+
+请先阅读 `AI开发提示词.txt` 和 `原型页面/产品设计.txt`，然后只执行第五阶段：Rust AI 接入。
+
+本阶段目标：
+
+* 在 Rust 层实现统一 AI service
+* Flutter 只通过 `flutter_rust_bridge` 调用 Rust
+* Flutter/Dart 层不直接请求 AI API
+* Rust 层实现 OpenAI 兼容协议
+* Rust 层实现 Google Gemini 协议
+* Rust 层实现 Anthropic Claude 协议
+* 实现供应商连接测试
+* 实现模型列表获取接口
+* 实现智能生成模型调用
+* 实现日报合并整理调用
+* 实现 token 用量记录
+* 调用记录写入 SQLite
+* 调用失败时返回结构化错误，不让 UI 崩溃
+
+Rust 对 Flutter 暴露的方法建议包括：
+
+* `generate_structured_note`
+* `merge_daily_note`
+* `generate_weekly_report`
+* `generate_monthly_report`
+* `memory_chat`
+* `test_provider_connection`
+* `fetch_provider_models`
+
+协议要求：
+
+* OpenAI 兼容协议：用于 OpenAI、OpenRouter、本地兼容服务、DeepSeek、Qwen 兼容服务等
+* Google Gemini 协议：Rust 侧转换为 Gemini generateContent 请求
+* Anthropic Claude 协议：Rust 侧转换为 Anthropic Messages API 请求，并补齐版本 Header
+
+约束：
+
+* 不要在 Flutter/Dart 层直接调用 AI HTTP API
+* API Key 只作为配置传给 Rust 侧调用逻辑
+* Token 统计、模型调用记录、错误记录由 Rust 写入 SQLite
+* 没有 API Key 时保留 mock 流程，不要阻塞应用使用
+
+验收：
+
+* 配置 API 后可以真实调用至少一种 OpenAI-compatible 服务
+* 三种协议都有清晰 adapter 结构和可测试 mock
+* 调用失败 UI 不崩溃
+* token 和调用记录进入 SQLite
+* Flutter 侧没有直接 AI HTTP 请求实现
+
+完成后请运行：
+
+* `dart format .`
+* `flutter analyze`
+* `flutter test`
+* `cargo fmt`
+* `cargo test`
+
+最后汇报修改文件、验证结果和下一阶段建议。
+
+
+第六阶段提示词：FIM 编辑补全
+
+请先阅读 `AI开发提示词.txt`、`原型页面/产品设计.txt` 和 `原型页面/便签/便签界面设计.txt`，然后只执行第六阶段：FIM 编辑补全。
+
+本阶段目标：
+
+* 实现便签编辑区 300ms 防抖
+* 实现 FIM 预测状态
+* 用户继续输入时隐藏上一次预测
+* 光标变化或内容变化时旧预测失效
+* Tab 接受全部预测
+* Ctrl + L 接受单行预测
+* Ctrl + K 接收单个字
+* Rust 侧实现统一 FIM 请求结构
+* Rust 侧实现统一 `completions + prompt/suffix` FIM 调用
+* DeepSeek 和硅基流动都通过同一个 FIM adapter 走 completions
+
+FIM 统一规则：
+
+* `fimMode` 只保留 `none / completions`
+* 默认 `fimMode` 为 `none`
+* 只有模型明确支持 FIM 时才设置为 `completions`
+* FIM 请求走 completions
+* FIM 请求传 `prompt` 和 `suffix`
+* FIM 不走 chat.completions
+* FIM 不使用 messages
+
+DeepSeek FIM：
+
+* Base URL 使用 `https://api.deepseek.com/beta` 或用户配置的 DeepSeek Beta Base URL
+* 请求走 completions
+* `prompt` 表示 prefix
+* `suffix` 表示后缀
+* 返回读取 `choices[0].text`
+
+硅基流动 FIM：
+
+* Base URL 使用 `https://api.siliconflow.cn/v1` 或用户配置的 Base URL
+* 请求走 completions
+* `prompt` 表示 prefix
+* `suffix` 表示后缀
+* 支持 stream 或非 stream；MVP 可先非 stream
+
+约束：
+
+* 不要每输入一个字符就调用模型
+* 不要把 FIM 当普通 chat 调用
+* 不支持 FIM 的模型不能用于编辑补全
+* 预测内容只有用户接受后才写入 Markdown
+
+验收：
+
+* 连续输入不会重复调用模型
+* 停止输入 300ms 后触发补全
+* Tab / Ctrl+L / Ctrl+K 接收逻辑正确
+* DeepSeek FIM 请求走 completions，并传 prompt + suffix
+* 硅基流动 FIM 请求走 completions，并传 prompt + suffix
+* FIM 请求不走 chat.completions
+
+完成后请运行：
+
+* `dart format .`
+* `flutter analyze`
+* `flutter test`
+* `cargo fmt`
+* `cargo test`
+
+最后汇报修改文件、验证结果和下一阶段建议。
+
+
+第七阶段提示词：统计、热力图和用量趋势
+
+请先阅读 `AI开发提示词.txt`、`原型页面/产品设计.txt`、`原型页面/首页/首页设计.txt` 和 `原型页面/设置/设置界面设计.txt`，然后只执行第七阶段：统计、热力图和用量趋势。
+
+本阶段目标：
+
+* 完善 SQLite 统计结构
+* 记录应用启动次数
+* 记录工作时间
+* 记录金币收益
+* 记录首页智能生成次数
+* 记录便签编辑补全次数
+* 记录日报、周报、月报数量
+* 记录输入 Tokens、输出 Tokens、缓存 Tokens
+* 实现首页热力图
+* 实现设置页统计热力图
+* 实现模型用量趋势图
+
+统计页面指标：
+
+* 总结数
+* 编辑补全次数
+* 总记录数
+* 日报数
+* 周报数
+* 月报数
+* 输入 Tokens
+* 输出 Tokens
+* 缓存 Tokens
+* 应用启动次数
+
+热力图要求：
+
+* 设置页热力图是一年范围
+* 色彩参考首页热力图
+* hover tooltip 不能被容器裁剪
+* 格子保持紧凑
+
+用量趋势要求：
+
+* 默认展示最近 30 天
+* 按天展示
+* 长时间范围需要横向滚动
+* 只有内容横向溢出时才拦截鼠标滚轮转换为左右滚动
+* hover tooltip 小且不能被边界裁剪
+
+约束：
+
+* 不要把 Markdown 正文写入 SQLite
+* 不要做厚重报表风格
+* 常驻内容块不使用阴影
+
+验收：
+
+* 统计数据可持久化
+* 重启应用后统计仍存在
+* 首页和设置页热力图能正确显示
+* 用量趋势默认最近 30 天
+* tooltip 不被边界裁剪
+
+完成后请运行：
+
+* `dart format .`
+* `flutter analyze`
+* `flutter test`
+* 如果改了 Rust，运行 `cargo fmt` 和 `cargo test`
+
+最后汇报修改文件、验证结果和下一阶段建议。
+
+
+第八阶段提示词：回忆书和桌面组件
+
+请先阅读 `AI开发提示词.txt`、`原型页面/产品设计.txt`、`原型页面/回忆书/回忆书界面设计.txt`、`原型页面/回忆书/回忆书原型.html`、`原型页面/组件/组件设计.txt` 和 `原型页面/组件/组件原型.html`，然后只执行第八阶段：回忆书和桌面组件。
+
+本阶段目标：
+
+* 实现回忆书入口态
+* 实现回忆书问答态
+* 输入框发送后从入口态进入问答态
+* 右上角新对话按钮清空当前对话
+* 对话记录写入 `remember.json`
+* 新建对话时清空 `remember.json`
+* 回忆书基于历史日报、周报、月报进行问答
+* 实现桌面组件基础逻辑
+* 实现组件开始 / 暂停状态
+* 实现组件工作时间和金币收益规则
+
+回忆书约束：
+
+* 回忆书不是追加记忆入口
+* 回忆书是基于历史记录的 AI 问答入口
+* 用户问题应通过回忆书模型回答
+* 新对话必须清空 remember.json
+
+桌面组件规则：
+
+* 鼠标左键单击组件：开始或暂停当前计时状态
+* 当前开始时，左键单击后暂停
+* 当前暂停时，左键单击后开始
+* 每天第一次启动软件时，默认状态为开始
+* 鼠标右键单击组件：打开 SpringNote APP 首页
+* 开始状态累计工作时间
+* 暂停状态不累计工作时间
+* 金币收益只在开始状态下增长
+
+实现建议：
+
+* 如果真正 Windows 悬浮组件需要原生窗口能力，可先封装 Windows / Rust 层
+* 如果一次实现真实桌面悬浮窗口风险过高，先实现主窗口内组件状态服务和 UI，再单独迭代悬浮窗口
+
+验收：
+
+* 回忆书能从入口态进入问答态
+* 对话记录能写入 remember.json
+* 新对话会清空 remember.json
+* 桌面组件开始 / 暂停状态正确
+* 工作时间和金币收益只在开始状态增长
+* 右键组件能打开 APP 首页
+
+完成后请运行：
+
+* `dart format .`
+* `flutter analyze`
+* `flutter test`
+* 如果改了 Rust，运行 `cargo fmt` 和 `cargo test`
+
+最后汇报修改文件、验证结果和后续需要人工确认的问题。
