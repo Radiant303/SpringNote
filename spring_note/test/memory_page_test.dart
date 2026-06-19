@@ -34,4 +34,25 @@ void main() {
     expect(shouldCollapseMemoryReasoning(finalAnswer), isTrue);
     expect(shouldCollapseMemoryReasoning(toolCallMessage), isTrue);
   });
+
+  test('memory tool result label uses content when there are no sources', () {
+    final dateResult = MemoryMessage(
+      role: 'tool',
+      content: '{"date":"2026-06-19"}',
+      createdAt: DateTime(2026, 6, 19),
+      toolName: 'get_current_date',
+      toolCallId: 'call-date',
+    );
+    final emptyResult = MemoryMessage(
+      role: 'tool',
+      content: '',
+      createdAt: DateTime(2026, 6, 19),
+      toolName: 'keyword_search',
+      toolCallId: 'call-keyword',
+    );
+
+    expect(memoryToolResultLabel(dateResult), '已返回');
+    expect(memoryToolResultLabel(emptyResult), '无结果');
+    expect(memoryToolResultLabel(null), '无结果');
+  });
 }

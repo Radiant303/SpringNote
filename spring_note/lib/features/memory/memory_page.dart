@@ -14,6 +14,17 @@ bool shouldCollapseMemoryReasoning(MemoryMessage message) {
   return message.content.trim().isNotEmpty || message.toolCalls.isNotEmpty;
 }
 
+String memoryToolResultLabel(MemoryMessage? resultMessage) {
+  final resultCount = resultMessage?.sources.length ?? 0;
+  if (resultCount > 0) {
+    return '$resultCount 条结果';
+  }
+  if (resultMessage?.content.trim().isNotEmpty ?? false) {
+    return '已返回';
+  }
+  return '无结果';
+}
+
 class MemoryPage extends StatefulWidget {
   const MemoryPage({
     super.key,
@@ -1045,7 +1056,7 @@ class _ToolAttachmentChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final resultCount = attachment.resultMessage?.sources.length ?? 0;
+    final resultLabel = memoryToolResultLabel(attachment.resultMessage);
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1086,7 +1097,7 @@ class _ToolAttachmentChip extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                resultCount == 0 ? '无结果' : '$resultCount 条结果',
+                resultLabel,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: AppTheme.textSubtle),
