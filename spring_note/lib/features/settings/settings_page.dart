@@ -12,9 +12,9 @@ import '../../core/theme/app_theme.dart';
 import '../../src/rust/stats.dart' as rust_stats;
 
 enum _SettingsSection {
-  preferences('偏好设置', _SettingsNavIconType.sliders),
-  providers('供应商', _SettingsNavIconType.power),
-  models('默认模型', _SettingsNavIconType.bot),
+  preferences('偏好设置', _SettingsNavIconType.monitor),
+  providers('供应商', _SettingsNavIconType.boxes),
+  models('默认模型', _SettingsNavIconType.heart),
   hotkeys('快捷键', _SettingsNavIconType.keyboard),
   stats('统计', _SettingsNavIconType.chart),
   about('关于', _SettingsNavIconType.info);
@@ -25,7 +25,7 @@ enum _SettingsSection {
   final _SettingsNavIconType icon;
 }
 
-enum _SettingsNavIconType { sliders, power, bot, keyboard, chart, info }
+enum _SettingsNavIconType { monitor, boxes, heart, keyboard, chart, info }
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({
@@ -293,10 +293,10 @@ class _SettingsNavItemState extends State<_SettingsNavItem> {
                     children: [
                       _SettingsNavLucideIcon(
                         type: widget.section.icon,
-                        size: 15,
+                        size: 17,
                         color: contentColor,
                       ),
-                      const SizedBox(width: 9),
+                      const SizedBox(width: 10),
                       Text(
                         widget.section.label,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -367,26 +367,36 @@ class _ProviderListItemState extends State<_ProviderListItem> {
                   ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 14,
-                      backgroundColor: const Color(0xFFEFF6FF),
-                      child: Text(
-                        widget.provider.name.characters.first.toUpperCase(),
+              Positioned.fill(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      CircleAvatar(
+                        radius: 14,
+                        backgroundColor: const Color(0xFFEFF6FF),
+                        child: Text(
+                          widget.provider.name.characters.first.toUpperCase(),
+                          style: const TextStyle(
+                            height: 1,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        widget.provider.name,
-                        overflow: TextOverflow.ellipsis,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          widget.provider.name,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodyMedium?.copyWith(height: 1.2),
+                        ),
                       ),
-                    ),
-                    _StatusPill(enabled: widget.provider.enabled),
-                  ],
+                      _StatusPill(enabled: widget.provider.enabled),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -433,7 +443,7 @@ class _SettingsNavLucidePainter extends CustomPainter {
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2 * strokeScale
+      ..strokeWidth = 2.05 * strokeScale
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
@@ -447,47 +457,128 @@ class _SettingsNavLucidePainter extends CustomPainter {
       );
     }
 
+    Path path(List<Offset> points, {bool close = false}) {
+      final result = Path()..moveTo(points.first.dx, points.first.dy);
+      for (final point in points.skip(1)) {
+        result.lineTo(point.dx, point.dy);
+      }
+      if (close) {
+        result.close();
+      }
+      return result;
+    }
+
+    void drawCube(double cx, double cy, double r) {
+      final top = point(cx, cy - r);
+      final rightTop = point(cx + r * 1.18, cy - r * 0.34);
+      final rightBottom = point(cx + r * 1.18, cy + r * 0.9);
+      final bottom = point(cx, cy + r * 1.55);
+      final leftBottom = point(cx - r * 1.18, cy + r * 0.9);
+      final leftTop = point(cx - r * 1.18, cy - r * 0.34);
+      final center = point(cx, cy + r * 0.28);
+
+      canvas.drawPath(
+        path([
+          top,
+          rightTop,
+          rightBottom,
+          bottom,
+          leftBottom,
+          leftTop,
+        ], close: true),
+        paint,
+      );
+      canvas.drawLine(top, center, paint);
+      canvas.drawLine(leftTop, center, paint);
+      canvas.drawLine(rightTop, center, paint);
+      canvas.drawLine(center, bottom, paint);
+    }
+
     switch (type) {
-      case _SettingsNavIconType.sliders:
-        canvas.drawLine(point(4, 6), point(20, 6), paint);
-        canvas.drawCircle(point(8, 6), 2 * strokeScale, paint);
-        canvas.drawLine(point(4, 12), point(20, 12), paint);
-        canvas.drawCircle(point(15, 12), 2 * strokeScale, paint);
-        canvas.drawLine(point(4, 18), point(20, 18), paint);
-        canvas.drawCircle(point(11, 18), 2 * strokeScale, paint);
+      case _SettingsNavIconType.monitor:
+        canvas.drawRRect(roundedRect(3.5, 4.5, 17, 12), paint);
+        canvas.drawLine(point(12, 16.5), point(12, 20), paint);
+        canvas.drawLine(point(8.5, 20), point(15.5, 20), paint);
         break;
-      case _SettingsNavIconType.power:
-        canvas.drawLine(point(12, 2.5), point(12, 9), paint);
-        canvas.drawArc(rect(4, 5, 16, 16), -0.82, 5.06, false, paint);
+      case _SettingsNavIconType.boxes:
+        drawCube(12, 5.8, 2.55);
+        drawCube(7.5, 13.4, 2.55);
+        drawCube(16.5, 13.4, 2.55);
         break;
-      case _SettingsNavIconType.bot:
-        canvas.drawRRect(roundedRect(5, 8, 14, 10), paint);
-        canvas.drawLine(point(12, 4), point(12, 8), paint);
-        canvas.drawCircle(point(12, 4), 1.5 * strokeScale, paint);
-        canvas.drawCircle(point(9, 13), 0.8 * strokeScale, paint);
-        canvas.drawCircle(point(15, 13), 0.8 * strokeScale, paint);
-        canvas.drawLine(point(9, 18), point(9, 21), paint);
-        canvas.drawLine(point(15, 18), point(15, 21), paint);
+      case _SettingsNavIconType.heart:
+        final heart = Path()
+          ..moveTo(point(12, 20.2).dx, point(12, 20.2).dy)
+          ..cubicTo(
+            point(5.1, 15.2).dx,
+            point(5.1, 15.2).dy,
+            point(3.7, 11.5).dx,
+            point(3.7, 11.5).dy,
+            point(3.7, 8.6).dx,
+            point(3.7, 8.6).dy,
+          )
+          ..cubicTo(
+            point(3.7, 5.6).dx,
+            point(3.7, 5.6).dy,
+            point(6, 3.9).dx,
+            point(6, 3.9).dy,
+            point(8.5, 3.9).dx,
+            point(8.5, 3.9).dy,
+          )
+          ..cubicTo(
+            point(10.1, 3.9).dx,
+            point(10.1, 3.9).dy,
+            point(11.3, 4.8).dx,
+            point(11.3, 4.8).dy,
+            point(12, 6).dx,
+            point(12, 6).dy,
+          )
+          ..cubicTo(
+            point(12.7, 4.8).dx,
+            point(12.7, 4.8).dy,
+            point(13.9, 3.9).dx,
+            point(13.9, 3.9).dy,
+            point(15.5, 3.9).dx,
+            point(15.5, 3.9).dy,
+          )
+          ..cubicTo(
+            point(18, 3.9).dx,
+            point(18, 3.9).dy,
+            point(20.3, 5.6).dx,
+            point(20.3, 5.6).dy,
+            point(20.3, 8.6).dx,
+            point(20.3, 8.6).dy,
+          )
+          ..cubicTo(
+            point(20.3, 11.5).dx,
+            point(20.3, 11.5).dy,
+            point(18.9, 15.2).dx,
+            point(18.9, 15.2).dy,
+            point(12, 20.2).dx,
+            point(12, 20.2).dy,
+          );
+        canvas.drawPath(heart, paint);
         break;
       case _SettingsNavIconType.keyboard:
-        canvas.drawRRect(roundedRect(3, 5, 18, 14), paint);
-        for (final y in [10.0, 14.0]) {
-          for (final x in [7.0, 11.0, 15.0]) {
-            canvas.drawCircle(point(x, y), 0.45 * strokeScale, paint);
+        canvas.drawRRect(roundedRect(3.5, 6, 17, 12), paint);
+        for (final y in [10.0, 13.2]) {
+          for (final x in [7.1, 10.4, 13.7, 17.0]) {
+            canvas.drawCircle(point(x, y), 0.36 * strokeScale, paint);
           }
         }
-        canvas.drawLine(point(8, 17), point(16, 17), paint);
+        canvas.drawLine(point(8, 16), point(16, 16), paint);
         break;
       case _SettingsNavIconType.chart:
         canvas.drawLine(point(4, 20), point(20, 20), paint);
-        canvas.drawLine(point(7, 16), point(7, 20), paint);
-        canvas.drawLine(point(12, 10), point(12, 20), paint);
-        canvas.drawLine(point(17, 5), point(17, 20), paint);
+        canvas.drawRRect(roundedRect(5.5, 12.5, 3.2, 7.5), paint);
+        canvas.drawRRect(roundedRect(10.4, 7.5, 3.2, 12.5), paint);
+        canvas.drawRRect(roundedRect(15.3, 4.5, 3.2, 15.5), paint);
         break;
       case _SettingsNavIconType.info:
-        canvas.drawCircle(point(12, 12), 9 * strokeScale, paint);
-        canvas.drawLine(point(12, 10.5), point(12, 17), paint);
-        canvas.drawCircle(point(12, 7), 0.65 * strokeScale, paint);
+        final badge = Path()..addOval(rect(4.8, 4.8, 14.4, 14.4));
+        canvas.drawPath(badge, paint);
+        canvas.drawCircle(point(12, 7.8), 0.42 * strokeScale, paint);
+        canvas.drawLine(point(12, 11), point(12, 16.5), paint);
+        canvas.drawLine(point(10.9, 11), point(12, 11), paint);
         break;
     }
   }
@@ -2374,7 +2465,9 @@ class _StatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      height: 26,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: enabled ? const Color(0xFFDCFCE7) : const Color(0xFFFFEDD5),
         borderRadius: BorderRadius.circular(999),
@@ -2384,6 +2477,7 @@ class _StatusPill extends StatelessWidget {
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
           color: enabled ? const Color(0xFF16A34A) : const Color(0xFFF97316),
           fontSize: 11,
+          height: 1,
         ),
       ),
     );
