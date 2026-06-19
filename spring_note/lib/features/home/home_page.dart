@@ -1191,7 +1191,7 @@ class _QuickCaptureCard extends StatelessWidget {
   }
 }
 
-class _SmartGenerateButton extends StatelessWidget {
+class _SmartGenerateButton extends StatefulWidget {
   const _SmartGenerateButton({
     required this.canSubmit,
     required this.isSubmitting,
@@ -1205,69 +1205,70 @@ class _SmartGenerateButton extends StatelessWidget {
   final VoidCallback onSubmit;
 
   @override
+  State<_SmartGenerateButton> createState() => _SmartGenerateButtonState();
+}
+
+class _SmartGenerateButtonState extends State<_SmartGenerateButton> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      cursor: canSubmit ? SystemMouseCursors.click : SystemMouseCursors.basic,
-      child: AnimatedOpacity(
-        duration: const Duration(milliseconds: 200),
-        opacity: 1,
-        child: GestureDetector(
-          key: keyValue,
-          behavior: HitTestBehavior.opaque,
-          onTap: canSubmit ? onSubmit : null,
-          child: SizedBox(
-            width: 98,
-            height: 24,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: const Color(0xFF0F172A),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x0D000000),
-                    offset: Offset(0, 1),
-                    blurRadius: 2,
-                  ),
-                ],
+      cursor: widget.canSubmit
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        key: _SmartGenerateButton.keyValue,
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.canSubmit ? widget.onSubmit : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeInOut,
+          height: 24,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            color: _hovered && widget.canSubmit
+                ? const Color(0xFF1E293B)
+                : const Color(0xFF0F172A),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0D000000),
+                offset: Offset(0, 1),
+                blurRadius: 2,
               ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.max,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      isSubmitting ? '整理中' : '智能生成',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.3,
-                        height: 1.25,
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    if (isSubmitting)
-                      const SizedBox(
-                        width: 12,
-                        height: 12,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 1.5,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Color(0xFF34D399),
-                          ),
-                        ),
-                      )
-                    else
-                      const _LucideSparklesIcon(
-                        size: 13,
-                        color: Color(0xFF34D399),
-                      ),
-                  ],
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                widget.isSubmitting ? '整理中' : '智能生成',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  height: 1,
                 ),
               ),
-            ),
+              const SizedBox(width: 6),
+              if (widget.isSubmitting)
+                const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1.5,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFF34D399),
+                    ),
+                  ),
+                )
+              else
+                const _LucideSparklesIcon(size: 12, color: Color(0xFF34D399)),
+            ],
           ),
         ),
       ),
