@@ -33,11 +33,13 @@ class SettingsPage extends StatefulWidget {
     super.key,
     required this.localDataState,
     this.localDataService = const LocalDataService(),
+    this.aiClientService = const AiClientService(),
     this.onConfigChanged,
   });
 
   final LocalDataState localDataState;
   final LocalDataService localDataService;
+  final AiClientService aiClientService;
   final ValueChanged<AppConfig>? onConfigChanged;
 
   @override
@@ -120,18 +122,28 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _upsertModel(ProviderConfig provider, ModelConfig model) async {
-    final exists = provider.models.any((item) => item.modelId == model.modelId);
+    final currentProvider = _config.providers.firstWhere(
+      (item) => item.id == provider.id,
+      orElse: () => provider,
+    );
+    final exists = currentProvider.models.any(
+      (item) => item.modelId == model.modelId,
+    );
     final models = exists
         ? [
-            for (final item in provider.models)
+            for (final item in currentProvider.models)
               if (item.modelId == model.modelId) model else item,
           ]
-        : [...provider.models, model];
-    await _updateProvider(provider.copyWith(models: models));
+        : [...currentProvider.models, model];
+    await _updateProvider(currentProvider.copyWith(models: models));
   }
 
   Future<void> _deleteModel(ProviderConfig provider, String modelId) async {
-    final models = provider.models
+    final currentProvider = _config.providers.firstWhere(
+      (item) => item.id == provider.id,
+      orElse: () => provider,
+    );
+    final models = currentProvider.models
         .where((model) => model.modelId != modelId)
         .toList();
     final defaultModels = Map<String, String?>.from(_config.defaultModels);
@@ -142,7 +154,10 @@ class _SettingsPageState extends State<SettingsPage> {
     }
     final providers = [
       for (final item in _config.providers)
-        if (item.id == provider.id) provider.copyWith(models: models) else item,
+        if (item.id == currentProvider.id)
+          currentProvider.copyWith(models: models)
+        else
+          item,
     ];
     await _updateConfig(
       _config.copyWith(providers: providers, defaultModels: defaultModels),
@@ -208,6 +223,7 @@ class _SettingsPageState extends State<SettingsPage> {
       _SettingsSection.providers => _ProvidersPanel(
         appDataDir: widget.localDataState.dataDirectory,
         apiLogEnabled: _config.apiLogEnabled,
+        aiClientService: widget.aiClientService,
         providers: _config.providers,
         selectedProvider: _selectedProvider,
         selectedProviderId: _selectedProviderId,
@@ -705,6 +721,7 @@ class _ProvidersPanel extends StatelessWidget {
   const _ProvidersPanel({
     required this.appDataDir,
     required this.apiLogEnabled,
+    required this.aiClientService,
     required this.providers,
     required this.selectedProvider,
     required this.selectedProviderId,
@@ -718,6 +735,7 @@ class _ProvidersPanel extends StatelessWidget {
 
   final String appDataDir;
   final bool apiLogEnabled;
+  final AiClientService aiClientService;
   final List<ProviderConfig> providers;
   final ProviderConfig? selectedProvider;
   final String? selectedProviderId;
@@ -798,6 +816,7 @@ class _ProvidersPanel extends StatelessWidget {
               : _ProviderDetails(
                   appDataDir: appDataDir,
                   apiLogEnabled: apiLogEnabled,
+                  aiClientService: aiClientService,
                   provider: selectedProvider!,
                   onProviderChanged: onProviderChanged,
                   onProviderDeleted: onProviderDeleted,
@@ -814,6 +833,7 @@ class _ProviderDetails extends StatefulWidget {
   const _ProviderDetails({
     required this.appDataDir,
     required this.apiLogEnabled,
+    required this.aiClientService,
     required this.provider,
     required this.onProviderChanged,
     required this.onProviderDeleted,
@@ -823,6 +843,7 @@ class _ProviderDetails extends StatefulWidget {
 
   final String appDataDir;
   final bool apiLogEnabled;
+  final AiClientService aiClientService;
   final ProviderConfig provider;
   final Future<void> Function(ProviderConfig provider) onProviderChanged;
   final Future<void> Function(String id) onProviderDeleted;
@@ -836,7 +857,6 @@ class _ProviderDetails extends StatefulWidget {
 }
 
 class _ProviderDetailsState extends State<_ProviderDetails> {
-  final AiClientService _aiClientService = const AiClientService();
   bool _testingConnection = false;
   bool _fetchingModels = false;
   String? _actionMessage;
@@ -930,7 +950,7 @@ class _ProviderDetailsState extends State<_ProviderDetails> {
       _actionMessage = null;
     });
     try {
-      final result = await _aiClientService.testProviderConnection(
+      final result = await widget.aiClientService.testProviderConnection(
         appDataDir: widget.appDataDir,
         apiLogEnabled: widget.apiLogEnabled,
         provider: widget.provider,
@@ -952,37 +972,35 @@ class _ProviderDetailsState extends State<_ProviderDetails> {
   }
 
   Future<void> _fetchModels() async {
+    if (_fetchingModels) {
+      return;
+    }
     setState(() {
       _fetchingModels = true;
       _actionMessage = null;
     });
     try {
-      final result = await _aiClientService.fetchProviderModels(
-        appDataDir: widget.appDataDir,
-        apiLogEnabled: widget.apiLogEnabled,
-        provider: widget.provider,
+      await showDialog<void>(
+        context: context,
+        builder: (_) => _ProviderModelFetchDialog(
+          appDataDir: widget.appDataDir,
+          apiLogEnabled: widget.apiLogEnabled,
+          aiClientService: widget.aiClientService,
+          provider: widget.provider,
+          onModelAdded: (model) async {
+            await widget.onModelChanged(widget.provider, model);
+            if (mounted) {
+              setState(() => _actionMessage = '已添加 ${model.displayName}');
+            }
+          },
+          onModelRemoved: (modelId) async {
+            await widget.onModelDeleted(widget.provider, modelId);
+            if (mounted) {
+              setState(() => _actionMessage = '已移除模型');
+            }
+          },
+        ),
       );
-      if (!mounted) {
-        return;
-      }
-      if (!result.ok) {
-        setState(() => _actionMessage = result.errorMessage);
-        return;
-      }
-      final modelsById = {
-        for (final model in widget.provider.models) model.modelId: model,
-        for (final model in result.models)
-          model.modelId: ModelConfig(
-            modelId: model.modelId,
-            displayName: model.displayName,
-          ),
-      };
-      await widget.onProviderChanged(
-        widget.provider.copyWith(models: modelsById.values.toList()),
-      );
-      if (mounted) {
-        setState(() => _actionMessage = '已获取 ${result.models.length} 个模型。');
-      }
     } catch (_) {
       if (mounted) {
         setState(() => _actionMessage = '获取模型失败，请检查供应商配置。');
@@ -993,6 +1011,820 @@ class _ProviderDetailsState extends State<_ProviderDetails> {
       }
     }
   }
+}
+
+class _ProviderModelFetchDialog extends StatefulWidget {
+  const _ProviderModelFetchDialog({
+    required this.appDataDir,
+    required this.apiLogEnabled,
+    required this.aiClientService,
+    required this.provider,
+    required this.onModelAdded,
+    required this.onModelRemoved,
+  });
+
+  final String appDataDir;
+  final bool apiLogEnabled;
+  final AiClientService aiClientService;
+  final ProviderConfig provider;
+  final Future<void> Function(ModelConfig model) onModelAdded;
+  final Future<void> Function(String modelId) onModelRemoved;
+
+  @override
+  State<_ProviderModelFetchDialog> createState() =>
+      _ProviderModelFetchDialogState();
+}
+
+class _ProviderModelFetchDialogState extends State<_ProviderModelFetchDialog> {
+  late final TextEditingController _controller = TextEditingController();
+  late final Set<String> _selectedModelIds;
+  final Set<String> _expandedGroups = {};
+  final Set<String> _busyModelIds = {};
+
+  List<ModelConfig> _models = const [];
+  String _query = '';
+  String? _errorMessage;
+  String? _hoveredGroup;
+  String? _hoveredModelId;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedModelIds = {
+      for (final model in widget.provider.models) model.modelId,
+    };
+    _loadModels();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  List<_ProviderModelGroup> get _groups {
+    final normalizedQuery = _query.trim().toLowerCase();
+    final grouped = <String, List<ModelConfig>>{};
+    for (final model in _models) {
+      final groupName = _providerModelGroupName(model.modelId);
+      final searchable = '${model.displayName} ${model.modelId} $groupName'
+          .toLowerCase();
+      if (normalizedQuery.isNotEmpty && !searchable.contains(normalizedQuery)) {
+        continue;
+      }
+      grouped.putIfAbsent(groupName, () => <ModelConfig>[]).add(model);
+    }
+
+    final groupNames = grouped.keys.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    return [
+      for (final groupName in groupNames)
+        _ProviderModelGroup(
+          name: groupName,
+          models: grouped[groupName]!
+            ..sort(
+              (a, b) => a.displayName.toLowerCase().compareTo(
+                b.displayName.toLowerCase(),
+              ),
+            ),
+        ),
+    ];
+  }
+
+  Future<void> _loadModels() async {
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
+    try {
+      final result = await widget.aiClientService.fetchProviderModels(
+        appDataDir: widget.appDataDir,
+        apiLogEnabled: widget.apiLogEnabled,
+        provider: widget.provider,
+      );
+      if (!mounted) {
+        return;
+      }
+      if (!result.ok) {
+        setState(() {
+          _loading = false;
+          _models = const [];
+          _errorMessage = result.errorMessage.isEmpty
+              ? '获取模型失败，请检查供应商配置。'
+              : result.errorMessage;
+        });
+        return;
+      }
+
+      final modelsById = <String, ModelConfig>{};
+      for (final model in result.models) {
+        final modelId = model.modelId.trim();
+        if (modelId.isEmpty) {
+          continue;
+        }
+        final rawDisplayName = model.displayName.trim();
+        modelsById[modelId] = ModelConfig(
+          modelId: modelId,
+          displayName: _providerModelDisplayName(modelId, rawDisplayName),
+        );
+      }
+      final models = modelsById.values.toList()
+        ..sort(
+          (a, b) => a.displayName.toLowerCase().compareTo(
+            b.displayName.toLowerCase(),
+          ),
+        );
+      final groups = _buildProviderModelGroups(models);
+      final selectedGroups = {
+        for (final group in groups)
+          if (group.models.any(
+            (model) => _selectedModelIds.contains(model.modelId),
+          ))
+            group.name,
+      };
+      setState(() {
+        _loading = false;
+        _models = models;
+        _expandedGroups
+          ..clear()
+          ..addAll(
+            selectedGroups.isEmpty && groups.isNotEmpty
+                ? {groups.first.name}
+                : selectedGroups,
+          );
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _models = const [];
+          _errorMessage = '获取模型失败，请检查供应商配置。';
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleModel(ModelConfig model) async {
+    if (_busyModelIds.contains(model.modelId)) {
+      return;
+    }
+    final selected = _selectedModelIds.contains(model.modelId);
+    setState(() {
+      _busyModelIds.add(model.modelId);
+      if (selected) {
+        _selectedModelIds.remove(model.modelId);
+      } else {
+        _selectedModelIds.add(model.modelId);
+      }
+    });
+    try {
+      if (selected) {
+        await widget.onModelRemoved(model.modelId);
+      } else {
+        await widget.onModelAdded(model);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          if (selected) {
+            _selectedModelIds.add(model.modelId);
+          } else {
+            _selectedModelIds.remove(model.modelId);
+          }
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _busyModelIds.remove(model.modelId));
+      }
+    }
+  }
+
+  void _toggleGroup(String groupName) {
+    setState(() {
+      if (_expandedGroups.contains(groupName)) {
+        _expandedGroups.remove(groupName);
+      } else {
+        _expandedGroups.add(groupName);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final groups = _groups;
+    final searching = _query.trim().isNotEmpty;
+    return Dialog(
+      key: const ValueKey('provider-model-fetch-dialog'),
+      backgroundColor: Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: SizedBox(
+        width: 720,
+        height: 660,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 22, 16, 14),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${widget.provider.name} 模型',
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(color: AppTheme.text),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          '选择要添加到当前提供商的模型',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: AppTheme.textSubtle),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: '刷新',
+                    onPressed: _loading ? null : _loadModels,
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                  ),
+                  IconButton(
+                    tooltip: '关闭',
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+              child: _SettingsSearchField(
+                controller: _controller,
+                autofocus: true,
+                hintText: '搜索模型',
+                onChanged: (value) => setState(() => _query = value),
+              ),
+            ),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                child: _loading
+                    ? const _ProviderModelLoadingView()
+                    : _errorMessage != null
+                    ? _ProviderModelErrorView(
+                        message: _errorMessage!,
+                        onRetry: _loadModels,
+                      )
+                    : groups.isEmpty
+                    ? _ProviderModelEmptyView(
+                        message: _models.isEmpty ? '没有获取到模型' : '没有匹配的模型',
+                      )
+                    : ListView.builder(
+                        key: const ValueKey('provider-model-groups'),
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+                        itemCount: groups.length,
+                        itemBuilder: (context, index) {
+                          final group = groups[index];
+                          final expanded =
+                              searching || _expandedGroups.contains(group.name);
+                          return _ProviderModelGroupSection(
+                            group: group,
+                            expanded: expanded,
+                            hoveredGroup: _hoveredGroup == group.name,
+                            selectedModelIds: _selectedModelIds,
+                            busyModelIds: _busyModelIds,
+                            hoveredModelId: _hoveredModelId,
+                            onGroupHoverChanged: (hovered) {
+                              setState(() {
+                                if (hovered) {
+                                  _hoveredGroup = group.name;
+                                } else if (_hoveredGroup == group.name) {
+                                  _hoveredGroup = null;
+                                }
+                              });
+                            },
+                            onGroupTap: () => _toggleGroup(group.name),
+                            onModelHoverChanged: (modelId, hovered) {
+                              setState(() {
+                                if (hovered) {
+                                  _hoveredModelId = modelId;
+                                } else if (_hoveredModelId == modelId) {
+                                  _hoveredModelId = null;
+                                }
+                              });
+                            },
+                            onModelTap: _toggleModel,
+                          );
+                        },
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProviderModelGroup {
+  const _ProviderModelGroup({required this.name, required this.models});
+
+  final String name;
+  final List<ModelConfig> models;
+}
+
+class _ProviderModelGroupSection extends StatelessWidget {
+  const _ProviderModelGroupSection({
+    required this.group,
+    required this.expanded,
+    required this.hoveredGroup,
+    required this.selectedModelIds,
+    required this.busyModelIds,
+    required this.hoveredModelId,
+    required this.onGroupHoverChanged,
+    required this.onGroupTap,
+    required this.onModelHoverChanged,
+    required this.onModelTap,
+  });
+
+  final _ProviderModelGroup group;
+  final bool expanded;
+  final bool hoveredGroup;
+  final Set<String> selectedModelIds;
+  final Set<String> busyModelIds;
+  final String? hoveredModelId;
+  final ValueChanged<bool> onGroupHoverChanged;
+  final VoidCallback onGroupTap;
+  final void Function(String modelId, bool hovered) onModelHoverChanged;
+  final ValueChanged<ModelConfig> onModelTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        children: [
+          _ProviderModelGroupHeader(
+            name: group.name,
+            count: group.models.length,
+            expanded: expanded,
+            hovered: hoveredGroup,
+            onHoverChanged: onGroupHoverChanged,
+            onTap: onGroupTap,
+          ),
+          ClipRect(
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 280),
+              reverseDuration: const Duration(milliseconds: 190),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: expanded
+                  ? Column(
+                      children: [
+                        const SizedBox(height: 6),
+                        for (final model in group.models)
+                          _ProviderModelOptionTile(
+                            model: model,
+                            selected: selectedModelIds.contains(model.modelId),
+                            busy: busyModelIds.contains(model.modelId),
+                            hovered: hoveredModelId == model.modelId,
+                            onHoverChanged: (hovered) =>
+                                onModelHoverChanged(model.modelId, hovered),
+                            onTap: () => onModelTap(model),
+                          ),
+                      ],
+                    )
+                  : const SizedBox(width: double.infinity),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProviderModelGroupHeader extends StatefulWidget {
+  const _ProviderModelGroupHeader({
+    required this.name,
+    required this.count,
+    required this.expanded,
+    required this.hovered,
+    required this.onHoverChanged,
+    required this.onTap,
+  });
+
+  final String name;
+  final int count;
+  final bool expanded;
+  final bool hovered;
+  final ValueChanged<bool> onHoverChanged;
+  final VoidCallback onTap;
+
+  @override
+  State<_ProviderModelGroupHeader> createState() =>
+      _ProviderModelGroupHeaderState();
+}
+
+class _ProviderModelGroupHeaderState extends State<_ProviderModelGroupHeader>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _bounceController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 260),
+  );
+  late final Animation<double> _scale = TweenSequence<double>([
+    TweenSequenceItem(
+      tween: Tween(
+        begin: 1.0,
+        end: 0.985,
+      ).chain(CurveTween(curve: Curves.easeOutCubic)),
+      weight: 28,
+    ),
+    TweenSequenceItem(
+      tween: Tween(
+        begin: 0.985,
+        end: 1.012,
+      ).chain(CurveTween(curve: Curves.easeOutCubic)),
+      weight: 34,
+    ),
+    TweenSequenceItem(
+      tween: Tween(
+        begin: 1.012,
+        end: 1.0,
+      ).chain(CurveTween(curve: Curves.easeOutCubic)),
+      weight: 38,
+    ),
+  ]).animate(_bounceController);
+
+  @override
+  void dispose() {
+    _bounceController.dispose();
+    super.dispose();
+  }
+
+  void _playBounce() {
+    _bounceController.forward(from: 0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final backgroundColor = widget.expanded
+        ? const Color(0xFFE8E8E8)
+        : widget.hovered
+        ? const Color(0xFFEDEDED)
+        : const Color(0xFFF5F5F5);
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => widget.onHoverChanged(true),
+      onExit: (_) => widget.onHoverChanged(false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => _playBounce(),
+        onTap: widget.onTap,
+        child: ScaleTransition(
+          scale: _scale,
+          child: SizedBox(
+            height: 50,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 130),
+                    curve: Curves.easeOutCubic,
+                    decoration: BoxDecoration(
+                      color: backgroundColor,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+                Positioned.fill(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    child: Row(
+                      children: [
+                        AnimatedRotation(
+                          turns: widget.expanded ? 0.25 : 0,
+                          duration: const Duration(milliseconds: 180),
+                          curve: Curves.easeOutCubic,
+                          child: const Icon(
+                            Icons.chevron_right_rounded,
+                            size: 19,
+                            color: AppTheme.textMuted,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            widget.name,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: AppTheme.text,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.2,
+                                ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.78),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            '${widget.count}',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: AppTheme.textSubtle,
+                                  fontSize: 12,
+                                  height: 1.1,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProviderModelOptionTile extends StatelessWidget {
+  const _ProviderModelOptionTile({
+    required this.model,
+    required this.selected,
+    required this.busy,
+    required this.hovered,
+    required this.onHoverChanged,
+    required this.onTap,
+  });
+
+  final ModelConfig model;
+  final bool selected;
+  final bool busy;
+  final bool hovered;
+  final ValueChanged<bool> onHoverChanged;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = selected || hovered;
+    return MouseRegion(
+      cursor: busy ? SystemMouseCursors.basic : SystemMouseCursors.click,
+      onEnter: (_) => onHoverChanged(true),
+      onExit: (_) => onHoverChanged(false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: busy ? null : onTap,
+        child: SizedBox(
+          height: 50,
+          child: Stack(
+            children: [
+              Positioned(
+                left: 28,
+                top: 0,
+                right: 0,
+                bottom: 5,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 120),
+                  curve: Curves.easeOutCubic,
+                  opacity: active ? 1 : 0,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? const Color(0xFFE2E2E2)
+                          : const Color(0xFFF5F5F5),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 28,
+                top: 0,
+                right: 0,
+                bottom: 5,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 14, right: 10),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          model.displayName,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: active
+                                    ? AppTheme.text
+                                    : AppTheme.textMuted,
+                                fontWeight: selected
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                                height: 1.2,
+                              ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      _ProviderModelToggleButton(
+                        selected: selected,
+                        busy: busy,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProviderModelToggleButton extends StatelessWidget {
+  const _ProviderModelToggleButton({
+    required this.selected,
+    required this.busy,
+  });
+
+  final bool selected;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 140),
+      curve: Curves.easeOutCubic,
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        color: selected ? AppTheme.text : const Color(0xFFEDEDED),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Center(
+        child: busy
+            ? SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.7,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    selected ? Colors.white : AppTheme.textMuted,
+                  ),
+                ),
+              )
+            : AnimatedSwitcher(
+                duration: const Duration(milliseconds: 120),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                child: Icon(
+                  selected ? Icons.remove_rounded : Icons.add_rounded,
+                  key: ValueKey(selected),
+                  size: 17,
+                  color: selected ? Colors.white : AppTheme.text,
+                ),
+              ),
+      ),
+    );
+  }
+}
+
+class _ProviderModelLoadingView extends StatelessWidget {
+  const _ProviderModelLoadingView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      key: const ValueKey('provider-model-loading'),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 26,
+            height: 26,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.2,
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF666666)),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            '正在获取模型...',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: AppTheme.textSubtle),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProviderModelErrorView extends StatelessWidget {
+  const _ProviderModelErrorView({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      key: const ValueKey('provider-model-error'),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: AppTheme.textSubtle),
+          ),
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded, size: 16),
+            label: const Text('重试'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProviderModelEmptyView extends StatelessWidget {
+  const _ProviderModelEmptyView({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      key: const ValueKey('provider-model-empty'),
+      child: Text(
+        message,
+        style: Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(color: AppTheme.textSubtle),
+      ),
+    );
+  }
+}
+
+List<_ProviderModelGroup> _buildProviderModelGroups(List<ModelConfig> models) {
+  final grouped = <String, List<ModelConfig>>{};
+  for (final model in models) {
+    grouped
+        .putIfAbsent(_providerModelGroupName(model.modelId), () => [])
+        .add(model);
+  }
+  final groupNames = grouped.keys.toList()
+    ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+  return [
+    for (final groupName in groupNames)
+      _ProviderModelGroup(
+        name: groupName,
+        models: grouped[groupName]!
+          ..sort(
+            (a, b) => a.displayName.toLowerCase().compareTo(
+              b.displayName.toLowerCase(),
+            ),
+          ),
+      ),
+  ];
+}
+
+String _providerModelGroupName(String modelId) {
+  final slashIndex = modelId.indexOf('/');
+  if (slashIndex > 0) {
+    return modelId.substring(0, slashIndex);
+  }
+  return '其他模型';
+}
+
+String _providerModelDisplayName(String modelId, String displayName) {
+  if (displayName.isNotEmpty && displayName != modelId) {
+    return displayName;
+  }
+  final slashIndex = modelId.lastIndexOf('/');
+  if (slashIndex >= 0 && slashIndex < modelId.length - 1) {
+    return modelId.substring(slashIndex + 1);
+  }
+  return modelId;
 }
 
 class _ProviderActionsRow extends StatelessWidget {

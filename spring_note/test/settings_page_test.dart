@@ -5,9 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spring_note/core/models/app_config.dart';
 import 'package:spring_note/core/models/local_data_state.dart';
+import 'package:spring_note/core/models/provider_config.dart';
+import 'package:spring_note/core/services/ai_client_service.dart';
 import 'package:spring_note/core/services/local_data_service.dart';
 import 'package:spring_note/core/theme/app_theme.dart';
 import 'package:spring_note/features/settings/settings_page.dart';
+import 'package:spring_note/src/rust/ai.dart' as rust_ai;
 
 void main() {
   test('app theme applies configured font and clamps font scale', () {
@@ -257,6 +260,72 @@ void main() {
     final persistedJson = jsonDecode(configFile.readAsStringSync()).toString();
     expect(persistedJson, isNot(contains('fimMode')));
   });
+
+  testWidgets('provider fetch models dialog groups and toggles remote models', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const provider = ProviderConfig(
+      id: 'openai-test',
+      enabled: true,
+      name: 'OpenAI',
+      protocol: 'openaiCompatible',
+      apiKey: 'test-key',
+      baseUrl: 'https://api.openai.com/v1',
+      apiPath: '/chat/completions',
+      models: [],
+    );
+    final service = _MemoryLocalDataService(
+      AppConfig.defaults().copyWith(providers: const [provider]),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: SettingsPage(
+          localDataState: _state(service.savedConfig),
+          localDataService: service,
+          aiClientService: const _FakeAiClientService(),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('供应商').first);
+    await tester.pump();
+    await tester.tap(find.text('获取模型'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 360));
+
+    final dialog = find.byKey(const ValueKey('provider-model-fetch-dialog'));
+    final remoteModel = find.descendant(
+      of: dialog,
+      matching: find.text('qwen3-coder'),
+    );
+
+    expect(dialog, findsOne);
+    expect(find.text('qwen'), findsOneWidget);
+    expect(remoteModel, findsOneWidget);
+
+    await tester.tap(remoteModel);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 220));
+    expect(
+      service.savedConfig.providers.first.models.map((model) => model.modelId),
+      contains('qwen/qwen3-coder'),
+    );
+
+    await tester.tap(remoteModel);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 220));
+    expect(
+      service.savedConfig.providers.first.models.map((model) => model.modelId),
+      isNot(contains('qwen/qwen3-coder')),
+    );
+  });
 }
 
 LocalDataState _state(AppConfig config) {
@@ -311,5 +380,30 @@ class _FileBackedLocalDataService extends LocalDataService {
     configFile.parent.createSync(recursive: true);
     const encoder = JsonEncoder.withIndent('  ');
     configFile.writeAsStringSync('${encoder.convert(config.toJson())}\n');
+  }
+}
+
+class _FakeAiClientService extends AiClientService {
+  const _FakeAiClientService();
+
+  @override
+  Future<rust_ai.ModelListResult> fetchProviderModels({
+    required String appDataDir,
+    required bool apiLogEnabled,
+    required ProviderConfig provider,
+  }) async {
+    return const rust_ai.ModelListResult(
+      ok: true,
+      models: [
+        rust_ai.AiModel(
+          modelId: 'qwen/qwen3-coder',
+          displayName: 'qwen/qwen3-coder',
+        ),
+        rust_ai.AiModel(modelId: 'zed/zed-chat', displayName: 'zed/zed-chat'),
+        rust_ai.AiModel(modelId: 'gpt-4.1-mini', displayName: 'GPT-4.1 Mini'),
+      ],
+      errorCode: '',
+      errorMessage: '',
+    );
   }
 }
