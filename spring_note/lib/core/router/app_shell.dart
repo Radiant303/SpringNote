@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../features/home/home_page.dart';
@@ -7,6 +9,8 @@ import '../../features/settings/settings_page.dart';
 import '../../features/widget/desktop_status_widget.dart';
 import '../models/local_data_state.dart';
 import '../services/desktop_widget_controller.dart';
+import '../services/desktop_widget_window_bridge.dart';
+import '../services/level_progress_controller.dart';
 import '../theme/app_theme.dart';
 
 enum AppSection { home, notes, memory, settings }
@@ -25,6 +29,26 @@ class _AppShellState extends State<AppShell> {
   late LocalDataState _localDataState = widget.localDataState;
   late final DesktopWidgetController _desktopWidgetController =
       DesktopWidgetController()..attach(_localDataState);
+  late final DesktopWidgetWindowBridge _desktopWidgetWindow =
+      DesktopWidgetWindowBridge();
+  late final LevelProgressController _levelProgressController =
+      LevelProgressController()..attach(_localDataState);
+
+  @override
+  void initState() {
+    super.initState();
+    _desktopWidgetController.addListener(_syncDesktopWidgetWindow);
+    _levelProgressController.addListener(_handleLevelProgressChanged);
+    unawaited(
+      _desktopWidgetWindow.initialize(
+        onToggle: _desktopWidgetController.toggle,
+        onOpenHome: _openHomeFromDesktopWidget,
+      ),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncDesktopWidgetWindow();
+    });
+  }
 
   @override
   void didUpdateWidget(covariant AppShell oldWidget) {
@@ -32,13 +56,62 @@ class _AppShellState extends State<AppShell> {
     if (widget.localDataState != oldWidget.localDataState) {
       _localDataState = widget.localDataState;
       _desktopWidgetController.attach(_localDataState);
+      _levelProgressController.attach(_localDataState);
+      _syncDesktopWidgetWindow();
     }
   }
 
   @override
   void dispose() {
+    _desktopWidgetController.removeListener(_syncDesktopWidgetWindow);
+    _levelProgressController.removeListener(_handleLevelProgressChanged);
+    unawaited(_desktopWidgetWindow.dispose());
     _desktopWidgetController.dispose();
+    _levelProgressController.dispose();
     super.dispose();
+  }
+
+  void _openHomeFromDesktopWidget() {
+    if (!mounted) {
+      return;
+    }
+    setState(() => _section = AppSection.home);
+  }
+
+  void _handleLevelProgressChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+    _syncDesktopWidgetWindow();
+  }
+
+  void _syncDesktopWidgetWindow() {
+    if (!_desktopWidgetWindow.isSupported) {
+      return;
+    }
+    if (!_localDataState.config.showDesktopWidget) {
+      unawaited(_desktopWidgetWindow.hide());
+      return;
+    }
+
+    final state = _desktopWidgetController.state;
+    final workHours = _localDataState.config.dailyWorkHours <= 0
+        ? 8.0
+        : _localDataState.config.dailyWorkHours;
+    final progress = (state.workSeconds / (workHours * 3600)).clamp(0.0, 1.0);
+    unawaited(
+      _desktopWidgetWindow.showOrUpdate(
+        DesktopWidgetWindowSnapshot(
+          running: state.running,
+          workSeconds: state.workSeconds,
+          coins: state.coins,
+          coinRatePerSecond: _desktopWidgetController.coinRatePerSecond,
+          level: _levelProgressController.state.level,
+          experiencePercent: _levelProgressController.state.experiencePercent,
+          progress: progress,
+        ),
+      ),
+    );
   }
 
   @override
@@ -59,6 +132,8 @@ class _AppShellState extends State<AppShell> {
                   child: switch (_section) {
                     AppSection.home => HomePage(
                       localDataState: _localDataState,
+                      desktopWidgetController: _desktopWidgetController,
+                      levelProgressController: _levelProgressController,
                     ),
                     AppSection.notes => NotesPage(
                       localDataState: _localDataState,
@@ -74,7 +149,9 @@ class _AppShellState extends State<AppShell> {
                             config: config,
                           );
                           _desktopWidgetController.attach(_localDataState);
+                          _levelProgressController.attach(_localDataState);
                         });
+                        _syncDesktopWidgetWindow();
                       },
                     ),
                   },
@@ -82,13 +159,15 @@ class _AppShellState extends State<AppShell> {
               ),
             ],
           ),
-          if (_localDataState.config.showDesktopWidget)
+          if (_localDataState.config.showDesktopWidget &&
+              !_desktopWidgetWindow.isSupported)
             Positioned(
               right: 26,
               bottom: 24,
               child: DesktopStatusWidget(
                 controller: _desktopWidgetController,
-                onOpenHome: () => setState(() => _section = AppSection.home),
+                levelProgressState: _levelProgressController.state,
+                onOpenHome: _openHomeFromDesktopWidget,
               ),
             ),
         ],

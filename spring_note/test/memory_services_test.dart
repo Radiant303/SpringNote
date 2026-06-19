@@ -167,6 +167,11 @@ void main() {
       monthlyRecall.sources.map((source) => source.title),
       contains('月报 2026-06'),
     );
+    expect(
+      monthlyRecall.sources.map((source) => source.title),
+      isNot(contains('日报 2026-06-18')),
+    );
+    expect(monthlyRecall.sources.single.snippet, contains('六月复盘'));
   });
 
   test(

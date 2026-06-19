@@ -154,7 +154,10 @@ pub fn get_stats_snapshot(
     );
 
     let summaries: i32 = connection.query_row(
-        "SELECT COALESCE(SUM(home_generations), 0) FROM daily_stats WHERE date BETWEEN ?1 AND ?2",
+        "SELECT COALESCE(SUM(CASE
+            WHEN home_generations > 10 THEN 10
+            ELSE home_generations
+        END), 0) FROM daily_stats WHERE date BETWEEN ?1 AND ?2",
         params![start_date, end_date],
         |row| row.get(0),
     )?;
@@ -436,6 +439,36 @@ mod tests {
         assert_eq!(snapshot.activity.first().unwrap().count, 2);
         assert_eq!(snapshot.token_usage.first().unwrap().total_tokens, 18);
         assert_eq!(snapshot.provider_usage.first().unwrap().tokens, 18);
+        fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn caps_home_generations_at_ten_per_day_for_valid_submissions() {
+        let dir = temp_dir("spring_note_stats_generation_cap");
+        let app_data_dir = dir.to_string_lossy().to_string();
+        let daily = dir.join("notes").join("daily");
+        let weekly = dir.join("notes").join("weekly");
+        let monthly = dir.join("notes").join("monthly");
+        fs::create_dir_all(&daily).unwrap();
+        fs::create_dir_all(&weekly).unwrap();
+        fs::create_dir_all(&monthly).unwrap();
+
+        for _ in 0..12 {
+            record_home_generation(&app_data_dir).unwrap();
+        }
+
+        let today = Local::now().format("%Y-%m-%d").to_string();
+        let snapshot = get_stats_snapshot(
+            &app_data_dir,
+            &daily.to_string_lossy(),
+            &weekly.to_string_lossy(),
+            &monthly.to_string_lossy(),
+            &today,
+            &today,
+        )
+        .unwrap();
+
+        assert_eq!(snapshot.summary.summaries, 10);
         fs::remove_dir_all(dir).ok();
     }
 

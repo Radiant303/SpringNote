@@ -654,7 +654,7 @@ pub fn memory_tools_json() -> Value {
             "function": {
                 "name": "read_month_report",
                 "strict": true,
-                "description": "Read the monthly report and available daily notes for a specific month.",
+                "description": "Read only the monthly report Markdown for a specific month. Do not return daily notes.",
                 "parameters": {
                     "type": "object",
                     "properties": {

@@ -362,39 +362,12 @@ class MemorySearchService {
     LocalDataState state,
     DateTime month,
   ) async {
-    final sources = <MemorySource>[];
     final monthReport = await _readOptionalFile(
       _join(state.monthlyNotesDirectory, '${_formatMonth(month)}.md'),
       title: '月报 ${_formatMonth(month)}',
       score: 140,
     );
-    if (monthReport != null) {
-      sources.add(monthReport);
-    }
-
-    final directory = Directory(state.dailyNotesDirectory);
-    if (await directory.exists()) {
-      final prefix = _formatMonth(month);
-      await for (final entity in directory.list()) {
-        if (entity is! File) {
-          continue;
-        }
-        final title = _title(entity);
-        if (!title.startsWith(prefix)) {
-          continue;
-        }
-        final content = await entity.readAsString();
-        sources.add(
-          MemorySource(
-            title: '日报 $title',
-            path: entity.path,
-            snippet: _snippet(content, const []),
-            score: 80,
-          ),
-        );
-      }
-    }
-    return sources;
+    return monthReport == null ? [] : [monthReport];
   }
 
   Future<MemorySource?> _readOptionalFile(

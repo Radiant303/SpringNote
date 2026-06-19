@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 
 import '../../core/services/desktop_widget_controller.dart';
+import '../../core/services/level_progress_controller.dart';
 import '../../core/theme/app_theme.dart';
 
 class DesktopStatusWidget extends StatelessWidget {
   const DesktopStatusWidget({
     super.key,
     required this.controller,
+    required this.levelProgressState,
     required this.onOpenHome,
   });
 
   final DesktopWidgetController controller;
+  final LevelProgressState levelProgressState;
   final VoidCallback onOpenHome;
 
   @override
@@ -54,11 +57,22 @@ class DesktopStatusWidget extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        state.running ? 'Lv.7 实习生 · 工作中' : 'Lv.7 实习生 · 已暂停',
+                        state.running
+                            ? 'Lv.${levelProgressState.level} 实习生 · 工作中'
+                            : 'Lv.${levelProgressState.level} 实习生 · 已暂停',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppTheme.textSubtle,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'EXP ${levelProgressState.experiencePercent}% · 今日有效 ${levelProgressState.todayValidSubmissions}/10',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.textSubtle,
+                          fontSize: 11,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
                       const SizedBox(height: 6),

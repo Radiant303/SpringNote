@@ -40,6 +40,8 @@ class DesktopWidgetController extends ChangeNotifier {
   Timer? _timer;
   LocalDataState? _localDataState;
   DateTime _activeDate = DateTime.now();
+  String? _activeDataDirectory;
+  int _loadGeneration = 0;
   int _pendingStatsSeconds = 0;
   double _pendingStatsCoins = 0;
 
@@ -58,8 +60,18 @@ class DesktopWidgetController extends ChangeNotifier {
   }
 
   void attach(LocalDataState localDataState) {
+    final dataDirectoryChanged =
+        _activeDataDirectory != localDataState.dataDirectory;
     _localDataState = localDataState;
+    _activeDataDirectory = localDataState.dataDirectory;
+    if (dataDirectoryChanged) {
+      _pendingStatsSeconds = 0;
+      _pendingStatsCoins = 0;
+      state = const DesktopWidgetState(running: true, workSeconds: 0, coins: 0);
+      notifyListeners();
+    }
     _ensureTodayDefault();
+    unawaited(_loadTodayStats(localDataState, ++_loadGeneration));
     _timer ??= Timer.periodic(tickDuration, (_) => _tick());
   }
 
@@ -117,7 +129,35 @@ class DesktopWidgetController extends ChangeNotifier {
       return;
     }
     _activeDate = now;
+    _pendingStatsSeconds = 0;
+    _pendingStatsCoins = 0;
     state = const DesktopWidgetState(running: true, workSeconds: 0, coins: 0);
+    notifyListeners();
+    final localDataState = _localDataState;
+    if (localDataState != null) {
+      unawaited(_loadTodayStats(localDataState, ++_loadGeneration));
+    }
+  }
+
+  Future<void> _loadTodayStats(
+    LocalDataState localDataState,
+    int generation,
+  ) async {
+    final today = DateTime.now();
+    final snapshot = await statsService.readSnapshot(
+      localDataState: localDataState,
+      start: today,
+      end: today,
+    );
+    if (generation != _loadGeneration ||
+        _localDataState?.dataDirectory != localDataState.dataDirectory ||
+        !_sameDate(today, _activeDate)) {
+      return;
+    }
+    state = state.copyWith(
+      workSeconds: snapshot.summary.workSeconds + _pendingStatsSeconds,
+      coins: snapshot.summary.coins + _pendingStatsCoins,
+    );
     notifyListeners();
   }
 
