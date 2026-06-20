@@ -11,6 +11,7 @@ import '../models/app_config.dart';
 import '../models/local_data_state.dart';
 import '../models/note_external_update.dart';
 import '../models/note_file.dart';
+import '../services/auto_start_service.dart';
 import '../services/desktop_widget_controller.dart';
 import '../services/desktop_widget_window_bridge.dart';
 import '../services/global_hotkey_service.dart';
@@ -45,6 +46,7 @@ class _AppShellState extends State<AppShell> {
       DesktopWidgetController()..attach(_localDataState);
   late final DesktopWidgetWindowBridge _desktopWidgetWindow =
       DesktopWidgetWindowBridge();
+  final AutoStartService _autoStartService = const AutoStartService();
   final GlobalHotkeyService _globalHotkeyService = const GlobalHotkeyService();
   final TrayService _trayService = const TrayService();
   late final LevelProgressController _levelProgressController =
@@ -66,6 +68,7 @@ class _AppShellState extends State<AppShell> {
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncDesktopWidgetWindow();
+      _syncAutoStart(_localDataState.config);
       _syncTray(_localDataState.config);
       _syncGlobalHotkey(_localDataState.config);
       unawaited(_runStartupReportGeneration(_localDataState));
@@ -80,6 +83,7 @@ class _AppShellState extends State<AppShell> {
       _desktopWidgetController.attach(_localDataState);
       _levelProgressController.attach(_localDataState);
       _syncDesktopWidgetWindow();
+      _syncAutoStart(_localDataState.config);
       _syncTray(_localDataState.config);
       _syncGlobalHotkey(_localDataState.config);
       unawaited(_runStartupReportGeneration(_localDataState));
@@ -134,6 +138,10 @@ class _AppShellState extends State<AppShell> {
         config.hotkeys['toggleWindow'],
       ),
     );
+  }
+
+  void _syncAutoStart(AppConfig config) {
+    unawaited(_autoStartService.setEnabled(config.autoStart));
   }
 
   void _syncTray(AppConfig config) {
@@ -227,6 +235,7 @@ class _AppShellState extends State<AppShell> {
                         });
                         widget.onConfigChanged?.call(config);
                         _syncDesktopWidgetWindow();
+                        _syncAutoStart(config);
                         _syncTray(config);
                         _syncGlobalHotkey(config);
                       },

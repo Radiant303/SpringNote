@@ -25,6 +25,8 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+  auto_start_manager_ = std::make_unique<AutoStartManager>(
+      flutter_controller_->engine()->messenger());
   desktop_widget_window_ = std::make_unique<DesktopWidgetWindow>(
       flutter_controller_->engine()->messenger(), GetHandle());
   global_hotkey_manager_ = std::make_unique<GlobalHotkeyManager>(
@@ -46,6 +48,7 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  auto_start_manager_ = nullptr;
   tray_manager_ = nullptr;
   global_hotkey_manager_ = nullptr;
   desktop_widget_window_ = nullptr;

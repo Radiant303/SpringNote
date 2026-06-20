@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "auto_start_manager.h"
 #include "desktop_widget_window.h"
 #include "global_hotkey_manager.h"
 #include "tray_manager.h"
@@ -40,6 +41,9 @@ class FlutterWindow : public Win32Window {
 
   // Native Windows tray icon and close-to-tray behavior.
   std::unique_ptr<TrayManager> tray_manager_;
+
+  // Native current-user Windows startup entry controlled by Flutter settings.
+  std::unique_ptr<AutoStartManager> auto_start_manager_;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

@@ -7,6 +7,7 @@ project(runner LANGUAGES CXX)
 #
 # Any new source files that you add to the application should be added here.
 add_executable(${BINARY_NAME} WIN32
+  "auto_start_manager.cpp"
   "desktop_widget_window.cpp"
   "flutter_window.cpp"
   "global_hotkey_manager.cpp"
