@@ -274,7 +274,7 @@ class _SettingsNavItemState extends State<_SettingsNavItem> {
   @override
   Widget build(BuildContext context) {
     final active = widget.selected || _hovered;
-    final contentColor = active ? AppTheme.text : AppTheme.textMuted;
+    final contentColor = active ? AppTheme.text : const Color(0xFF6E6E6E);
     final backgroundColor = widget.selected
         ? const Color(0xFFE2E2E2)
         : const Color(0xFFF5F5F5);
@@ -294,38 +294,52 @@ class _SettingsNavItemState extends State<_SettingsNavItem> {
               children: [
                 Positioned.fill(
                   child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 120),
+                    duration: const Duration(milliseconds: 240),
                     curve: Curves.easeOutCubic,
                     opacity: active ? 1 : 0,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: backgroundColor,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                    child: TweenAnimationBuilder<Color?>(
+                      tween: ColorTween(end: backgroundColor),
+                      duration: const Duration(milliseconds: 280),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, color, _) {
+                        return DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: color ?? backgroundColor,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
-                    children: [
-                      _SettingsNavLucideIcon(
-                        type: widget.section.icon,
-                        size: 17,
-                        color: contentColor,
+                TweenAnimationBuilder<Color?>(
+                  tween: ColorTween(end: contentColor),
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, color, _) {
+                    final animatedColor = color ?? contentColor;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
+                        children: [
+                          _SettingsNavLucideIcon(
+                            type: widget.section.icon,
+                            size: 17,
+                            color: animatedColor,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            widget.section.label,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: animatedColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 10),
-                      Text(
-                        widget.section.label,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: contentColor,
-                          fontWeight: widget.selected
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                        ),
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
               ],
             ),
