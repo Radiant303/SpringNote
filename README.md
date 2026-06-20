@@ -37,13 +37,13 @@ SpringNote 旨在打造极致流畅的轻量工作台：
 6. **📈 统计面板**：查看记录、活跃度、模型调用和时间范围内的数据概览。
 7. **⚙️ 桌面端极致体验**：支持自定义 Windows 标题栏、托盘、开机自启动、全局快捷键、桌面状态组件和系统字体切换。
 
+## ⭐ Star History
 
-## Star History
+> [!TIP]
+> 如果本项目对您的生活 / 工作产生了帮助，或者您关注本项目的未来发展，请给项目 Star，这是我们维护这个开源项目的动力 <3
 
-<a href="https://www.star-history.com/?repos=Radiant303%2FSpringNote&type=date&legend=bottom-right">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Radiant303/SpringNote&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=Radiant303/SpringNote&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=Radiant303/SpringNote&type=date&legend=top-left" />
- </picture>
-</a>
+<div align="center">
+
+[![Star History Chart](https://api.star-history.com/chart?repos=Radiant303/SpringNote&type=date&legend=bottom-right)](https://www.star-history.com/?repos=Radiant303%2FSpringNote&type=date&legend=bottom-right)
+
+</div>
