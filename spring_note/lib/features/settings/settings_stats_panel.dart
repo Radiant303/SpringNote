@@ -508,7 +508,7 @@ class _StatsMetricCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: const Color(0xFF8A9BB7),
+              color: const Color(0xFF8A8A8A),
               fontSize: 11,
               height: 1,
             ),
@@ -618,7 +618,7 @@ class _YearHeatmapState extends State<_YearHeatmap> {
                             softWrap: false,
                             style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(
-                                  color: const Color(0xFF94A3B8),
+                                  color: const Color(0xFF8A8A8A),
                                   fontSize: 13,
                                   height: 1,
                                 ),
@@ -842,7 +842,7 @@ class _HeatmapWeekdayLabels extends StatelessWidget {
                       _ => '',
                     },
                     style: textStyle.bodySmall?.copyWith(
-                      color: const Color(0xFF94A3B8),
+                      color: const Color(0xFF8A8A8A),
                       fontSize: 13,
                       height: 1,
                     ),
