@@ -37,7 +37,6 @@ const _languageAliases = <String, String>{
 
 const _codeTextStyle = TextStyle(
   color: AppTheme.textMuted,
-  fontFamily: 'Consolas',
   fontSize: 13,
   height: 1.65,
 );

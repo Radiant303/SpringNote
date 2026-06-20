@@ -1179,9 +1179,9 @@ class _EditorPaneState extends State<_EditorPane> {
         Theme.of(context).textTheme.bodyLarge?.copyWith(
           color: const Color(0xFF3A3A3A),
           fontSize: 14,
-          height: 1.75,
+          height: 1.65,
         ) ??
-        const TextStyle(color: Color(0xFF3A3A3A), fontSize: 14, height: 1.75);
+        const TextStyle(color: Color(0xFF3A3A3A), fontSize: 14, height: 1.65);
     return _PaneFrame(
       headerPadding: const EdgeInsets.only(left: 32, right: 16),
       header: Row(
