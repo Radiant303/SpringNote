@@ -28,7 +28,7 @@ class MarkdownPreview extends StatelessWidget {
         child: DefaultTextStyle.merge(
           style: textTheme.bodyLarge?.copyWith(
             color: const Color(0xFF3A3A3A),
-            fontSize: 15.5,
+            fontSize: 14,
             height: 1.55,
           ),
           child: GptMarkdown(
@@ -39,7 +39,7 @@ class MarkdownPreview extends StatelessWidget {
                 MarkdownCodeBlock(language: name, code: code),
             style: textTheme.bodyLarge?.copyWith(
               color: const Color(0xFF3A3A3A),
-              fontSize: 15.5,
+              fontSize: 14,
               height: 1.55,
             ),
             onLinkTap: (url, title) {},
