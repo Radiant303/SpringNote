@@ -1,8 +1,12 @@
 <h1 align="center">
-  <img src="./snapshots/logo.png" width="48" alt="SpringNote Logo" style="vertical-align: middle;">
+  <img
+    src="./snapshots/logo.png"
+    width="48"
+    alt="SpringNote Logo"
+    style="vertical-align: middle; position: relative; top: 4px;"
+  >
   SpringNote
 </h1>
-
 
 
 <div align="center">
