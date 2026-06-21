@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:gpt_markdown/gpt_markdown.dart';
 
 import '../../core/models/local_data_state.dart';
 import '../../core/models/structured_work_note.dart';
 import '../../core/services/ai_client_service.dart';
 import '../../core/services/daily_note_service.dart';
 import '../../core/services/desktop_widget_controller.dart';
+import '../../core/services/external_link_service.dart';
 import '../../core/services/home_overview_service.dart';
 import '../../core/services/level_progress_controller.dart';
 import '../../core/services/mock_ai_service.dart';
 import '../../core/services/stats_service.dart';
+import '../../core/services/update_check_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/markdown_code_block.dart';
 import '../../core/widgets/page_scaffold.dart';
 import '../../src/rust/stats.dart' as rust_stats;
 
@@ -24,6 +28,7 @@ class HomePage extends StatefulWidget {
     this.statsService = const StatsService(),
     this.desktopWidgetController,
     this.levelProgressController,
+    this.updateCheckResult = UpdateCheckResult.idle,
     this.onDailyNoteSaved,
   });
 
@@ -35,6 +40,7 @@ class HomePage extends StatefulWidget {
   final StatsService statsService;
   final DesktopWidgetController? desktopWidgetController;
   final LevelProgressController? levelProgressController;
+  final UpdateCheckResult updateCheckResult;
   final ValueChanged<String>? onDailyNoteSaved;
 
   @override
@@ -299,6 +305,11 @@ class _HomePageState extends State<HomePage> {
               if (_aiNotice != null) ...[
                 const SizedBox(height: 12),
                 _AiNoticeBanner(message: _aiNotice!),
+              ],
+              if (widget.updateCheckResult.status !=
+                  UpdateCheckStatus.idle) ...[
+                const SizedBox(height: 12),
+                _UpdateNoticeBanner(result: widget.updateCheckResult),
               ],
             ],
           ),
@@ -1833,6 +1844,300 @@ class _AiNoticeBanner extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _UpdateNoticeBanner extends StatefulWidget {
+  const _UpdateNoticeBanner({required this.result});
+
+  final UpdateCheckResult result;
+
+  @override
+  State<_UpdateNoticeBanner> createState() => _UpdateNoticeBannerState();
+}
+
+class _UpdateNoticeBannerState extends State<_UpdateNoticeBanner> {
+  bool _hovered = false;
+
+  bool get _clickable =>
+      widget.result.status == UpdateCheckStatus.updateAvailable &&
+      widget.result.latest != null;
+
+  @override
+  Widget build(BuildContext context) {
+    final latest = widget.result.latest;
+    final message = switch (widget.result.status) {
+      UpdateCheckStatus.updateAvailable =>
+        '发现新版本 ${latest?.version ?? ''}，点击查看更新内容',
+      UpdateCheckStatus.failed => '更新检测失败',
+      UpdateCheckStatus.idle => '',
+    };
+    final foreground = widget.result.status == UpdateCheckStatus.failed
+        ? const Color(0xFF666666)
+        : const Color(0xFF3A3A3A);
+
+    return MouseRegion(
+      cursor: _clickable ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      onEnter: (_) {
+        if (_clickable) {
+          setState(() => _hovered = true);
+        }
+      },
+      onExit: (_) {
+        if (_clickable) {
+          setState(() => _hovered = false);
+        }
+      },
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _clickable ? () => _showUpdateDialog(context, latest!) : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: _hovered ? const Color(0xFFEDEDED) : const Color(0xFFF5F5F5),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                widget.result.status == UpdateCheckStatus.failed
+                    ? Icons.info_outline_rounded
+                    : Icons.system_update_alt_rounded,
+                size: 18,
+                color: foreground,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  message,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: foreground,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              if (_clickable)
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: foreground,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showUpdateDialog(
+    BuildContext context,
+    AppUpdateInfo latest,
+  ) async {
+    await showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.48),
+      builder: (context) {
+        return _UpdateDialog(
+          currentVersion: widget.result.currentVersion,
+          latest: latest,
+        );
+      },
+    );
+  }
+}
+
+class _UpdateDialog extends StatelessWidget {
+  const _UpdateDialog({required this.currentVersion, required this.latest});
+
+  final String currentVersion;
+  final AppUpdateInfo latest;
+
+  static const _externalLinkService = ExternalLinkService();
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Dialog(
+      backgroundColor: Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760, maxHeight: 700),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text('发现新版本', style: textTheme.titleLarge),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _UpdateMetaPill(label: '当前版本', value: currentVersion),
+                  _UpdateMetaPill(label: '最新版本', value: latest.version),
+                  _UpdateMetaPill(label: '更新时间', value: latest.changeTime),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Text('更新内容', style: textTheme.titleMedium),
+              const SizedBox(height: 10),
+              Flexible(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFAFAFA),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: SelectionArea(
+                    child: SingleChildScrollView(
+                      child: DefaultTextStyle.merge(
+                        style: textTheme.bodyLarge?.copyWith(
+                          color: const Color(0xFF3A3A3A),
+                          fontSize: 14,
+                          height: 1.55,
+                        ),
+                        child: GptMarkdown(
+                          latest.changelog,
+                          followLinkColor: true,
+                          useDollarSignsForLatex: true,
+                          codeBuilder: (context, name, code, closed) =>
+                              MarkdownCodeBlock(language: name, code: code),
+                          style: textTheme.bodyLarge?.copyWith(
+                            color: const Color(0xFF3A3A3A),
+                            fontSize: 14,
+                            height: 1.55,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              _InstallerDownloadButton(
+                fileName: latest.installerName,
+                onTap: () => _externalLinkService.open(latest.downloadUrl),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _UpdateMetaPill extends StatelessWidget {
+  const _UpdateMetaPill({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text.rich(
+        TextSpan(
+          text: '$label ',
+          style: const TextStyle(color: Color(0xFF8A8A8A)),
+          children: [
+            TextSpan(
+              text: value,
+              style: const TextStyle(
+                color: AppTheme.text,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          fontSize: 12,
+          height: 1,
+        ),
+      ),
+    );
+  }
+}
+
+class _InstallerDownloadButton extends StatefulWidget {
+  const _InstallerDownloadButton({required this.fileName, required this.onTap});
+
+  final String fileName;
+  final VoidCallback onTap;
+
+  @override
+  State<_InstallerDownloadButton> createState() =>
+      _InstallerDownloadButtonState();
+}
+
+class _InstallerDownloadButtonState extends State<_InstallerDownloadButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutCubic,
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: _hovered ? const Color(0xFFEDEDED) : const Color(0xFFF5F5F5),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.download_rounded,
+                size: 18,
+                color: Color(0xFF4F4F4F),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  widget.fileName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppTheme.text,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              const Icon(
+                Icons.open_in_new_rounded,
+                size: 16,
+                color: Color(0xFF666666),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -18,6 +18,7 @@ import '../services/global_hotkey_service.dart';
 import '../services/level_progress_controller.dart';
 import '../services/startup_report_generation_service.dart';
 import '../services/tray_service.dart';
+import '../services/update_check_service.dart';
 import '../theme/app_theme.dart';
 
 enum AppSection { home, notes, memory, settings }
@@ -28,11 +29,13 @@ class AppShell extends StatefulWidget {
     required this.localDataState,
     this.startupReportGenerationService =
         const StartupReportGenerationService(),
+    this.updateCheckService = const UpdateCheckService(),
     this.onConfigChanged,
   });
 
   final LocalDataState localDataState;
   final StartupReportGenerationService startupReportGenerationService;
+  final UpdateCheckService updateCheckService;
   final ValueChanged<AppConfig>? onConfigChanged;
 
   @override
@@ -53,6 +56,7 @@ class _AppShellState extends State<AppShell> {
       LevelProgressController()..attach(_localDataState);
   late final ValueNotifier<NoteExternalUpdate?> _noteExternalUpdate =
       ValueNotifier(null);
+  UpdateCheckResult _updateCheckResult = UpdateCheckResult.idle;
   int _noteExternalUpdateRevision = 0;
 
   @override
@@ -72,6 +76,7 @@ class _AppShellState extends State<AppShell> {
       _syncTray(_localDataState.config);
       _syncGlobalHotkey(_localDataState.config);
       unawaited(_runStartupReportGeneration(_localDataState));
+      unawaited(_runUpdateCheck(_localDataState.config));
     });
   }
 
@@ -87,6 +92,7 @@ class _AppShellState extends State<AppShell> {
       _syncTray(_localDataState.config);
       _syncGlobalHotkey(_localDataState.config);
       unawaited(_runStartupReportGeneration(_localDataState));
+      unawaited(_runUpdateCheck(_localDataState.config));
     }
   }
 
@@ -166,6 +172,21 @@ class _AppShellState extends State<AppShell> {
     }
   }
 
+  Future<void> _runUpdateCheck(AppConfig config) async {
+    if (!config.showUpdates) {
+      if (mounted) {
+        setState(() => _updateCheckResult = UpdateCheckResult.idle);
+      }
+      return;
+    }
+
+    final result = await widget.updateCheckService.check();
+    if (!mounted || config != _localDataState.config) {
+      return;
+    }
+    setState(() => _updateCheckResult = result);
+  }
+
   void _syncDesktopWidgetWindow() {
     if (!_desktopWidgetWindow.isSupported) {
       return;
@@ -215,6 +236,7 @@ class _AppShellState extends State<AppShell> {
                       localDataState: _localDataState,
                       desktopWidgetController: _desktopWidgetController,
                       levelProgressController: _levelProgressController,
+                      updateCheckResult: _updateCheckResult,
                       onDailyNoteSaved: (path) =>
                           _notifyNoteSaved(NoteKind.daily, path),
                     ),
@@ -238,6 +260,7 @@ class _AppShellState extends State<AppShell> {
                         _syncAutoStart(config);
                         _syncTray(config);
                         _syncGlobalHotkey(config);
+                        unawaited(_runUpdateCheck(config));
                       },
                     ),
                   ],

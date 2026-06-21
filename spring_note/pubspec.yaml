@@ -16,7 +16,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.0.0
 
 environment:
   sdk: ^3.12.2
@@ -43,6 +43,7 @@ dependencies:
   syntax_highlight: ^0.5.0
   window_manager: ^0.5.1
   msix: ^3.17.0
+  package_info_plus: ^10.1.0
 
 dependency_overrides:
   # syntax_highlight's CodeEditor depends on super_clipboard, which pulls in a
@@ -101,9 +102,3 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
-msix_config:
-  display_name: SpringNote
-  publisher_display_name: Radiant303
-  identity_name: io.radiant303.springnote
-  msix_version: 1.0.0.1
-  logo_path: web/icons/icon-512.png

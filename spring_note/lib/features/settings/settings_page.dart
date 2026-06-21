@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/models/app_config.dart';
 import '../../core/models/local_data_state.dart';
@@ -3675,16 +3678,8 @@ class _AboutPanel extends StatelessWidget {
         ),
         _AboutListCard(
           rows: [
-            const _AboutListRow(
-              icon: _AboutRowIconType.code,
-              label: '版本',
-              value: '1.0.0+1',
-            ),
-            const _AboutListRow(
-              icon: _AboutRowIconType.system,
-              label: '系统',
-              value: 'Windows',
-            ),
+            const _PubspecVersionRow(),
+            const _PlatformInfoRow(),
             _AboutListRow(
               icon: _AboutRowIconType.globe,
               label: '官网',
@@ -5327,7 +5322,7 @@ class _SimpleRow extends StatelessWidget {
 class _AboutListCard extends StatelessWidget {
   const _AboutListCard({required this.rows});
 
-  final List<_AboutListRow> rows;
+  final List<Widget> rows;
 
   @override
   Widget build(BuildContext context) {
@@ -5370,6 +5365,61 @@ class _AboutListCard extends StatelessWidget {
 }
 
 enum _AboutRowIconType { code, system, globe, github, license }
+
+class _PubspecVersionRow extends StatelessWidget {
+  const _PubspecVersionRow();
+
+  static Future<String> _loadVersion() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      return packageInfo.version.trim().isEmpty
+          ? '1.0.0'
+          : packageInfo.version.trim();
+    } catch (_) {
+      return '1.0.0';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String>(
+      future: _loadVersion(),
+      builder: (context, snapshot) {
+        return _AboutListRow(
+          icon: _AboutRowIconType.code,
+          label: '版本',
+          value: snapshot.data ?? '1.0.0',
+        );
+      },
+    );
+  }
+}
+
+class _PlatformInfoRow extends StatelessWidget {
+  const _PlatformInfoRow();
+
+  String get _platformLabel {
+    if (Platform.isWindows) {
+      return 'Windows';
+    }
+    if (Platform.isLinux) {
+      return 'Linux';
+    }
+    if (Platform.isMacOS) {
+      return 'Mac';
+    }
+    return '未知';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _AboutListRow(
+      icon: _AboutRowIconType.system,
+      label: '系统',
+      value: _platformLabel,
+    );
+  }
+}
 
 class _AboutListRow extends StatefulWidget {
   const _AboutListRow({
