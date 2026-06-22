@@ -1,80 +1,80 @@
-name: "🎉 Feature Request / 功能建议"
+name: "🎉 功能建议 / Feature Request"
 title: "[Feature]"
-description: Suggest an improvement for SpringNote. / 为 SpringNote 提出改进建议。
+description: 为 SpringNote 提出改进建议。/ Suggest an improvement for SpringNote.
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for suggesting a new idea for SpringNote. Please describe the problem, use case, and expected behavior clearly. / 感谢你为 SpringNote 提出新想法。请清楚描述问题、使用场景和期望效果。
+        感谢你为 SpringNote 提出新想法。请清楚描述问题、使用场景和期望效果。/ Thanks for suggesting a new idea for SpringNote. Please describe the problem, use case, and expected behavior clearly.
 
   - type: textarea
     attributes:
-      label: Problem / 你遇到的问题
-      description: What problem does this feature solve? / 这个功能想解决什么问题？
+      label: 你遇到的问题 / Problem
+      description: 这个功能想解决什么问题？/ What problem does this feature solve?
       placeholder: |
-        Example: I often need to review last week's notes, but the current flow requires too many manual steps.
         示例：我经常需要回顾上周的记录，但当前流程需要太多手动操作。
+        Example: I often need to review last week's notes, but the current flow requires too many manual steps.
     validations:
       required: true
 
   - type: textarea
     attributes:
-      label: Proposed solution / 期望方案
-      description: Describe the behavior or UI you want. / 请描述你希望实现的行为或界面。
+      label: 期望方案 / Proposed solution
+      description: 请描述你希望实现的行为或界面。/ Describe the behavior or UI you want.
       placeholder: |
-        Describe how this should work in SpringNote.
         请描述它在 SpringNote 中应该如何工作。
+        Describe how this should work in SpringNote.
     validations:
       required: true
 
   - type: textarea
     attributes:
-      label: Use case / 使用场景
-      description: When and why would you use this feature? / 你会在什么时候、为什么使用这个功能？
+      label: 使用场景 / Use case
+      description: 你会在什么时候、为什么使用这个功能？/ When and why would you use this feature?
       placeholder: |
-        Example: When writing daily notes, I want AI to...
         示例：在写日报时，我希望 AI 可以……
+        Example: When writing daily notes, I want AI to...
     validations:
       required: true
 
   - type: dropdown
     attributes:
-      label: Related area / 相关模块
-      description: Which part of SpringNote does this suggestion affect? / 这个建议主要影响哪个模块？
+      label: 相关模块 / Related area
+      description: 这个建议主要影响哪个模块？/ Which part of SpringNote does this suggestion affect?
       multiple: true
       options:
-        - "Home / 首页"
-        - "Notes / 便签"
-        - "Memory Book / 回忆书"
-        - "Settings / 设置"
-        - "Statistics / 统计"
-        - "Desktop Widget / 桌面组件"
-        - "AI Provider / AI 提供商"
-        - "Workflow / 工作流"
-        - "Other / 其他"
+        - "首页 / Home"
+        - "便签 / Notes"
+        - "回忆书 / Memory Book"
+        - "设置 / Settings"
+        - "统计 / Statistics"
+        - "桌面组件 / Desktop Widget"
+        - "AI 提供商 / AI Provider"
+        - "工作流 / Workflow"
+        - "其他 / Other"
     validations:
       required: true
 
   - type: textarea
     attributes:
-      label: Alternatives considered / 你考虑过的替代方案
-      description: Optional. Have you tried another workaround or design? / 可选。你是否考虑过其他替代方案或临时处理方式？
+      label: 你考虑过的替代方案 / Alternatives considered
+      description: 可选。你是否考虑过其他替代方案或临时处理方式？/ Optional. Have you tried another workaround or design?
 
   - type: checkboxes
     attributes:
-      label: Contribution / 贡献意愿
-      description: This is optional. / 这不是必需项。
+      label: 贡献意愿 / Contribution
+      description: 这不是必需项。/ This is optional.
       options:
-        - label: I am willing to submit a PR for this feature. / 我愿意为这个功能提交 PR。
+        - label: 我愿意为这个功能提交 PR。/ I am willing to submit a PR for this feature.
 
   - type: checkboxes
     attributes:
-      label: Code of Conduct / 行为准则
+      label: 行为准则 / Code of Conduct
       options:
-        - label: I have read and agree to follow the project's Code of Conduct. / 我已阅读并同意遵守项目行为准则。
+        - label: 我已阅读并同意遵守项目行为准则。/ I have read and agree to follow the project's Code of Conduct.
           required: true
 
   - type: markdown
     attributes:
-      value: "Thanks for your suggestion! / 感谢你的建议！"
+      value: "感谢你的建议！/ Thanks for your suggestion!"

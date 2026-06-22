@@ -1,39 +1,39 @@
-name: "🐛 Bug Report / 报告 Bug"
+name: "🐛 报告 Bug / Bug Report"
 title: "[Bug]"
-description: Report a reproducible problem in SpringNote. / 报告 SpringNote 中可复现的问题。
+description: 报告 SpringNote 中可复现的问题。/ Report a reproducible problem in SpringNote.
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping improve SpringNote. Please provide enough context for us to reproduce and diagnose the issue. Issues without clear reproduction steps or logs may be closed. / 感谢你帮助改进 SpringNote。请提供足够的信息，方便我们复现和定位问题。缺少复现步骤或日志的问题可能会被关闭。
+        感谢你帮助改进 SpringNote。请提供足够的信息，方便我们复现和定位问题。缺少复现步骤或日志的问题可能会被关闭。/ Thanks for helping improve SpringNote. Please provide enough context for us to reproduce and diagnose the issue. Issues without clear reproduction steps or logs may be closed.
 
   - type: textarea
     attributes:
-      label: What happened? / 发生了什么？
-      description: Describe the problem clearly, including the actual behavior and what you expected instead. / 请清楚描述问题，包括实际表现和你期望的表现。
+      label: 发生了什么？/ What happened?
+      description: 请清楚描述问题，包括实际表现和你期望的表现。/ Describe the problem clearly, including the actual behavior and what you expected instead.
       placeholder: |
-        Example: After clicking "Generate Weekly Report", the report page still shows old content until I switch to another note and back.
         示例：点击“生成周报”后，页面仍显示旧内容，只有切换到其他便签再切回来才刷新。
+        Example: After clicking "Generate Weekly Report", the report page still shows old content until I switch to another note and back.
     validations:
       required: true
 
   - type: textarea
     attributes:
-      label: Steps to reproduce / 如何复现？
-      description: List the exact steps needed to reproduce the issue. / 请列出复现该问题的具体步骤。
+      label: 如何复现？/ Steps to reproduce
+      description: 请列出复现该问题的具体步骤。/ List the exact steps needed to reproduce the issue.
       placeholder: |
-        1. Open SpringNote
-        2. Go to ...
-        3. Click ...
-        4. See error
+        1. 打开 SpringNote
+        2. 进入……
+        3. 点击……
+        4. 看到错误
     validations:
       required: true
 
   - type: textarea
     attributes:
-      label: Environment / 环境信息
-      description: Provide app version, OS, install method, and relevant AI provider/model settings. Do not paste your API key. / 请提供应用版本、系统、安装方式，以及相关 AI 提供商/模型配置。不要粘贴 API Key。
+      label: 环境信息 / Environment
+      description: 请提供应用版本、系统、安装方式，以及相关 AI 提供商/模型配置。不要粘贴 API Key。/ Provide app version, OS, install method, and relevant AI provider/model settings. Do not paste your API key.
       placeholder: |
         SpringNote version: 1.0.0
         OS: Windows 11 23H2
@@ -46,46 +46,46 @@ body:
 
   - type: dropdown
     attributes:
-      label: Affected area / 受影响模块
-      description: Which part of SpringNote is affected? / 问题主要出现在哪个模块？
+      label: 受影响模块 / Affected area
+      description: 问题主要出现在哪个模块？/ Which part of SpringNote is affected?
       multiple: true
       options:
-        - "Home / 首页"
-        - "Notes / 便签"
-        - "Memory Book / 回忆书"
-        - "Settings / 设置"
-        - "Statistics / 统计"
-        - "Desktop Widget / 桌面组件"
-        - "AI Provider / AI 提供商"
-        - "Windows Build / Windows 构建"
-        - "Other / 其他"
+        - "首页 / Home"
+        - "便签 / Notes"
+        - "回忆书 / Memory Book"
+        - "设置 / Settings"
+        - "统计 / Statistics"
+        - "桌面组件 / Desktop Widget"
+        - "AI 提供商 / AI Provider"
+        - "Windows 构建 / Windows Build"
+        - "其他 / Other"
     validations:
       required: true
 
   - type: textarea
     attributes:
-      label: Logs, screenshots, or recordings / 日志、截图或录屏
-      description: Paste logs, error messages, screenshots, or recordings. If logs contain private data or API keys, remove them first. / 请粘贴日志、错误信息、截图或录屏。如果日志中包含隐私信息或 API Key，请先删除。
+      label: 日志、截图或录屏 / Logs, screenshots, or recordings
+      description: 请粘贴日志、错误信息、截图或录屏。如果日志中包含隐私信息或 API Key，请先删除。/ Paste logs, error messages, screenshots, or recordings. If logs contain private data or API keys, remove them first.
       placeholder: |
-        Paste logs here, or drag screenshots/recordings into this field.
         请在这里粘贴日志，或拖入截图/录屏。
+        Paste logs here, or drag screenshots/recordings into this field.
     validations:
       required: true
 
   - type: checkboxes
     attributes:
-      label: Contribution / 贡献意愿
-      description: This is optional. / 这不是必需项。
+      label: 贡献意愿 / Contribution
+      description: 这不是必需项。/ This is optional.
       options:
-        - label: I am willing to submit a PR to fix this issue. / 我愿意提交 PR 修复这个问题。
+        - label: 我愿意提交 PR 修复这个问题。/ I am willing to submit a PR to fix this issue.
 
   - type: checkboxes
     attributes:
-      label: Code of Conduct / 行为准则
+      label: 行为准则 / Code of Conduct
       options:
-        - label: I have read and agree to follow the project's Code of Conduct. / 我已阅读并同意遵守项目行为准则。
+        - label: 我已阅读并同意遵守项目行为准则。/ I have read and agree to follow the project's Code of Conduct.
           required: true
 
   - type: markdown
     attributes:
-      value: "Thanks for reporting this issue! / 感谢你的反馈！"
+      value: "感谢你的反馈！/ Thanks for reporting this issue!"
