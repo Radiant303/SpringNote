@@ -74,6 +74,12 @@
 
   ![第四步](./snapshots/configfour.png)
 
+## 🌍 Community
+
+### QQ Groups
+
+- Group 1: 463423961
+
 ## ⭐ Star History
 
 > [!TIP]
