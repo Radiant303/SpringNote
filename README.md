@@ -111,5 +111,3 @@ Instead of static records, we model a living system:
 <div align="center">
 
 [![Star History Chart](https://api.star-history.com/svg?repos=Radiant303/SpringNote&type=Date)](https://star-history.com/#Radiant303/SpringNote&Date)
-
-</div>
