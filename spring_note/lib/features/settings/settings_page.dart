@@ -826,6 +826,7 @@ class _PreferencesPanel extends StatelessWidget {
           children: [
             _DataDirectorySettingRow(
               dataDirectory: dataDirectory,
+              defaultDirectory: config.customDataDirectory == null,
               saving: saving,
               onChanged: onDataDirectoryChanged,
             ),
@@ -4723,11 +4724,13 @@ class _TextSettingRow extends StatelessWidget {
 class _DataDirectorySettingRow extends StatefulWidget {
   const _DataDirectorySettingRow({
     required this.dataDirectory,
+    required this.defaultDirectory,
     required this.saving,
     required this.onChanged,
   });
 
   final String dataDirectory;
+  final bool defaultDirectory;
   final bool saving;
   final ValueChanged<String?> onChanged;
 
@@ -4804,11 +4807,10 @@ class _DataDirectorySettingRowState extends State<_DataDirectorySettingRow> {
             const SizedBox(width: 2),
             _DataDirectoryActionButton(
               tooltip: '恢复默认目录',
-              onPressed: widget.saving ? null : () => widget.onChanged(null),
-              child: const _DataDirectoryActionIcon(
-                type: _DataDirectoryActionIconType.rotateCcw,
-                size: 16,
-              ),
+              onPressed: widget.saving || widget.defaultDirectory
+                  ? null
+                  : () => widget.onChanged(null),
+              child: const Icon(Icons.restart_alt_rounded, size: 17),
             ),
           ],
         ),
@@ -4817,7 +4819,7 @@ class _DataDirectorySettingRowState extends State<_DataDirectorySettingRow> {
   }
 }
 
-enum _DataDirectoryActionIconType { folderUp, rotateCcw }
+enum _DataDirectoryActionIconType { folderUp }
 
 class _DataDirectoryActionButton extends StatefulWidget {
   const _DataDirectoryActionButton({
@@ -4843,9 +4845,7 @@ class _DataDirectoryActionButtonState
   Widget build(BuildContext context) {
     final enabled = widget.onPressed != null;
     final active = enabled && _hovered;
-    final backgroundColor = active
-        ? const Color(0xFFF5F5F5)
-        : Colors.transparent;
+    const backgroundColor = Color(0xFFF5F5F5);
     final iconColor = !enabled
         ? const Color(0xFFBDBDBD)
         : (active ? AppTheme.text : AppTheme.textSubtle);
@@ -4871,17 +4871,27 @@ class _DataDirectoryActionButtonState
           child: SizedBox(
             width: 36,
             height: 36,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 120),
-              curve: Curves.easeOutCubic,
-              decoration: BoxDecoration(
-                color: backgroundColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: IconTheme(
-                data: IconThemeData(color: iconColor, size: 16),
-                child: Center(child: widget.child),
-              ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Positioned.fill(
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 120),
+                    curve: Curves.easeOutCubic,
+                    opacity: active ? 1 : 0,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: backgroundColor,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                IconTheme(
+                  data: IconThemeData(color: iconColor, size: 16),
+                  child: widget.child,
+                ),
+              ],
             ),
           ),
         ),
@@ -4979,17 +4989,6 @@ class _DataDirectoryActionIconPainter extends CustomPainter {
             ..lineTo(point(15.1, 13.1).dx, point(15.1, 13.1).dy),
           paint,
         );
-        break;
-      case _DataDirectoryActionIconType.rotateCcw:
-        canvas.drawPath(
-          Path()
-            ..moveTo(point(3, 7).dx, point(3, 7).dy)
-            ..lineTo(point(3, 3).dx, point(3, 3).dy)
-            ..lineTo(point(7, 3).dx, point(7, 3).dy),
-          paint,
-        );
-        final arcRect = Rect.fromLTWH(4 * sx, 4 * sy, 16 * sx, 16 * sy);
-        canvas.drawArc(arcRect, -2.35, 4.75, false, paint);
         break;
     }
   }
@@ -5977,11 +5976,7 @@ class _AboutRowIconPainter extends CustomPainter {
       case _AboutRowIconType.globe:
         canvas.drawCircle(p(12, 12), 8 * strokeScale, paint);
         canvas.drawOval(
-          Rect.fromCenter(
-            center: p(12, 12),
-            width: 8 * sx,
-            height: 16 * sy,
-          ),
+          Rect.fromCenter(center: p(12, 12), width: 8 * sx, height: 16 * sy),
           paint,
         );
         canvas.drawLine(p(4, 12), p(20, 12), paint);
@@ -5994,23 +5989,86 @@ class _AboutRowIconPainter extends CustomPainter {
           ..cubicTo(7.5 * sx, 3.8 * sy, 4 * sx, 7.3 * sy, 4 * sx, 11.9 * sy)
           ..cubicTo(4 * sx, 15.5 * sy, 6.3 * sx, 18.2 * sy, 9.6 * sx, 19.2 * sy)
           ..lineTo(9.6 * sx, 16.9 * sy)
-          ..cubicTo(8.2 * sx, 17.2 * sy, 7.3 * sx, 16.7 * sy, 6.7 * sx, 15.4 * sy)
-          ..cubicTo(6.4 * sx, 14.8 * sy, 5.9 * sx, 14.4 * sy, 5.4 * sx, 14.2 * sy)
+          ..cubicTo(
+            8.2 * sx,
+            17.2 * sy,
+            7.3 * sx,
+            16.7 * sy,
+            6.7 * sx,
+            15.4 * sy,
+          )
+          ..cubicTo(
+            6.4 * sx,
+            14.8 * sy,
+            5.9 * sx,
+            14.4 * sy,
+            5.4 * sx,
+            14.2 * sy,
+          )
           ..cubicTo(6.3 * sx, 14 * sy, 7 * sx, 14.3 * sy, 7.6 * sx, 15.1 * sy)
-          ..cubicTo(8.2 * sx, 15.9 * sy, 8.9 * sx, 16.1 * sy, 9.7 * sx, 15.9 * sy)
-          ..cubicTo(9.9 * sx, 15.4 * sy, 10.2 * sx, 15 * sy, 10.6 * sx, 14.7 * sy)
+          ..cubicTo(
+            8.2 * sx,
+            15.9 * sy,
+            8.9 * sx,
+            16.1 * sy,
+            9.7 * sx,
+            15.9 * sy,
+          )
+          ..cubicTo(
+            9.9 * sx,
+            15.4 * sy,
+            10.2 * sx,
+            15 * sy,
+            10.6 * sx,
+            14.7 * sy,
+          )
           ..cubicTo(8 * sx, 14.3 * sy, 6.9 * sx, 13.2 * sy, 6.9 * sx, 11 * sy)
           ..cubicTo(6.9 * sx, 9.9 * sy, 7.3 * sx, 9 * sy, 8 * sx, 8.3 * sy)
           ..cubicTo(7.8 * sx, 7.8 * sy, 7.6 * sx, 6.8 * sy, 8.1 * sx, 5.5 * sy)
           ..cubicTo(8.1 * sx, 5.5 * sy, 9.2 * sx, 5.2 * sy, 10.8 * sx, 6.4 * sy)
-          ..cubicTo(11.6 * sx, 6.2 * sy, 12.4 * sx, 6.2 * sy, 13.2 * sx, 6.4 * sy)
-          ..cubicTo(14.8 * sx, 5.2 * sy, 15.9 * sx, 5.5 * sy, 15.9 * sx, 5.5 * sy)
+          ..cubicTo(
+            11.6 * sx,
+            6.2 * sy,
+            12.4 * sx,
+            6.2 * sy,
+            13.2 * sx,
+            6.4 * sy,
+          )
+          ..cubicTo(
+            14.8 * sx,
+            5.2 * sy,
+            15.9 * sx,
+            5.5 * sy,
+            15.9 * sx,
+            5.5 * sy,
+          )
           ..cubicTo(16.4 * sx, 6.8 * sy, 16.2 * sx, 7.8 * sy, 16 * sx, 8.3 * sy)
           ..cubicTo(16.7 * sx, 9 * sy, 17.1 * sx, 9.9 * sy, 17.1 * sx, 11 * sy)
-          ..cubicTo(17.1 * sx, 13.2 * sy, 16 * sx, 14.3 * sy, 13.4 * sx, 14.7 * sy)
-          ..cubicTo(13.9 * sx, 15.1 * sy, 14.2 * sx, 15.8 * sy, 14.2 * sx, 16.9 * sy)
+          ..cubicTo(
+            17.1 * sx,
+            13.2 * sy,
+            16 * sx,
+            14.3 * sy,
+            13.4 * sx,
+            14.7 * sy,
+          )
+          ..cubicTo(
+            13.9 * sx,
+            15.1 * sy,
+            14.2 * sx,
+            15.8 * sy,
+            14.2 * sx,
+            16.9 * sy,
+          )
           ..lineTo(14.2 * sx, 19.2 * sy)
-          ..cubicTo(17.6 * sx, 18.1 * sy, 20 * sx, 15.5 * sy, 20 * sx, 11.9 * sy)
+          ..cubicTo(
+            17.6 * sx,
+            18.1 * sy,
+            20 * sx,
+            15.5 * sy,
+            20 * sx,
+            11.9 * sy,
+          )
           ..cubicTo(20 * sx, 7.3 * sy, 16.5 * sx, 3.8 * sy, 12 * sx, 3.8 * sy)
           ..close();
         canvas.drawPath(path, fillPaint);
