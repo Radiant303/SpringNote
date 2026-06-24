@@ -1704,17 +1704,24 @@ class _StatsCustomRangeDialog extends StatefulWidget {
 class _StatsCustomRangeDialogState extends State<_StatsCustomRangeDialog> {
   late DateTime _start = widget.start;
   late DateTime _end = widget.end;
+  _StatsDateFieldRole? _activeDateField;
 
   Future<void> _pickStart() async {
+    setState(() => _activeDateField = _StatsDateFieldRole.start);
     final result = await showDialog<DateTime>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.48),
       builder: (context) => _StatsCalendarDialog(initialDate: _start),
     );
+    if (!mounted) {
+      return;
+    }
     if (result == null) {
+      setState(() => _activeDateField = null);
       return;
     }
     setState(() {
+      _activeDateField = null;
       _start = result;
       if (_end.isBefore(_start)) {
         _end = _start;
@@ -1723,15 +1730,21 @@ class _StatsCustomRangeDialogState extends State<_StatsCustomRangeDialog> {
   }
 
   Future<void> _pickEnd() async {
+    setState(() => _activeDateField = _StatsDateFieldRole.end);
     final result = await showDialog<DateTime>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.48),
       builder: (context) => _StatsCalendarDialog(initialDate: _end),
     );
+    if (!mounted) {
+      return;
+    }
     if (result == null) {
+      setState(() => _activeDateField = null);
       return;
     }
     setState(() {
+      _activeDateField = null;
       _end = result;
       if (_start.isAfter(_end)) {
         _start = _end;
@@ -1778,6 +1791,7 @@ class _StatsCustomRangeDialogState extends State<_StatsCustomRangeDialog> {
                     child: _StatsDateField(
                       label: '开始',
                       date: _start,
+                      active: _activeDateField == _StatsDateFieldRole.start,
                       onTap: _pickStart,
                     ),
                   ),
@@ -1786,6 +1800,7 @@ class _StatsCustomRangeDialogState extends State<_StatsCustomRangeDialog> {
                     child: _StatsDateField(
                       label: '结束',
                       date: _end,
+                      active: _activeDateField == _StatsDateFieldRole.end,
                       onTap: _pickEnd,
                     ),
                   ),
@@ -1826,15 +1841,19 @@ class _StatsCustomRangeDialogState extends State<_StatsCustomRangeDialog> {
   }
 }
 
+enum _StatsDateFieldRole { start, end }
+
 class _StatsDateField extends StatefulWidget {
   const _StatsDateField({
     required this.label,
     required this.date,
+    required this.active,
     required this.onTap,
   });
 
   final String label;
   final DateTime date;
+  final bool active;
   final VoidCallback onTap;
 
   @override
@@ -1847,9 +1866,13 @@ class _StatsDateFieldState extends State<_StatsDateField> {
 
   @override
   Widget build(BuildContext context) {
-    final background = _pressed
+    final active = widget.active || _hovered || _pressed;
+    final overlayColor = _pressed
         ? const Color(0xFFDCDCDC)
-        : (_hovered ? const Color(0xFFEAEAEA) : const Color(0xFFF2F2F2));
+        : (widget.active ? const Color(0xFFE2E2E2) : const Color(0xFFEAEAEA));
+    final labelColor = active
+        ? const Color(0xFF606060)
+        : const Color(0xFF8A8A8A);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
@@ -1863,59 +1886,73 @@ class _StatsDateFieldState extends State<_StatsDateField> {
         onTapCancel: () => setState(() => _pressed = false),
         onTapUp: (_) => setState(() => _pressed = false),
         onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 130),
-          curve: Curves.easeOutCubic,
+        child: SizedBox(
           height: 72,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Stack(
+            alignment: Alignment.centerLeft,
             children: [
-              AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 130),
-                curve: Curves.easeOutCubic,
-                style:
-                    Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: _hovered || _pressed
-                          ? const Color(0xFF606060)
-                          : const Color(0xFF8A8A8A),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      height: 1,
-                    ) ??
-                    TextStyle(
-                      color: _hovered || _pressed
-                          ? const Color(0xFF606060)
-                          : const Color(0xFF8A8A8A),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      height: 1,
-                    ),
-                child: Text(widget.label),
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF2F2F2),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
               ),
-              const SizedBox(height: 9),
-              AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 130),
-                curve: Curves.easeOutCubic,
-                style:
-                    Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: const Color(0xFF242424),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      height: 1,
-                    ) ??
-                    const TextStyle(
-                      color: Color(0xFF242424),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      height: 1,
+              Positioned.fill(
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 120),
+                  curve: Curves.easeOutCubic,
+                  opacity: active ? 1 : 0,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: overlayColor,
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                child: Text(StatsService.formatDate(widget.date)),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.label,
+                      style:
+                          Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: labelColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            height: 1,
+                          ) ??
+                          TextStyle(
+                            color: labelColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            height: 1,
+                          ),
+                    ),
+                    const SizedBox(height: 9),
+                    Text(
+                      StatsService.formatDate(widget.date),
+                      style:
+                          Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: const Color(0xFF242424),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            height: 1,
+                          ) ??
+                          const TextStyle(
+                            color: Color(0xFF242424),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            height: 1,
+                          ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -2113,7 +2150,7 @@ class _StatsCalendarDialogState extends State<_StatsCalendarDialog> {
                   crossAxisCount: 7,
                   mainAxisSpacing: 8,
                   crossAxisSpacing: 8,
-                  childAspectRatio: 1.15,
+                  childAspectRatio: 1,
                 ),
                 itemCount: dates.length,
                 itemBuilder: (context, index) {
@@ -2162,9 +2199,13 @@ class _CalendarIconButtonState extends State<_CalendarIconButton> {
 
   @override
   Widget build(BuildContext context) {
-    final background = _pressed
+    final active = _hovered || _pressed;
+    final backgroundColor = _pressed
         ? const Color(0xFFE2E2E2)
-        : (_hovered ? const Color(0xFFF2F2F2) : Colors.transparent);
+        : const Color(0xFFF2F2F2);
+    final iconColor = _pressed
+        ? const Color(0xFF202020)
+        : (_hovered ? const Color(0xFF303030) : const Color(0xFF4A4A4A));
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
@@ -2178,23 +2219,27 @@ class _CalendarIconButtonState extends State<_CalendarIconButton> {
         onTapCancel: () => setState(() => _pressed = false),
         onTapUp: (_) => setState(() => _pressed = false),
         onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          curve: Curves.easeOutCubic,
+        child: SizedBox(
           width: 34,
           height: 34,
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(
-            widget.icon,
-            size: 22,
-            color: _pressed
-                ? const Color(0xFF202020)
-                : (_hovered
-                      ? const Color(0xFF303030)
-                      : const Color(0xFF4A4A4A)),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Positioned.fill(
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 120),
+                  curve: Curves.easeOutCubic,
+                  opacity: active ? 1 : 0,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: backgroundColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              Icon(widget.icon, size: 22, color: iconColor),
+            ],
           ),
         ),
       ),
@@ -2226,13 +2271,13 @@ class _CalendarDateCellState extends State<_CalendarDateCell> {
   @override
   Widget build(BuildContext context) {
     final active = widget.selected || _hovered || _pressed;
-    final background = widget.selected
+    final backgroundColor = widget.selected
         ? (_pressed
               ? const Color(0xFFD0D0D0)
               : (_hovered ? const Color(0xFFDADADA) : const Color(0xFFE2E2E2)))
         : (_pressed
-              ? const Color(0xFFE3E3E3)
-              : (_hovered ? const Color(0xFFF2F2F2) : Colors.transparent));
+              ? const Color(0xFFDADADA)
+              : (_hovered ? const Color(0xFFE8E8E8) : Colors.transparent));
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
@@ -2247,28 +2292,41 @@ class _CalendarDateCellState extends State<_CalendarDateCell> {
         onTapUp: (_) => setState(() => _pressed = false),
         onTap: widget.onTap,
         child: Center(
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 140),
-            curve: Curves.easeOutCubic,
-            width: 38,
-            height: 38,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: background,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              widget.date.day.toString(),
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: widget.muted
-                    ? const Color(0xFFA8A8A8)
-                    : (active
-                          ? const Color(0xFF303030)
-                          : const Color(0xFF4A4A4A)),
-                fontSize: 14,
-                fontWeight: widget.selected ? FontWeight.w600 : FontWeight.w500,
-                height: 1,
-              ),
+          child: SizedBox(
+            width: 48,
+            height: 48,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Positioned.fill(
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    opacity: active ? 1 : 0,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: backgroundColor,
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                    ),
+                  ),
+                ),
+                Text(
+                  widget.date.day.toString(),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: widget.muted
+                        ? const Color(0xFFA8A8A8)
+                        : (active
+                              ? const Color(0xFF303030)
+                              : const Color(0xFF4A4A4A)),
+                    fontSize: 14,
+                    fontWeight: widget.selected
+                        ? FontWeight.w600
+                        : FontWeight.w500,
+                    height: 1,
+                  ),
+                ),
+              ],
             ),
           ),
         ),

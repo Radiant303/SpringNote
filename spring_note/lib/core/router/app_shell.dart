@@ -519,15 +519,219 @@ class _SidebarLucidePainter extends CustomPainter {
         canvas.drawPath(bookPath, paint);
         break;
       case _SidebarIconType.settings:
+        final settingsPath = Path()
+          ..moveTo(12.22 * sx, 2 * sy)
+          ..lineTo(11.78 * sx, 2 * sy)
+          ..cubicTo(10.68 * sx, 2 * sy, 9.78 * sx, 2.9 * sy, 9.78 * sx, 4 * sy)
+          ..lineTo(9.78 * sx, 4.18 * sy)
+          ..cubicTo(
+            9.78 * sx,
+            4.89 * sy,
+            9.4 * sx,
+            5.54 * sy,
+            8.78 * sx,
+            5.91 * sy,
+          )
+          ..lineTo(8.35 * sx, 6.16 * sy)
+          ..cubicTo(
+            7.73 * sx,
+            6.52 * sy,
+            6.97 * sx,
+            6.52 * sy,
+            6.35 * sx,
+            6.16 * sy,
+          )
+          ..lineTo(6.2 * sx, 6.08 * sy)
+          ..cubicTo(
+            5.25 * sx,
+            5.53 * sy,
+            4.03 * sx,
+            5.86 * sy,
+            3.48 * sx,
+            6.81 * sy,
+          )
+          ..lineTo(3.26 * sx, 7.19 * sy)
+          ..cubicTo(
+            2.71 * sx,
+            8.14 * sy,
+            3.04 * sx,
+            9.36 * sy,
+            3.99 * sx,
+            9.91 * sy,
+          )
+          ..lineTo(4.14 * sx, 10 * sy)
+          ..cubicTo(
+            4.76 * sx,
+            10.36 * sy,
+            5.14 * sx,
+            11.02 * sy,
+            5.14 * sx,
+            11.74 * sy,
+          )
+          ..lineTo(5.14 * sx, 12.25 * sy)
+          ..cubicTo(
+            5.14 * sx,
+            12.98 * sy,
+            4.76 * sx,
+            13.64 * sy,
+            4.13 * sx,
+            14 * sy,
+          )
+          ..lineTo(3.98 * sx, 14.09 * sy)
+          ..cubicTo(
+            3.03 * sx,
+            14.64 * sy,
+            2.7 * sx,
+            15.86 * sy,
+            3.25 * sx,
+            16.81 * sy,
+          )
+          ..lineTo(3.47 * sx, 17.19 * sy)
+          ..cubicTo(
+            4.02 * sx,
+            18.14 * sy,
+            5.24 * sx,
+            18.47 * sy,
+            6.19 * sx,
+            17.92 * sy,
+          )
+          ..lineTo(6.34 * sx, 17.84 * sy)
+          ..cubicTo(
+            6.96 * sx,
+            17.48 * sy,
+            7.72 * sx,
+            17.48 * sy,
+            8.34 * sx,
+            17.84 * sy,
+          )
+          ..lineTo(8.77 * sx, 18.09 * sy)
+          ..cubicTo(
+            9.39 * sx,
+            18.45 * sy,
+            9.77 * sx,
+            19.11 * sy,
+            9.77 * sx,
+            19.82 * sy,
+          )
+          ..lineTo(9.77 * sx, 20 * sy)
+          ..cubicTo(
+            9.77 * sx,
+            21.1 * sy,
+            10.67 * sx,
+            22 * sy,
+            11.77 * sx,
+            22 * sy,
+          )
+          ..lineTo(12.21 * sx, 22 * sy)
+          ..cubicTo(
+            13.31 * sx,
+            22 * sy,
+            14.21 * sx,
+            21.1 * sy,
+            14.21 * sx,
+            20 * sy,
+          )
+          ..lineTo(14.21 * sx, 19.82 * sy)
+          ..cubicTo(
+            14.21 * sx,
+            19.11 * sy,
+            14.59 * sx,
+            18.46 * sy,
+            15.21 * sx,
+            18.09 * sy,
+          )
+          ..lineTo(15.64 * sx, 17.84 * sy)
+          ..cubicTo(
+            16.26 * sx,
+            17.48 * sy,
+            17.02 * sx,
+            17.48 * sy,
+            17.64 * sx,
+            17.84 * sy,
+          )
+          ..lineTo(17.79 * sx, 17.92 * sy)
+          ..cubicTo(
+            18.74 * sx,
+            18.47 * sy,
+            19.96 * sx,
+            18.14 * sy,
+            20.51 * sx,
+            17.19 * sy,
+          )
+          ..lineTo(20.73 * sx, 16.8 * sy)
+          ..cubicTo(
+            21.28 * sx,
+            15.85 * sy,
+            20.95 * sx,
+            14.63 * sy,
+            20 * sx,
+            14.08 * sy,
+          )
+          ..lineTo(19.85 * sx, 14 * sy)
+          ..cubicTo(
+            19.23 * sx,
+            13.64 * sy,
+            18.85 * sx,
+            12.98 * sy,
+            18.85 * sx,
+            12.25 * sy,
+          )
+          ..lineTo(18.85 * sx, 11.75 * sy)
+          ..cubicTo(
+            18.85 * sx,
+            11.02 * sy,
+            19.23 * sx,
+            10.36 * sy,
+            19.86 * sx,
+            10 * sy,
+          )
+          ..lineTo(20.01 * sx, 9.91 * sy)
+          ..cubicTo(
+            20.96 * sx,
+            9.36 * sy,
+            21.29 * sx,
+            8.14 * sy,
+            20.74 * sx,
+            7.19 * sy,
+          )
+          ..lineTo(20.52 * sx, 6.81 * sy)
+          ..cubicTo(
+            19.97 * sx,
+            5.86 * sy,
+            18.75 * sx,
+            5.53 * sy,
+            17.8 * sx,
+            6.08 * sy,
+          )
+          ..lineTo(17.65 * sx, 6.16 * sy)
+          ..cubicTo(
+            17.03 * sx,
+            6.52 * sy,
+            16.27 * sx,
+            6.52 * sy,
+            15.65 * sx,
+            6.16 * sy,
+          )
+          ..lineTo(15.22 * sx, 5.91 * sy)
+          ..cubicTo(
+            14.6 * sx,
+            5.55 * sy,
+            14.22 * sx,
+            4.89 * sy,
+            14.22 * sx,
+            4.18 * sy,
+          )
+          ..lineTo(14.22 * sx, 4 * sy)
+          ..cubicTo(
+            14.22 * sx,
+            2.9 * sy,
+            13.32 * sx,
+            2 * sy,
+            12.22 * sx,
+            2 * sy,
+          );
+        canvas.drawPath(settingsPath, paint);
         canvas.drawCircle(point(12, 12), 3 * strokeScale, paint);
-        canvas.drawLine(point(12, 2.5), point(12, 5), paint);
-        canvas.drawLine(point(12, 19), point(12, 21.5), paint);
-        canvas.drawLine(point(2.5, 12), point(5, 12), paint);
-        canvas.drawLine(point(19, 12), point(21.5, 12), paint);
-        canvas.drawLine(point(5.3, 5.3), point(7.1, 7.1), paint);
-        canvas.drawLine(point(16.9, 16.9), point(18.7, 18.7), paint);
-        canvas.drawLine(point(18.7, 5.3), point(16.9, 7.1), paint);
-        canvas.drawLine(point(7.1, 16.9), point(5.3, 18.7), paint);
         break;
     }
   }
