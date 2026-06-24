@@ -95,6 +95,7 @@ class LocalDataService {
     } else if (config != null) {
       await _writeConfig(configFile, nextConfig);
     }
+    await _writeActiveDataDirectoryPointer(nextConfig.customDataDirectory);
 
     return LocalDataState(
       dataDirectory: root.path,
@@ -177,7 +178,7 @@ class LocalDataService {
   }
 
   Future<String?> _readActiveDataDirectoryPointer(Directory defaultRoot) async {
-    final file = File(_join(defaultRoot.path, _directoryPointerFileName));
+    final file = await _activeDataDirectoryPointerFile();
     if (!await file.exists()) {
       return null;
     }
@@ -198,19 +199,26 @@ class LocalDataService {
 
   Future<void> _writeActiveDataDirectoryPointer(String? customPath) async {
     final defaultRoot = await _resolveDefaultDataDirectory();
-    final file = File(_join(defaultRoot.path, _directoryPointerFileName));
-    if (customPath == null || customPath.trim().isEmpty) {
-      if (await file.exists()) {
-        await file.delete();
-      }
-      return;
-    }
+    final file = await _activeDataDirectoryPointerFile();
+    final activePath = customPath == null || customPath.trim().isEmpty
+        ? defaultRoot.path
+        : customPath.trim();
 
     const encoder = JsonEncoder.withIndent('  ');
     await file.parent.create(recursive: true);
     await file.writeAsString(
-      '${encoder.convert({'dataDirectory': customPath.trim()})}\n',
+      '${encoder.convert({'dataDirectory': activePath})}\n',
     );
+  }
+
+  Future<File> _activeDataDirectoryPointerFile() async {
+    return File(
+      _join(await _executableDirectoryPath(), _directoryPointerFileName),
+    );
+  }
+
+  Future<String> _executableDirectoryPath() async {
+    return File(Platform.resolvedExecutable).parent.path;
   }
 
   Future<void> _copyDirectoryContents(
