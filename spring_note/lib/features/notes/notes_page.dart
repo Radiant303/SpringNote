@@ -586,6 +586,13 @@ class _FimTextEditingController extends TextEditingController {
     notifyListeners();
   }
 
+  TextSpan _bottomSpacer(TextStyle style) {
+    return TextSpan(
+      text: '\n',
+      style: style.copyWith(color: Colors.transparent),
+    );
+  }
+
   @override
   TextSpan buildTextSpan({
     required BuildContext context,
@@ -594,19 +601,25 @@ class _FimTextEditingController extends TextEditingController {
   }) {
     final prediction = _fimPrediction;
     final offset = _fimOffset;
+    final effectiveStyle = style ?? const TextStyle();
     if (prediction == null ||
         prediction.isEmpty ||
         offset == null ||
         offset < 0 ||
         offset > text.length) {
-      return super.buildTextSpan(
-        context: context,
-        style: style,
-        withComposing: withComposing,
+      return TextSpan(
+        style: effectiveStyle,
+        children: [
+          super.buildTextSpan(
+            context: context,
+            style: style,
+            withComposing: withComposing,
+          ),
+          _bottomSpacer(effectiveStyle),
+        ],
       );
     }
 
-    final effectiveStyle = style ?? const TextStyle();
     return TextSpan(
       style: effectiveStyle,
       children: [
@@ -616,6 +629,7 @@ class _FimTextEditingController extends TextEditingController {
           style: effectiveStyle.copyWith(color: const Color(0xFF9AA0A6)),
         ),
         TextSpan(text: text.substring(offset)),
+        _bottomSpacer(effectiveStyle),
       ],
     );
   }
