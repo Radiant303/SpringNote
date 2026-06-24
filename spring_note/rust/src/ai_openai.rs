@@ -396,48 +396,127 @@ pub async fn memory_tool_responses_stream(
         return Ok(());
     }
 
-    let result = memory_tool_responses(&request, system_prompt).await?;
-    let content = result.content.clone();
-    let reasoning_content = result.reasoning_content.clone();
-    let input_tokens = result.input_tokens;
-    let output_tokens = result.output_tokens;
-    let cached_tokens = result.cached_tokens;
-
-    if !content.trim().is_empty() || !reasoning_content.trim().is_empty() {
-        let _ = sink.add(MemoryToolChatStreamEvent {
-            event_type: "delta".to_string(),
-            content_delta: content.clone(),
-            reasoning_delta: reasoning_content.clone(),
-            content: content.clone(),
-            reasoning_content: reasoning_content.clone(),
-            tool_calls: vec![],
-            error_code: String::new(),
-            error_message: String::new(),
-            input_tokens: 0,
-            output_tokens: 0,
-            cached_tokens: 0,
-        });
+    let url = join_url(&request.provider.base_url, &request.provider.api_path);
+    let body = build_memory_tool_responses_stream_body(&request, system_prompt);
+    let request_body = body_to_string(&body);
+    let started_at = Instant::now();
+    let response = Client::new()
+        .post(&url)
+        .bearer_auth(&request.provider.api_key)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|error| {
+            let message = error.to_string();
+            log_chat(
+                &log_request,
+                "POST",
+                &url,
+                &request_body,
+                None,
+                "",
+                started_at,
+                &message,
+            );
+            message
+        })?;
+    let status = response.status();
+    if !status.is_success() {
+        let response_body = response.text().await.unwrap_or_default();
+        log_chat(
+            &log_request,
+            "POST",
+            &url,
+            &request_body,
+            Some(status.as_u16()),
+            &response_body,
+            started_at,
+            "",
+        );
+        let message = format!("HTTP {status}: {response_body}");
+        let _ = sink.add(MemoryToolChatStreamEvent::error("request_failed", &message));
+        return Ok(());
     }
 
-    let text_result = AiTextResult {
-        ok: result.ok,
-        content: content.clone(),
-        error_code: result.error_code.clone(),
-        error_message: result.error_message.clone(),
+    let mut response = response;
+    let mut parser = SseParser::default();
+    let mut raw_response = String::new();
+    let mut accumulator = StreamAccumulator::default();
+    while let Some(chunk) = response.chunk().await.map_err(|error| error.to_string())? {
+        let text = String::from_utf8_lossy(&chunk);
+        raw_response.push_str(&text);
+        for payload in parser.push(&text) {
+            if payload.trim() == "[DONE]" {
+                continue;
+            }
+            let Ok(value) = serde_json::from_str::<Value>(&payload) else {
+                continue;
+            };
+            if let Some(message) = responses_stream_error_message(&value) {
+                log_chat(
+                    &log_request,
+                    "POST",
+                    &url,
+                    &request_body,
+                    Some(status.as_u16()),
+                    &raw_response,
+                    started_at,
+                    "",
+                );
+                let _ = sink.add(MemoryToolChatStreamEvent::error("request_failed", &message));
+                return Ok(());
+            }
+
+            let delta = apply_responses_stream_event(&mut accumulator, &value);
+            if !delta.content_delta.is_empty() || !delta.reasoning_delta.is_empty() {
+                let _ = sink.add(MemoryToolChatStreamEvent {
+                    event_type: "delta".to_string(),
+                    content_delta: delta.content_delta,
+                    reasoning_delta: delta.reasoning_delta,
+                    content: accumulator.content.clone(),
+                    reasoning_content: accumulator.reasoning_content.clone(),
+                    tool_calls: vec![],
+                    error_code: String::new(),
+                    error_message: String::new(),
+                    input_tokens: 0,
+                    output_tokens: 0,
+                    cached_tokens: 0,
+                });
+            }
+        }
+    }
+
+    log_chat(
+        &log_request,
+        "POST",
+        &url,
+        &request_body,
+        Some(status.as_u16()),
+        &raw_response,
+        started_at,
+        "",
+    );
+    let tool_calls = accumulator.tool_calls();
+    let content = accumulator.content;
+    let reasoning_content = accumulator.reasoning_content;
+    let input_tokens = accumulator.input_tokens;
+    let output_tokens = accumulator.output_tokens;
+    let cached_tokens = accumulator.cached_tokens;
+    let result = AiTextResult::success(
+        &log_request,
+        content.clone(),
         input_tokens,
         output_tokens,
         cached_tokens,
-        provider_name: result.provider_name.clone(),
-        model_id: result.model_id.clone(),
-    };
-    let _ = stats::record_model_call(&request.app_data_dir, &log_request, &text_result);
+    );
+    let _ = stats::record_model_call(&request.app_data_dir, &log_request, &result);
     let _ = sink.add(MemoryToolChatStreamEvent {
         event_type: "done".to_string(),
         content_delta: String::new(),
         reasoning_delta: String::new(),
         content,
         reasoning_content,
-        tool_calls: result.tool_calls,
+        tool_calls,
         error_code: String::new(),
         error_message: String::new(),
         input_tokens,
@@ -643,13 +722,28 @@ pub fn build_memory_tool_responses_body(
     request: &MemoryToolChatRequest,
     system_prompt: &str,
 ) -> Value {
-    json!({
+    let mut body = json!({
         "model": request.model.model_id,
         "instructions": system_prompt,
         "input": responses_memory_input(&request.messages),
         "tools": responses_memory_tools_json(),
         "tool_choice": "auto"
-    })
+    });
+    apply_responses_thinking_options(
+        &mut body,
+        request.thinking_enabled,
+        &request.reasoning_effort,
+    );
+    body
+}
+
+pub fn build_memory_tool_responses_stream_body(
+    request: &MemoryToolChatRequest,
+    system_prompt: &str,
+) -> Value {
+    let mut body = build_memory_tool_responses_body(request, system_prompt);
+    body["stream"] = Value::Bool(true);
+    body
 }
 
 pub fn build_fim_body(request: &FimCompleteRequest) -> Value {
@@ -749,16 +843,36 @@ fn responses_memory_input(messages: &[AiChatMessage]) -> Vec<Value> {
 fn apply_thinking_options(body: &mut Value, enabled: bool, effort: &str) {
     if enabled {
         body["thinking"] = json!({"type": "enabled"});
-        body["reasoning_effort"] = Value::String(normalize_reasoning_effort(effort).to_string());
+        body["reasoning_effort"] =
+            Value::String(normalize_chat_reasoning_effort(effort).to_string());
     } else {
         body["thinking"] = json!({"type": "disabled"});
         body["temperature"] = Value::from(0.2);
     }
 }
 
-fn normalize_reasoning_effort(effort: &str) -> &str {
+fn apply_responses_thinking_options(body: &mut Value, enabled: bool, effort: &str) {
+    if enabled {
+        body["reasoning"] = json!({
+            "effort": normalize_responses_reasoning_effort(effort)
+        });
+    } else {
+        body["temperature"] = Value::from(0.2);
+    }
+}
+
+fn normalize_chat_reasoning_effort(effort: &str) -> &str {
     match effort {
         "max" | "xhigh" => "max",
+        _ => "high",
+    }
+}
+
+fn normalize_responses_reasoning_effort(effort: &str) -> &str {
+    match effort {
+        "max" | "xhigh" | "high" => "high",
+        "medium" => "medium",
+        "low" | "minimal" => "low",
         _ => "high",
     }
 }
@@ -1029,6 +1143,87 @@ fn responses_reasoning_text(value: &Value) -> String {
 }
 
 #[derive(Default)]
+struct ResponsesStreamDelta {
+    content_delta: String,
+    reasoning_delta: String,
+}
+
+fn responses_stream_error_message(value: &Value) -> Option<String> {
+    let event_type = value.get("type").and_then(Value::as_str).unwrap_or("");
+    if event_type != "error"
+        && event_type != "response.failed"
+        && event_type != "response.incomplete"
+    {
+        return None;
+    }
+
+    value
+        .get("error")
+        .and_then(|error| error.get("message").or_else(|| error.get("code")))
+        .and_then(Value::as_str)
+        .or_else(|| value.get("message").and_then(Value::as_str))
+        .or_else(|| {
+            value.get("response").and_then(|response| {
+                response
+                    .get("error")
+                    .and_then(|error| error.get("message").or_else(|| error.get("code")))
+                    .and_then(Value::as_str)
+                    .or_else(|| {
+                        response
+                            .get("incomplete_details")
+                            .and_then(|details| details.get("reason"))
+                            .and_then(Value::as_str)
+                    })
+            })
+        })
+        .map(str::to_string)
+        .or_else(|| Some(event_type.to_string()))
+}
+
+fn apply_responses_stream_event(
+    accumulator: &mut StreamAccumulator,
+    value: &Value,
+) -> ResponsesStreamDelta {
+    let event_type = value.get("type").and_then(Value::as_str).unwrap_or("");
+    let mut delta = ResponsesStreamDelta::default();
+    match event_type {
+        "response.output_text.delta" => {
+            delta.content_delta = read_string_field(value, "delta");
+            accumulator.content.push_str(&delta.content_delta);
+        }
+        "response.reasoning_summary_text.delta" | "response.reasoning_text.delta" => {
+            delta.reasoning_delta = read_string_field(value, "delta");
+            accumulator
+                .reasoning_content
+                .push_str(&delta.reasoning_delta);
+        }
+        "response.output_item.added" => {
+            if let Some(item) = value.get("item") {
+                accumulator.merge_responses_output_item(item);
+            }
+        }
+        "response.output_item.done" => {
+            if let Some(item) = value.get("item") {
+                accumulator.merge_responses_output_item(item);
+            }
+        }
+        "response.function_call_arguments.delta" => {
+            accumulator.merge_responses_function_arguments_delta(value);
+        }
+        "response.completed" => {
+            if let Some(response) = value.get("response") {
+                accumulator.merge_responses_completed(response, &mut delta);
+            }
+        }
+        _ => {
+            if value.get("output").is_some() {
+                accumulator.merge_responses_completed(value, &mut delta);
+            }
+        }
+    }
+    delta
+}
+#[derive(Default)]
 struct SseParser {
     buffer: String,
 }
@@ -1093,6 +1288,98 @@ impl StreamAccumulator {
                     target.arguments.push_str(arguments);
                 }
             }
+        }
+    }
+
+    fn merge_responses_output_item(&mut self, item: &Value) {
+        if item.get("type").and_then(Value::as_str) != Some("function_call") {
+            return;
+        }
+        let index = item
+            .get("output_index")
+            .or_else(|| item.get("index"))
+            .and_then(Value::as_u64)
+            .map(|value| value as usize)
+            .unwrap_or_else(|| self.tool_calls.len());
+        while self.tool_calls.len() <= index {
+            self.tool_calls.push(ToolCallAccumulator::default());
+        }
+        let target = &mut self.tool_calls[index];
+        if let Some(id) = item
+            .get("call_id")
+            .or_else(|| item.get("id"))
+            .and_then(Value::as_str)
+            .filter(|id| !id.is_empty())
+        {
+            target.id = id.to_string();
+        }
+        if let Some(name) = item
+            .get("name")
+            .and_then(Value::as_str)
+            .filter(|name| !name.is_empty())
+        {
+            target.name = name.to_string();
+        }
+        if let Some(arguments) = item.get("arguments").and_then(Value::as_str) {
+            target.arguments = arguments.to_string();
+        }
+    }
+
+    fn merge_responses_function_arguments_delta(&mut self, value: &Value) {
+        let index = value
+            .get("output_index")
+            .or_else(|| value.get("item_index"))
+            .or_else(|| value.get("index"))
+            .and_then(Value::as_u64)
+            .unwrap_or(0) as usize;
+        while self.tool_calls.len() <= index {
+            self.tool_calls.push(ToolCallAccumulator::default());
+        }
+        let target = &mut self.tool_calls[index];
+        if let Some(id) = value
+            .get("call_id")
+            .or_else(|| value.get("item_id"))
+            .and_then(Value::as_str)
+            .filter(|id| !id.is_empty())
+        {
+            target.id = id.to_string();
+        }
+        if let Some(name) = value
+            .get("name")
+            .and_then(Value::as_str)
+            .filter(|name| !name.is_empty())
+        {
+            target.name = name.to_string();
+        }
+        if let Some(arguments) = value.get("delta").and_then(Value::as_str) {
+            target.arguments.push_str(arguments);
+        }
+    }
+
+    fn merge_responses_completed(&mut self, response: &Value, delta: &mut ResponsesStreamDelta) {
+        let completed_content = responses_output_text(response);
+        if !completed_content.is_empty() && self.content.is_empty() {
+            delta.content_delta = completed_content.clone();
+            self.content = completed_content;
+        }
+        let completed_reasoning = responses_reasoning_text(response);
+        if !completed_reasoning.is_empty() && self.reasoning_content.is_empty() {
+            delta.reasoning_delta = completed_reasoning.clone();
+            self.reasoning_content = completed_reasoning;
+        }
+        for item in response
+            .get("output")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default()
+        {
+            self.merge_responses_output_item(&item);
+        }
+        let (input, output, cached) = usage_from_value(response);
+        if input != 0 || output != 0 || cached != 0 {
+            self.input_tokens = input;
+            self.output_tokens = output;
+            self.cached_tokens = cached;
         }
     }
 
@@ -1434,6 +1721,103 @@ mod tests {
         assert_eq!(body["input"][2]["type"], "function_call_output");
         assert_eq!(body["input"][2]["call_id"], "call_1");
         assert_eq!(body["input"][2]["output"], "{\"results\":[]}");
+        assert_eq!(body["reasoning"]["effort"], "high");
+        assert!(body.get("thinking").is_none());
+        assert!(body.get("reasoning_effort").is_none());
+    }
+
+    #[test]
+    fn builds_memory_tool_responses_stream_payload() {
+        let request = MemoryToolChatRequest {
+            app_data_dir: ".".to_string(),
+            provider: AiProvider {
+                id: "p".to_string(),
+                name: "OpenAI Compatible".to_string(),
+                protocol: "openaiCompatible".to_string(),
+                api_key: "key".to_string(),
+                base_url: "https://api.example.com/v1".to_string(),
+                api_path: "/responses".to_string(),
+            },
+            model: AiModel {
+                model_id: "responses-test".to_string(),
+                display_name: "Responses Test".to_string(),
+            },
+            messages: vec![AiChatMessage {
+                role: "user".to_string(),
+                content: "问题".to_string(),
+                reasoning_content: String::new(),
+                tool_call_id: String::new(),
+                tool_calls: vec![],
+            }],
+            thinking_enabled: true,
+            reasoning_effort: "max".to_string(),
+            api_log_enabled: false,
+        };
+
+        let body = build_memory_tool_responses_stream_body(&request, "system");
+        assert_eq!(body["stream"], true);
+        assert_eq!(body["reasoning"]["effort"], "high");
+        assert!(body.get("stream_options").is_none());
+    }
+
+    #[test]
+    fn parses_responses_stream_events() {
+        let mut accumulator = StreamAccumulator::default();
+
+        let delta = apply_responses_stream_event(
+            &mut accumulator,
+            &json!({
+                "type": "response.output_text.delta",
+                "delta": "你好"
+            }),
+        );
+        assert_eq!(delta.content_delta, "你好");
+        assert_eq!(accumulator.content, "你好");
+
+        let delta = apply_responses_stream_event(
+            &mut accumulator,
+            &json!({
+                "type": "response.reasoning_summary_text.delta",
+                "delta": "先查资料"
+            }),
+        );
+        assert_eq!(delta.reasoning_delta, "先查资料");
+        assert_eq!(accumulator.reasoning_content, "先查资料");
+
+        apply_responses_stream_event(
+            &mut accumulator,
+            &json!({
+                "type": "response.output_item.added",
+                "item": {
+                    "type": "function_call",
+                    "output_index": 1,
+                    "call_id": "call_1",
+                    "name": "keyword_search",
+                    "arguments": ""
+                }
+            }),
+        );
+        apply_responses_stream_event(
+            &mut accumulator,
+            &json!({
+                "type": "response.function_call_arguments.delta",
+                "output_index": 1,
+                "delta": "{\"keywords\":"
+            }),
+        );
+        apply_responses_stream_event(
+            &mut accumulator,
+            &json!({
+                "type": "response.function_call_arguments.delta",
+                "output_index": 1,
+                "delta": "[\"回忆书\"]}"
+            }),
+        );
+        let tool_calls = accumulator.tool_calls();
+        assert_eq!(tool_calls.len(), 1);
+        assert_eq!(tool_calls[0].id, "call_1");
+        assert_eq!(tool_calls[0].name, "keyword_search");
+        assert_eq!(tool_calls[0].arguments, "{\"keywords\":[\"回忆书\"]}");
     }
 
     #[test]
