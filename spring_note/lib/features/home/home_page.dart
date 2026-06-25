@@ -1,3 +1,4 @@
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
@@ -17,6 +18,34 @@ import '../../core/widgets/markdown_code_block.dart';
 import '../../core/widgets/page_scaffold.dart';
 import '../../src/rust/stats.dart' as rust_stats;
 
+typedef HomeAttachmentPicker = Future<List<HomeAttachment>> Function();
+
+enum HomeAttachmentKind { image, document }
+
+class HomeAttachment {
+  const HomeAttachment({
+    required this.path,
+    required this.name,
+    required this.kind,
+  });
+
+  final String path;
+  final String name;
+  final HomeAttachmentKind kind;
+
+  HomeAttachment copyWith({
+    String? path,
+    String? name,
+    HomeAttachmentKind? kind,
+  }) {
+    return HomeAttachment(
+      path: path ?? this.path,
+      name: name ?? this.name,
+      kind: kind ?? this.kind,
+    );
+  }
+}
+
 class HomePage extends StatefulWidget {
   const HomePage({
     super.key,
@@ -29,6 +58,8 @@ class HomePage extends StatefulWidget {
     this.desktopWidgetController,
     this.levelProgressController,
     this.updateCheckResult = UpdateCheckResult.idle,
+    this.imageAttachmentPicker,
+    this.documentAttachmentPicker,
     this.onDailyNoteSaved,
   });
 
@@ -41,6 +72,8 @@ class HomePage extends StatefulWidget {
   final DesktopWidgetController? desktopWidgetController;
   final LevelProgressController? levelProgressController;
   final UpdateCheckResult updateCheckResult;
+  final HomeAttachmentPicker? imageAttachmentPicker;
+  final HomeAttachmentPicker? documentAttachmentPicker;
   final ValueChanged<String>? onDailyNoteSaved;
 
   @override
@@ -52,6 +85,7 @@ class _HomePageState extends State<HomePage> {
   final FocusNode _focusNode = FocusNode();
   DesktopWidgetController? _ownedDesktopWidgetController;
   LevelProgressController? _ownedLevelProgressController;
+  List<HomeAttachment> _attachments = const [];
 
   StructuredWorkNote _overview = const StructuredWorkNote(
     rawInput: '',
@@ -62,6 +96,7 @@ class _HomePageState extends State<HomePage> {
   bool _isSubmitting = false;
   String? _lastSavedPath;
   String? _aiNotice;
+  String? _attachmentError;
   rust_stats.StatsSnapshot _activityStats = StatsService.emptySnapshot;
 
   DesktopWidgetController get _desktopWidgetController =>
@@ -159,10 +194,11 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _submit() async {
     final input = _controller.text.trim();
-    if (input.isEmpty || _isSubmitting) {
+    if ((input.isEmpty && _attachments.isEmpty) || _isSubmitting) {
       return;
     }
 
+    final submissionInput = _inputWithAttachmentSummary(input);
     setState(() => _isSubmitting = true);
 
     try {
@@ -180,13 +216,14 @@ class _HomePageState extends State<HomePage> {
         aiStructured = await widget.aiClientService.generateStructuredNote(
           appDataDir: widget.localDataState.dataDirectory,
           config: widget.localDataState.config,
-          input: input,
+          input: submissionInput,
         );
       } catch (_) {
         aiFailed = true;
       }
       final structured =
-          aiStructured ?? widget.mockAiService.structureWorkNote(input);
+          aiStructured ??
+          widget.mockAiService.structureWorkNote(submissionInput);
 
       String? aiMergedMarkdown;
       try {
@@ -239,6 +276,8 @@ class _HomePageState extends State<HomePage> {
             ? '未配置可用模型或 AI 返回不可用，本次已使用本地 mock / 简单合并。'
             : null;
         _controller.clear();
+        _attachments = const [];
+        _attachmentError = null;
       });
       await _levelProgressController.recordValidSubmission();
       await _loadHomeStats();
@@ -248,6 +287,156 @@ class _HomePageState extends State<HomePage> {
         setState(() => _isSubmitting = false);
       }
     }
+  }
+
+  String _inputWithAttachmentSummary(String input) {
+    final trimmed = input.trim();
+    if (_attachments.isEmpty) {
+      return trimmed;
+    }
+
+    final buffer = StringBuffer();
+    if (trimmed.isNotEmpty) {
+      buffer
+        ..writeln(trimmed)
+        ..writeln();
+    }
+    buffer.writeln('附件：');
+    for (final attachment in _attachments) {
+      final type = switch (attachment.kind) {
+        HomeAttachmentKind.image => '图片',
+        HomeAttachmentKind.document => '文件',
+      };
+      buffer.writeln('- [$type] ${attachment.name}: ${attachment.path}');
+    }
+    return buffer.toString().trimRight();
+  }
+
+  Future<void> _pickImageAttachments() {
+    return _pickAttachments(
+      widget.imageAttachmentPicker ?? _defaultImageAttachmentPicker,
+    );
+  }
+
+  Future<void> _pickDocumentAttachments() {
+    return _pickAttachments(
+      widget.documentAttachmentPicker ?? _defaultDocumentAttachmentPicker,
+    );
+  }
+
+  Future<void> _pickAttachments(HomeAttachmentPicker picker) async {
+    if (_isSubmitting) {
+      return;
+    }
+
+    try {
+      final picked = await picker();
+      if (!mounted || picked.isEmpty) {
+        return;
+      }
+      final seenPaths = _attachments.map((item) => item.path).toSet();
+      final nextAttachments = [..._attachments];
+      for (final attachment in picked) {
+        if (attachment.path.trim().isEmpty) {
+          continue;
+        }
+        if (seenPaths.add(attachment.path)) {
+          nextAttachments.add(attachment);
+        }
+      }
+      setState(() {
+        _attachments = nextAttachments;
+        _attachmentError = null;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() => _attachmentError = '无法添加附件，请重新选择文件。');
+      }
+    }
+  }
+
+  Future<List<HomeAttachment>> _defaultImageAttachmentPicker() async {
+    final files = await openFiles(
+      acceptedTypeGroups: const [
+        XTypeGroup(
+          label: 'Images',
+          extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'bmp'],
+          mimeTypes: ['image/*'],
+          uniformTypeIdentifiers: ['public.image'],
+          webWildCards: ['image/*'],
+        ),
+      ],
+      confirmButtonText: '选择图片',
+    );
+    return files
+        .map(
+          (file) => HomeAttachment(
+            path: file.path,
+            name: _attachmentName(file),
+            kind: HomeAttachmentKind.image,
+          ),
+        )
+        .toList();
+  }
+
+  Future<List<HomeAttachment>> _defaultDocumentAttachmentPicker() async {
+    final files = await openFiles(
+      acceptedTypeGroups: const [
+        XTypeGroup(
+          label: 'Documents',
+          extensions: [
+            'pdf',
+            'doc',
+            'docx',
+            'xls',
+            'xlsx',
+            'ppt',
+            'pptx',
+            'txt',
+            'md',
+            'csv',
+            'json',
+            'rtf',
+          ],
+        ),
+      ],
+      confirmButtonText: '选择文件',
+    );
+    return files
+        .map(
+          (file) => HomeAttachment(
+            path: file.path,
+            name: _attachmentName(file),
+            kind: HomeAttachmentKind.document,
+          ),
+        )
+        .toList();
+  }
+
+  String _attachmentName(XFile file) {
+    final name = file.name.trim();
+    if (name.isNotEmpty) {
+      return name;
+    }
+    return _fileName(file.path);
+  }
+
+  String _fileName(String path) {
+    final segments = path.split(RegExp(r'[\\/]')).where((item) {
+      return item.trim().isNotEmpty;
+    }).toList();
+    if (segments.isEmpty) {
+      return path;
+    }
+    return segments.last;
+  }
+
+  void _removeAttachment(HomeAttachment attachment) {
+    setState(() {
+      _attachments = _attachments
+          .where((item) => item.path != attachment.path)
+          .toList();
+    });
   }
 
   StructuredWorkNote _mergeOverview(
@@ -294,6 +483,11 @@ class _HomePageState extends State<HomePage> {
                 controller: _controller,
                 focusNode: _focusNode,
                 isSubmitting: _isSubmitting,
+                attachments: _attachments,
+                attachmentError: _attachmentError,
+                onPickImages: _pickImageAttachments,
+                onPickDocuments: _pickDocumentAttachments,
+                onRemoveAttachment: _removeAttachment,
                 onSubmit: _submit,
               ),
               const SizedBox(height: 32),
@@ -1077,12 +1271,22 @@ class _QuickCaptureCard extends StatelessWidget {
     required this.controller,
     required this.focusNode,
     required this.isSubmitting,
+    required this.attachments,
+    required this.attachmentError,
+    required this.onPickImages,
+    required this.onPickDocuments,
+    required this.onRemoveAttachment,
     required this.onSubmit,
   });
 
   final TextEditingController controller;
   final FocusNode focusNode;
   final bool isSubmitting;
+  final List<HomeAttachment> attachments;
+  final String? attachmentError;
+  final VoidCallback onPickImages;
+  final VoidCallback onPickDocuments;
+  final ValueChanged<HomeAttachment> onRemoveAttachment;
   final VoidCallback onSubmit;
 
   @override
@@ -1111,7 +1315,9 @@ class _QuickCaptureCard extends StatelessWidget {
         animation: controller,
         builder: (context, _) {
           final characterCount = controller.text.characters.length;
-          final canSubmit = controller.text.trim().isNotEmpty && !isSubmitting;
+          final canSubmit =
+              (controller.text.trim().isNotEmpty || attachments.isNotEmpty) &&
+              !isSubmitting;
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1148,6 +1354,24 @@ class _QuickCaptureCard extends StatelessWidget {
                   ),
                 ),
               ),
+              if (attachments.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                _AttachmentStrip(
+                  attachments: attachments,
+                  enabled: !isSubmitting,
+                  onRemove: onRemoveAttachment,
+                ),
+              ],
+              if (attachmentError != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  attachmentError!,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: const Color(0xFFB45309),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
               Container(
                 padding: const EdgeInsets.only(top: 8),
                 decoration: const BoxDecoration(
@@ -1155,11 +1379,18 @@ class _QuickCaptureCard extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    const _ToolIcon(type: _ToolIconType.image, tooltip: '上传图片'),
+                    _ToolIcon(
+                      type: _ToolIconType.image,
+                      tooltip: '上传图片',
+                      enabled: !isSubmitting,
+                      onTap: onPickImages,
+                    ),
                     const SizedBox(width: 4),
-                    const _ToolIcon(
+                    _ToolIcon(
                       type: _ToolIconType.paperclip,
                       tooltip: '添加文件',
+                      enabled: !isSubmitting,
+                      onTap: onPickDocuments,
                     ),
                     const SizedBox(width: 4),
                     const _ToolIcon(
@@ -1276,13 +1507,115 @@ class _SmartGenerateButtonState extends State<_SmartGenerateButton> {
   }
 }
 
+class _AttachmentStrip extends StatelessWidget {
+  const _AttachmentStrip({
+    required this.attachments,
+    required this.enabled,
+    required this.onRemove,
+  });
+
+  final List<HomeAttachment> attachments;
+  final bool enabled;
+  final ValueChanged<HomeAttachment> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final attachment in attachments)
+          _AttachmentChip(
+            attachment: attachment,
+            enabled: enabled,
+            onRemove: () => onRemove(attachment),
+          ),
+      ],
+    );
+  }
+}
+
+class _AttachmentChip extends StatelessWidget {
+  const _AttachmentChip({
+    required this.attachment,
+    required this.enabled,
+    required this.onRemove,
+  });
+
+  final HomeAttachment attachment;
+  final bool enabled;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = attachment.kind == HomeAttachmentKind.image
+        ? Icons.image_outlined
+        : Icons.description_outlined;
+    final typeLabel = attachment.kind == HomeAttachmentKind.image ? '图片' : '文件';
+
+    return Tooltip(
+      message: attachment.path,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 280),
+        height: 32,
+        padding: const EdgeInsets.only(left: 10, right: 4),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: const Color(0xFFE5E5E5)),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: const Color(0xFF525252)),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                '$typeLabel · ${attachment.name}',
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: const Color(0xFF404040),
+                  fontSize: 12,
+                  height: 1.2,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: enabled ? onRemove : null,
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(
+                  Icons.close,
+                  size: 13,
+                  color: enabled
+                      ? const Color(0xFF737373)
+                      : const Color(0xFFBDBDBD),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 enum _ToolIconType { image, paperclip, atSign }
 
 class _ToolIcon extends StatefulWidget {
-  const _ToolIcon({required this.type, required this.tooltip});
+  const _ToolIcon({
+    required this.type,
+    required this.tooltip,
+    this.onTap,
+    this.enabled = true,
+  });
 
   final _ToolIconType type;
   final String tooltip;
+  final VoidCallback? onTap;
+  final bool enabled;
 
   @override
   State<_ToolIcon> createState() => _ToolIconState();
@@ -1293,30 +1626,46 @@ class _ToolIconState extends State<_ToolIcon> {
 
   @override
   Widget build(BuildContext context) {
+    final active = widget.enabled && widget.onTap != null;
     return Tooltip(
       message: widget.tooltip,
       child: MouseRegion(
+        cursor: active ? SystemMouseCursors.click : SystemMouseCursors.basic,
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          curve: Curves.easeOut,
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: _hovered ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Center(
-            child: _LucideToolbarIcon(
-              type: widget.type,
-              size: 16,
-              color: _hovered ? const Color(0xFF4F4F4F) : AppTheme.textSubtle,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: active ? widget.onTap : null,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOut,
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: _hovered && active ? Colors.white : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: _LucideToolbarIcon(
+                type: widget.type,
+                size: 16,
+                color: _iconColor(active),
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  Color _iconColor(bool active) {
+    if (!widget.enabled) {
+      return const Color(0xFFBDBDBD);
+    }
+    if (_hovered && active) {
+      return const Color(0xFF4F4F4F);
+    }
+    return AppTheme.textSubtle;
   }
 }
 
@@ -1904,11 +2253,7 @@ class _UpdateNoticeBannerState extends State<_UpdateNoticeBanner> {
           child: Row(
             children: [
               if (widget.result.status == UpdateCheckStatus.failed)
-                Icon(
-                  Icons.info_outline_rounded,
-                  size: 18,
-                  color: foreground,
-                )
+                Icon(Icons.info_outline_rounded, size: 18, color: foreground)
               else
                 _UpdateDownloadIcon(size: 18, color: foreground),
               const SizedBox(width: 10),
@@ -1922,11 +2267,7 @@ class _UpdateNoticeBannerState extends State<_UpdateNoticeBanner> {
                 ),
               ),
               if (_clickable)
-                Icon(
-                  Icons.chevron_right_rounded,
-                  size: 20,
-                  color: foreground,
-                ),
+                Icon(Icons.chevron_right_rounded, size: 20, color: foreground),
             ],
           ),
         ),
@@ -2126,10 +2467,9 @@ class _UpdateMetaPill extends StatelessWidget {
             ),
           ],
         ),
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          fontSize: 12,
-          height: 1,
-        ),
+        style: Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(fontSize: 12, height: 1),
       ),
     );
   }
@@ -2169,10 +2509,7 @@ class _InstallerDownloadButtonState extends State<_InstallerDownloadButton> {
           ),
           child: Row(
             children: [
-              const _UpdateDownloadIcon(
-                size: 18,
-                color: Color(0xFF4F4F4F),
-              ),
+              const _UpdateDownloadIcon(size: 18, color: Color(0xFF4F4F4F)),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(

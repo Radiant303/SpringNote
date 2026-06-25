@@ -108,6 +108,77 @@ void main() {
     );
   });
 
+  testWidgets('home attachment buttons add files to submitted note', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final fakeDailyNoteService = _FakeDailyNoteService();
+    final fakeHomeOverviewService = _FakeHomeOverviewService();
+    final localDataState = LocalDataState(
+      dataDirectory: 'D:\\Temp\\SpringNote',
+      configPath: 'D:\\Temp\\SpringNote\\config.json',
+      dailyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\daily',
+      weeklyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\weekly',
+      monthlyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\monthly',
+      config: AppConfig.defaults(),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: HomePage(
+          localDataState: localDataState,
+          dailyNoteService: fakeDailyNoteService,
+          homeOverviewService: fakeHomeOverviewService,
+          imageAttachmentPicker: () async => const [
+            HomeAttachment(
+              path: '/Users/demo/Desktop/screenshot.png',
+              name: 'screenshot.png',
+              kind: HomeAttachmentKind.image,
+            ),
+          ],
+          documentAttachmentPicker: () async => const [
+            HomeAttachment(
+              path: '/Users/demo/Documents/spec.pdf',
+              name: 'spec.pdf',
+              kind: HomeAttachmentKind.document,
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('上传图片'));
+    await tester.pump();
+    await tester.tap(find.byTooltip('添加文件'));
+    await tester.pump();
+
+    expect(find.text('图片 · screenshot.png'), findsOneWidget);
+    expect(find.text('文件 · spec.pdf'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), '整理附件内容');
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('home-smart-generate-button')));
+    for (var index = 0; index < 20; index++) {
+      await tester.pump(const Duration(milliseconds: 100));
+      if (fakeDailyNoteService.savedNote != null) {
+        break;
+      }
+    }
+
+    final rawInput = fakeDailyNoteService.savedNote?.rawInput ?? '';
+    expect(rawInput, contains('整理附件内容'));
+    expect(rawInput, contains('附件：'));
+    expect(rawInput, contains('[图片] screenshot.png'));
+    expect(rawInput, contains('/Users/demo/Desktop/screenshot.png'));
+    expect(rawInput, contains('[文件] spec.pdf'));
+    expect(rawInput, contains('/Users/demo/Documents/spec.pdf'));
+  });
+
   testWidgets('home income stays in sync with desktop widget controller', (
     WidgetTester tester,
   ) async {
