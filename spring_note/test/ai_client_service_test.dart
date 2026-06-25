@@ -11,13 +11,20 @@ void main() {
   test('model reference round trips provider-qualified values', () {
     final encoded = ModelReference.encode(
       providerId: 'openrouter/provider',
-      modelId: 'openai/gpt-4.1-mini',
+      modelId: 'openai/gpt-4.1-mini::preview',
     );
     final parsed = ModelReference.parse(encoded);
 
     expect(parsed?.providerId, 'openrouter/provider');
-    expect(parsed?.modelId, 'openai/gpt-4.1-mini');
+    expect(parsed?.modelId, 'openai/gpt-4.1-mini::preview');
     expect(parsed?.serialize(), encoded);
+  });
+
+  test('model reference parses legacy provider-qualified values', () {
+    final parsed = ModelReference.parse('openrouter::openai/gpt-4.1-mini');
+
+    expect(parsed?.providerId, 'openrouter');
+    expect(parsed?.modelId, 'openai/gpt-4.1-mini');
   });
 
   test(
@@ -52,6 +59,33 @@ void main() {
   });
 
   test(
+    'legacy model ids skip disabled or unconfigured providers at request time',
+    () {
+      final baseConfig = _duplicateModelConfig();
+      final config = baseConfig.copyWith(
+        providers: [
+          baseConfig.providers[0].copyWith(enabled: false),
+          baseConfig.providers[1].copyWith(
+            models: const [
+              ModelConfig(
+                modelId: 'shared-chat',
+                displayName: 'OpenRouter Shared',
+                modelTypes: ['chat', 'completion'],
+              ),
+            ],
+          ),
+        ],
+        defaultModels: {
+          ...AppConfig.defaults().defaultModels,
+          'editCompletionModel': 'shared-chat',
+        },
+      );
+
+      expect(service.fimUnavailableReason(config), isNull);
+    },
+  );
+
+  test(
     'fim validation checks the selected provider instead of first model id',
     () {
       final config = _duplicateModelConfig().copyWith(
@@ -71,6 +105,37 @@ void main() {
     },
   );
 
+  test('fim validation rejects responses providers', () {
+    final config = AppConfig.defaults().copyWith(
+      providers: const [
+        ProviderConfig(
+          id: 'openai-responses',
+          enabled: true,
+          name: 'OpenAI Responses',
+          protocol: 'openaiCompatible',
+          apiKey: 'key',
+          baseUrl: 'https://api.openai.com/v1',
+          apiPath: '/responses',
+          models: [
+            ModelConfig(
+              modelId: 'gpt-5-mini',
+              displayName: 'GPT-5 Mini',
+              modelTypes: ['chat', 'completion'],
+            ),
+          ],
+        ),
+      ],
+      defaultModels: {
+        ...AppConfig.defaults().defaultModels,
+        'editCompletionModel': ModelReference.encode(
+          providerId: 'openai-responses',
+          modelId: 'gpt-5-mini',
+        ),
+      },
+    );
+
+    expect(service.fimUnavailableReason(config), 'FIM 不支持 Responses API 供应商');
+  });
 }
 
 AppConfig _duplicateModelConfig() {

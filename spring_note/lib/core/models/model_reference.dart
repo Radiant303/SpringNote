@@ -9,7 +9,7 @@ class ModelReference {
   bool get isQualified => providerId != null && providerId!.trim().isNotEmpty;
 
   static String encode({required String providerId, required String modelId}) {
-    return '${Uri.encodeComponent(providerId.trim())}$separator${modelId.trim()}';
+    return '${Uri.encodeComponent(providerId.trim())}$separator${Uri.encodeComponent(modelId.trim())}';
   }
 
   static ModelReference? parse(String? value) {
@@ -31,7 +31,7 @@ class ModelReference {
 
     return ModelReference(
       providerId: Uri.decodeComponent(encodedProviderId),
-      modelId: modelId,
+      modelId: Uri.decodeComponent(modelId),
     );
   }
 

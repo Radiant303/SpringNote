@@ -263,6 +263,56 @@ void main() {
     expect(find.text('Shared Chat · OpenRouter'), findsOneWidget);
   });
 
+  testWidgets('provider editor preserves unknown protocol values', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const provider = ProviderConfig(
+      id: 'custom-provider',
+      enabled: true,
+      name: 'Custom Provider',
+      protocol: 'customProtocol',
+      apiKey: 'key',
+      baseUrl: 'https://api.example.com',
+      apiPath: '/chat/completions',
+      models: [],
+    );
+    final service = _MemoryLocalDataService(
+      AppConfig.defaults().copyWith(providers: const [provider]),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: SettingsPage(
+          localDataState: _state(service.savedConfig),
+          localDataService: service,
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('供应商').first);
+    await tester.pump();
+
+    expect(find.text('customProtocol'), findsWidgets);
+
+    final nameField = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextField && widget.controller?.text == 'Custom Provider',
+    );
+    expect(nameField, findsOneWidget);
+
+    await tester.enterText(nameField, 'Renamed Provider');
+    await tester.pump();
+
+    expect(service.savedConfig.providers.first.name, 'Renamed Provider');
+    expect(service.savedConfig.providers.first.protocol, 'customProtocol');
+  });
+
   testWidgets('provider and model changes persist to config file', (
     WidgetTester tester,
   ) async {

@@ -1453,6 +1453,9 @@ fn join_url(base_url: &str, path: &str) -> String {
 }
 
 fn completions_url(provider: &AiProvider) -> String {
+    if is_responses_endpoint(provider) {
+        return join_url(&provider_endpoint_base(provider), "/responses");
+    }
     join_url(&provider_endpoint_base(provider), "/completions")
 }
 
@@ -2147,5 +2150,9 @@ mod tests {
         };
 
         assert_eq!(models_url(&provider), "https://api.example.com/v1/models");
+        assert_eq!(
+            completions_url(&provider),
+            "https://api.example.com/v1/responses"
+        );
     }
 }

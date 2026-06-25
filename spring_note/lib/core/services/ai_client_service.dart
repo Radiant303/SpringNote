@@ -320,17 +320,15 @@ class AiClientService {
     required String prompt,
     required String suffix,
   }) async {
-    if (fimUnavailableReason(config) != null) {
+    final modelRef = ModelReference.parse(
+      config.defaultModels['editCompletionModel'],
+    );
+    if (modelRef == null) {
       return null;
     }
 
-    final selection = _selectModel(
-      config,
-      'editCompletionModel',
-      requireCompletion: true,
-    );
-    if (selection == null ||
-        selection.provider.protocol != 'openaiCompatible') {
+    final selection = _findFimModel(config, modelRef);
+    if (selection == null) {
       return null;
     }
 
@@ -455,6 +453,11 @@ class AiClientService {
       return '未选择编辑补全模型';
     }
 
+    final fimSelection = _findFimModel(config, modelRef);
+    if (fimSelection != null) {
+      return null;
+    }
+
     final selection = _findModel(config, modelRef);
     if (selection == null) {
       return '编辑补全模型不存在或已被删除';
@@ -468,8 +471,32 @@ class AiClientService {
     if (selection.provider.protocol != 'openaiCompatible') {
       return 'FIM 仅支持 OpenAI-compatible 供应商';
     }
+    if (_isResponsesEndpoint(selection.provider)) {
+      return 'FIM 不支持 Responses API 供应商';
+    }
     if (!selection.model.modelTypes.contains('completion')) {
       return '编辑补全模型的模型类型没有勾选“补全”';
+    }
+    return null;
+  }
+
+  _ModelSelection? _findFimModel(AppConfig config, ModelReference modelRef) {
+    for (final provider in config.providers) {
+      if (modelRef.providerId != null && provider.id != modelRef.providerId) {
+        continue;
+      }
+      if (!provider.enabled ||
+          provider.apiKey.trim().isEmpty ||
+          provider.protocol != 'openaiCompatible' ||
+          _isResponsesEndpoint(provider)) {
+        continue;
+      }
+      for (final model in provider.models) {
+        if (model.modelId == modelRef.modelId &&
+            model.modelTypes.contains('completion')) {
+          return _ModelSelection(provider: provider, model: model);
+        }
+      }
     }
     return null;
   }
@@ -484,26 +511,50 @@ class AiClientService {
       return null;
     }
 
-    final selection = _findModel(config, modelRef);
-    if (selection == null ||
-        !selection.provider.enabled ||
-        selection.provider.apiKey.trim().isEmpty) {
-      return null;
-    }
-    if (requireCompletion &&
-        !selection.model.modelTypes.contains('completion')) {
-      return null;
-    }
+    final selection = _findAvailableModel(
+      config,
+      modelRef,
+      requireCompletion: requireCompletion,
+    );
     return selection;
   }
 
-  _ModelSelection? _findModel(AppConfig config, ModelReference modelRef) {
+  _ModelSelection? _findAvailableModel(
+    AppConfig config,
+    ModelReference modelRef, {
+    bool requireCompletion = false,
+  }) {
+    return _findModel(
+      config,
+      modelRef,
+      requireEnabledProvider: true,
+      requireApiKey: true,
+      requireCompletion: requireCompletion,
+    );
+  }
+
+  _ModelSelection? _findModel(
+    AppConfig config,
+    ModelReference modelRef, {
+    bool requireEnabledProvider = false,
+    bool requireApiKey = false,
+    bool requireCompletion = false,
+  }) {
     for (final provider in config.providers) {
       if (modelRef.providerId != null && provider.id != modelRef.providerId) {
         continue;
       }
+      if (requireEnabledProvider && !provider.enabled) {
+        continue;
+      }
+      if (requireApiKey && provider.apiKey.trim().isEmpty) {
+        continue;
+      }
       for (final model in provider.models) {
         if (model.modelId == modelRef.modelId) {
+          if (requireCompletion && !model.modelTypes.contains('completion')) {
+            continue;
+          }
           return _ModelSelection(provider: provider, model: model);
         }
       }

@@ -75,11 +75,11 @@ class LocalDataService {
 
     await _syncSecurityScopedAccess(targetRoot, previousRoot: currentRoot);
     final config = targetAlreadyHasData
-        ? null
+        ? await _readOrCreateConfig(targetConfigFile)
         : currentState.config.copyWith(
             customDataDirectory: await _customDirectoryFor(targetRoot),
           );
-    if (config != null) {
+    if (!targetAlreadyHasData) {
       await _writeConfig(targetConfigFile, config);
     }
     await _writeActiveDataDirectoryPointer(

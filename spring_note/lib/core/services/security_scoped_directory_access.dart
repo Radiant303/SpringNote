@@ -34,7 +34,7 @@ class MethodChannelSecurityScopedDirectoryAccess
     try {
       return await _channel.invokeMethod<bool>('saveBookmark', path) ?? false;
     } on MissingPluginException {
-      return true;
+      return false;
     } on PlatformException {
       return false;
     }
@@ -48,7 +48,7 @@ class MethodChannelSecurityScopedDirectoryAccess
     try {
       return await _channel.invokeMethod<bool>('startAccessing', path) ?? false;
     } on MissingPluginException {
-      return true;
+      return false;
     } on PlatformException {
       return false;
     }
