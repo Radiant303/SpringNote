@@ -6074,7 +6074,8 @@ class _ProtocolField extends StatelessWidget {
       'gemini': 'Gemini',
       'claude': 'Claude',
     };
-    final current = protocols.containsKey(value) ? value : 'openaiCompatible';
+    final trimmedValue = value.trim();
+    final current = trimmedValue.isEmpty ? 'openaiCompatible' : trimmedValue;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
@@ -6086,6 +6087,8 @@ class _ProtocolField extends StatelessWidget {
           DropdownButtonFormField<String>(
             initialValue: current,
             items: [
+              if (!protocols.containsKey(current))
+                DropdownMenuItem(value: current, child: Text(current)),
               for (final entry in protocols.entries)
                 DropdownMenuItem(value: entry.key, child: Text(entry.value)),
             ],
