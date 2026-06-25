@@ -132,7 +132,7 @@ jobs:
               print("AI_REVIEW_API_KEY is not configured; skipped AI review.")
               raise SystemExit(0)
 
-          max_chars = 60000
+          max_chars = 250000
           if len(diff) > max_chars:
               diff = diff[:max_chars] + "\n\n[Diff 已截断，仅审查前 60000 字符。]"
 
