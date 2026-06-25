@@ -95,14 +95,11 @@ final class TrayController: NSObject {
   }
 
   private func loadStatusIcon() -> NSImage? {
-    guard
-      let iconPath = Bundle.main.path(forResource: "AppIcon", ofType: "icns"),
-      let image = NSImage(contentsOfFile: iconPath)
-    else {
+    guard let image = NSImage(named: "TrayIcon") else {
       return nil
     }
     image.size = NSSize(width: 18, height: 18)
-    image.isTemplate = true
+    image.isTemplate = false
     return image
   }
 
