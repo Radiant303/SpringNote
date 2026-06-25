@@ -113,13 +113,17 @@ class ProviderConfig {
         name: 'DeepSeek',
         protocol: 'openaiCompatible',
         apiKey: '',
-        baseUrl: 'https://api.deepseek.com',
+        baseUrl: 'https://api.deepseek.com/beta',
         apiPath: '/chat/completions',
         models: const [
-          ModelConfig(modelId: 'deepseek-chat', displayName: 'DeepSeek Chat'),
           ModelConfig(
-            modelId: 'deepseek-reasoner',
-            displayName: 'DeepSeek Reasoner',
+            modelId: 'deepseek-v4-flash',
+            displayName: 'DeepSeek V4 Flash',
+          ),
+          ModelConfig(
+            modelId: 'deepseek-v4-pro',
+            displayName: 'DeepSeek V4 Pro',
+            modelTypes: ['chat', 'completion'],
             capabilities: ['reasoning'],
           ),
         ],

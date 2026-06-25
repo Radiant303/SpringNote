@@ -70,6 +70,23 @@ void main() {
       );
     },
   );
+
+  test('DeepSeek template uses beta base URL for FIM-capable v4 model', () {
+    final provider = ProviderConfig.template('DeepSeek');
+
+    expect(provider.baseUrl, 'https://api.deepseek.com/beta');
+    expect(provider.apiPath, '/chat/completions');
+    expect(
+      provider.models.map((model) => model.modelId),
+      containsAll(['deepseek-v4-flash', 'deepseek-v4-pro']),
+    );
+
+    final fimModel = provider.models.firstWhere(
+      (model) => model.modelId == 'deepseek-v4-pro',
+    );
+    expect(fimModel.modelTypes, contains('completion'));
+    expect(fimModel.capabilities, contains('reasoning'));
+  });
 }
 
 AppConfig _duplicateModelConfig() {
