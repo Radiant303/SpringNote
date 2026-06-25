@@ -7,6 +7,7 @@ import '../../src/rust/api/ai_api.dart' as rust_api;
 import '../models/app_config.dart';
 import '../models/memory_message.dart';
 import '../models/model_config.dart';
+import '../models/model_reference.dart';
 import '../models/provider_config.dart';
 import '../models/structured_work_note.dart';
 
@@ -433,48 +434,44 @@ class AiClientService {
   }
 
   String memoryModelLabel(AppConfig config) {
-    final modelId = config.defaultModels['memoryBookModel'];
-    if (modelId == null || modelId.trim().isEmpty) {
+    final modelRef = ModelReference.parse(
+      config.defaultModels['memoryBookModel'],
+    );
+    if (modelRef == null) {
       return '记忆模型未选择';
     }
-    for (final provider in config.providers) {
-      for (final model in provider.models) {
-        if (model.modelId == modelId) {
-          return model.displayName;
-        }
-      }
+    final selection = _findModel(config, modelRef);
+    if (selection != null) {
+      return '${selection.model.displayName} · ${selection.provider.name}';
     }
-    return modelId;
+    return modelRef.modelId;
   }
 
   String? fimUnavailableReason(AppConfig config) {
-    final modelId = config.defaultModels['editCompletionModel'];
-    if (modelId == null || modelId.trim().isEmpty) {
+    final modelRef = ModelReference.parse(
+      config.defaultModels['editCompletionModel'],
+    );
+    if (modelRef == null) {
       return '未选择编辑补全模型';
     }
 
-    for (final provider in config.providers) {
-      for (final model in provider.models) {
-        if (model.modelId != modelId) {
-          continue;
-        }
-        if (!provider.enabled) {
-          return '编辑补全模型所在供应商未启用';
-        }
-        if (provider.apiKey.trim().isEmpty) {
-          return '编辑补全模型所在供应商 API Key 为空';
-        }
-        if (provider.protocol != 'openaiCompatible') {
-          return 'FIM 仅支持 OpenAI-compatible 供应商';
-        }
-        if (!model.modelTypes.contains('completion')) {
-          return '编辑补全模型的模型类型没有勾选“补全”';
-        }
-        return null;
-      }
+    final selection = _findModel(config, modelRef);
+    if (selection == null) {
+      return '编辑补全模型不存在或已被删除';
     }
-
-    return '编辑补全模型不存在或已被删除';
+    if (!selection.provider.enabled) {
+      return '编辑补全模型所在供应商未启用';
+    }
+    if (selection.provider.apiKey.trim().isEmpty) {
+      return '编辑补全模型所在供应商 API Key 为空';
+    }
+    if (selection.provider.protocol != 'openaiCompatible') {
+      return 'FIM 仅支持 OpenAI-compatible 供应商';
+    }
+    if (!selection.model.modelTypes.contains('completion')) {
+      return '编辑补全模型的模型类型没有勾选“补全”';
+    }
+    return null;
   }
 
   _ModelSelection? _selectModel(
@@ -482,20 +479,31 @@ class AiClientService {
     String key, {
     bool requireCompletion = false,
   }) {
-    final modelId = config.defaultModels[key];
-    if (modelId == null || modelId.trim().isEmpty) {
+    final modelRef = ModelReference.parse(config.defaultModels[key]);
+    if (modelRef == null) {
       return null;
     }
 
+    final selection = _findModel(config, modelRef);
+    if (selection == null ||
+        !selection.provider.enabled ||
+        selection.provider.apiKey.trim().isEmpty) {
+      return null;
+    }
+    if (requireCompletion &&
+        !selection.model.modelTypes.contains('completion')) {
+      return null;
+    }
+    return selection;
+  }
+
+  _ModelSelection? _findModel(AppConfig config, ModelReference modelRef) {
     for (final provider in config.providers) {
-      if (!provider.enabled || provider.apiKey.trim().isEmpty) {
+      if (modelRef.providerId != null && provider.id != modelRef.providerId) {
         continue;
       }
       for (final model in provider.models) {
-        if (model.modelId == modelId) {
-          if (requireCompletion && !model.modelTypes.contains('completion')) {
-            return null;
-          }
+        if (model.modelId == modelRef.modelId) {
           return _ModelSelection(provider: provider, model: model);
         }
       }

@@ -21,6 +21,19 @@ class ProviderConfig {
   final String apiPath;
   final List<ModelConfig> models;
 
+  static const templateNames = [
+    'OpenAI',
+    'OpenAI Responses',
+    'DeepSeek',
+    'Qwen DashScope',
+    'Kimi',
+    'OpenRouter',
+    'SiliconFlow',
+    'Ollama',
+    'Google',
+    'Claude',
+  ];
+
   factory ProviderConfig.fromJson(Map<String, Object?> json) {
     final protocol = json['protocol']?.toString() ?? 'openaiCompatible';
     final name = json['name']?.toString() ?? 'OpenAI';
@@ -37,7 +50,10 @@ class ProviderConfig {
   }
 
   factory ProviderConfig.template(String template) {
-    final normalized = template.toLowerCase();
+    final normalized = template.toLowerCase().replaceAll(
+      RegExp(r'[^a-z0-9]+'),
+      '',
+    );
     if (normalized == 'google' || normalized == 'gemini') {
       return ProviderConfig(
         id: _makeId('Google'),
@@ -69,6 +85,135 @@ class ProviderConfig {
             modelId: 'claude-sonnet-4',
             displayName: 'Claude Sonnet 4',
           ),
+        ],
+      );
+    }
+    if (normalized == 'openairesponses' || normalized == 'responses') {
+      return ProviderConfig(
+        id: _makeId('OpenAI Responses'),
+        enabled: true,
+        name: 'OpenAI Responses',
+        protocol: 'openaiCompatible',
+        apiKey: '',
+        baseUrl: 'https://api.openai.com/v1',
+        apiPath: '/responses',
+        models: const [
+          ModelConfig(
+            modelId: 'gpt-5-mini',
+            displayName: 'GPT-5 Mini',
+            capabilities: ['tools', 'reasoning'],
+          ),
+        ],
+      );
+    }
+    if (normalized == 'deepseek') {
+      return ProviderConfig(
+        id: _makeId('DeepSeek'),
+        enabled: true,
+        name: 'DeepSeek',
+        protocol: 'openaiCompatible',
+        apiKey: '',
+        baseUrl: 'https://api.deepseek.com',
+        apiPath: '/chat/completions',
+        models: const [
+          ModelConfig(modelId: 'deepseek-chat', displayName: 'DeepSeek Chat'),
+          ModelConfig(
+            modelId: 'deepseek-reasoner',
+            displayName: 'DeepSeek Reasoner',
+            capabilities: ['reasoning'],
+          ),
+        ],
+      );
+    }
+    if (normalized == 'qwendashscope' ||
+        normalized == 'dashscope' ||
+        normalized == 'qwen') {
+      return ProviderConfig(
+        id: _makeId('Qwen DashScope'),
+        enabled: true,
+        name: 'Qwen DashScope',
+        protocol: 'openaiCompatible',
+        apiKey: '',
+        baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+        apiPath: '/chat/completions',
+        models: const [
+          ModelConfig(modelId: 'qwen-plus', displayName: 'Qwen Plus'),
+          ModelConfig(
+            modelId: 'qwen3-coder-plus',
+            displayName: 'Qwen3 Coder Plus',
+          ),
+        ],
+      );
+    }
+    if (normalized == 'kimi' || normalized == 'moonshot') {
+      return ProviderConfig(
+        id: _makeId('Kimi'),
+        enabled: true,
+        name: 'Kimi',
+        protocol: 'openaiCompatible',
+        apiKey: '',
+        baseUrl: 'https://api.moonshot.cn/v1',
+        apiPath: '/chat/completions',
+        models: const [
+          ModelConfig(modelId: 'kimi-k2-0711-preview', displayName: 'Kimi K2'),
+          ModelConfig(modelId: 'moonshot-v1-8k', displayName: 'Moonshot v1 8K'),
+        ],
+      );
+    }
+    if (normalized == 'openrouter') {
+      return ProviderConfig(
+        id: _makeId('OpenRouter'),
+        enabled: true,
+        name: 'OpenRouter',
+        protocol: 'openaiCompatible',
+        apiKey: '',
+        baseUrl: 'https://openrouter.ai/api/v1',
+        apiPath: '/chat/completions',
+        models: const [
+          ModelConfig(
+            modelId: 'openai/gpt-4.1-mini',
+            displayName: 'GPT-4.1 Mini',
+          ),
+          ModelConfig(
+            modelId: 'anthropic/claude-sonnet-4',
+            displayName: 'Claude Sonnet 4',
+          ),
+        ],
+      );
+    }
+    if (normalized == 'siliconflow') {
+      return ProviderConfig(
+        id: _makeId('SiliconFlow'),
+        enabled: true,
+        name: 'SiliconFlow',
+        protocol: 'openaiCompatible',
+        apiKey: '',
+        baseUrl: 'https://api.siliconflow.cn/v1',
+        apiPath: '/chat/completions',
+        models: const [
+          ModelConfig(
+            modelId: 'Qwen/Qwen3-235B-A22B',
+            displayName: 'Qwen3 235B A22B',
+          ),
+          ModelConfig(
+            modelId: 'deepseek-ai/DeepSeek-V3',
+            displayName: 'DeepSeek V3',
+          ),
+        ],
+      );
+    }
+    if (normalized == 'ollama' || normalized == 'local') {
+      return ProviderConfig(
+        id: _makeId('Ollama'),
+        enabled: true,
+        name: 'Ollama',
+        protocol: 'openaiCompatible',
+        apiKey: 'ollama',
+        baseUrl: 'http://127.0.0.1:11434/v1',
+        apiPath: '/chat/completions',
+        models: const [
+          ModelConfig(modelId: 'qwen3:8b', displayName: 'Qwen3 8B'),
+          ModelConfig(modelId: 'llama3.1:8b', displayName: 'Llama 3.1 8B'),
         ],
       );
     }

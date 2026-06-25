@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:spring_note/core/models/app_config.dart';
 import 'package:spring_note/core/models/local_data_state.dart';
 import 'package:spring_note/core/models/model_config.dart';
+import 'package:spring_note/core/models/model_reference.dart';
 import 'package:spring_note/core/models/provider_config.dart';
 import 'package:spring_note/core/services/ai_client_service.dart';
 import 'package:spring_note/core/services/local_data_service.dart';
@@ -172,7 +173,10 @@ void main() {
 
     expect(
       service.savedConfig.defaultModels['intelligentGenerationModel'],
-      'custom-chat-model',
+      ModelReference.encode(
+        providerId: service.savedConfig.providers.first.id,
+        modelId: 'custom-chat-model',
+      ),
     );
 
     await tester.tap(find.byKey(const ValueKey('default-model-编辑补全模型')));
@@ -183,8 +187,80 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       service.savedConfig.defaultModels['editCompletionModel'],
-      'custom-chat-model',
+      ModelReference.encode(
+        providerId: service.savedConfig.providers.first.id,
+        modelId: 'custom-chat-model',
+      ),
     );
+  });
+
+  testWidgets('default model picker stores provider-qualified model refs', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const providers = [
+      ProviderConfig(
+        id: 'deepseek',
+        enabled: true,
+        name: 'DeepSeek',
+        protocol: 'openaiCompatible',
+        apiKey: 'key-1',
+        baseUrl: 'https://api.deepseek.com',
+        apiPath: '/chat/completions',
+        models: [
+          ModelConfig(modelId: 'chat-model', displayName: 'Shared Chat'),
+        ],
+      ),
+      ProviderConfig(
+        id: 'openrouter',
+        enabled: true,
+        name: 'OpenRouter',
+        protocol: 'openaiCompatible',
+        apiKey: 'key-2',
+        baseUrl: 'https://openrouter.ai/api/v1',
+        apiPath: '/chat/completions',
+        models: [
+          ModelConfig(modelId: 'chat-model', displayName: 'Shared Chat'),
+        ],
+      ),
+    ];
+    final service = _MemoryLocalDataService(
+      AppConfig.defaults().copyWith(providers: providers),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: SettingsPage(
+          localDataState: _state(service.savedConfig),
+          localDataService: service,
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('默认模型').first);
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('default-model-智能生成模型')));
+    await tester.pumpAndSettle();
+
+    final dialog = find.byType(Dialog);
+    await tester.tap(
+      find.descendant(
+        of: dialog,
+        matching: find.text('OpenRouter · chat-model'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      service.savedConfig.defaultModels['intelligentGenerationModel'],
+      ModelReference.encode(providerId: 'openrouter', modelId: 'chat-model'),
+    );
+    expect(find.text('Shared Chat · OpenRouter'), findsOneWidget);
   });
 
   testWidgets('provider and model changes persist to config file', (

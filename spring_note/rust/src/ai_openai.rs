@@ -531,7 +531,7 @@ pub async fn fetch_models(
     provider: &AiProvider,
     api_log_enabled: bool,
 ) -> Result<Vec<AiModel>, String> {
-    let url = join_url(&provider.base_url, "/models");
+    let url = models_url(provider);
     let started_at = Instant::now();
     let response = Client::new()
         .get(&url)
@@ -870,9 +870,12 @@ fn normalize_chat_reasoning_effort(effort: &str) -> &str {
 
 fn normalize_responses_reasoning_effort(effort: &str) -> &str {
     match effort {
-        "max" | "xhigh" | "high" => "high",
+        "max" | "xhigh" => "xhigh",
+        "high" => "high",
         "medium" => "medium",
-        "low" | "minimal" => "low",
+        "low" => "low",
+        "minimal" => "minimal",
+        "none" => "none",
         _ => "high",
     }
 }
@@ -1410,9 +1413,9 @@ impl StreamAccumulator {
             event.get("item_id").and_then(Value::as_str),
         ];
         if let Some(index) = self.tool_calls.iter().position(|tool_call| {
-            ids.iter().flatten().any(|id| {
-                !id.is_empty() && !tool_call.id.is_empty() && tool_call.id == *id
-            })
+            ids.iter()
+                .flatten()
+                .any(|id| !id.is_empty() && !tool_call.id.is_empty() && tool_call.id == *id)
         }) {
             return index;
         }
@@ -1450,7 +1453,42 @@ fn join_url(base_url: &str, path: &str) -> String {
 }
 
 fn completions_url(provider: &AiProvider) -> String {
-    join_url(&provider.base_url, "/completions")
+    join_url(&provider_endpoint_base(provider), "/completions")
+}
+
+fn models_url(provider: &AiProvider) -> String {
+    join_url(&provider_endpoint_base(provider), "/models")
+}
+
+fn provider_endpoint_base(provider: &AiProvider) -> String {
+    let base = trim_endpoint_suffix(&provider.base_url);
+    if provider.api_path.trim().is_empty() {
+        return base;
+    }
+
+    let endpoint = join_url(&base, &provider.api_path);
+    let trimmed = trim_endpoint_suffix(&endpoint);
+    if trimmed != endpoint.trim_end_matches('/') {
+        return trimmed;
+    }
+    base
+}
+
+fn trim_endpoint_suffix(url: &str) -> String {
+    let mut result = url.trim_end_matches('/').to_string();
+    for suffix in [
+        "/chat/completions",
+        "/responses",
+        "/completions",
+        "/messages",
+    ] {
+        if result.ends_with(suffix) {
+            let next_len = result.len() - suffix.len();
+            result.truncate(next_len);
+            break;
+        }
+    }
+    result
 }
 
 pub fn is_responses_endpoint(provider: &AiProvider) -> bool {
@@ -1794,8 +1832,34 @@ mod tests {
 
         let body = build_memory_tool_responses_stream_body(&request, "system");
         assert_eq!(body["stream"], true);
-        assert_eq!(body["reasoning"]["effort"], "high");
+        assert_eq!(body["reasoning"]["effort"], "xhigh");
         assert!(body.get("stream_options").is_none());
+    }
+
+    #[test]
+    fn preserves_responses_reasoning_effort_xhigh() {
+        let request = MemoryToolChatRequest {
+            app_data_dir: ".".to_string(),
+            provider: AiProvider {
+                id: "p".to_string(),
+                name: "OpenAI Responses".to_string(),
+                protocol: "openaiCompatible".to_string(),
+                api_key: "key".to_string(),
+                base_url: "https://api.example.com/v1".to_string(),
+                api_path: "/responses".to_string(),
+            },
+            model: AiModel {
+                model_id: "gpt-test".to_string(),
+                display_name: "GPT Test".to_string(),
+            },
+            messages: vec![],
+            thinking_enabled: true,
+            reasoning_effort: "xhigh".to_string(),
+            api_log_enabled: false,
+        };
+
+        let body = build_memory_tool_responses_body(&request, "system");
+        assert_eq!(body["reasoning"]["effort"], "xhigh");
     }
 
     #[test]
@@ -2034,5 +2098,37 @@ mod tests {
             completions_url(&provider),
             "https://api.example.com/v1/completions"
         );
+    }
+
+    #[test]
+    fn endpoint_base_strips_configured_chat_endpoint() {
+        let provider = AiProvider {
+            id: "p".to_string(),
+            name: "OpenAI Compatible".to_string(),
+            protocol: "openaiCompatible".to_string(),
+            api_key: "key".to_string(),
+            base_url: "https://api.example.com/v1/chat/completions".to_string(),
+            api_path: String::new(),
+        };
+
+        assert_eq!(models_url(&provider), "https://api.example.com/v1/models");
+        assert_eq!(
+            completions_url(&provider),
+            "https://api.example.com/v1/completions"
+        );
+    }
+
+    #[test]
+    fn endpoint_base_strips_responses_endpoint() {
+        let provider = AiProvider {
+            id: "p".to_string(),
+            name: "OpenAI Responses".to_string(),
+            protocol: "openaiCompatible".to_string(),
+            api_key: "key".to_string(),
+            base_url: "https://api.example.com/v1".to_string(),
+            api_path: "/responses".to_string(),
+        };
+
+        assert_eq!(models_url(&provider), "https://api.example.com/v1/models");
     }
 }
