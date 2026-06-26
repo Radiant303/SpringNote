@@ -173,7 +173,17 @@ class _NotesPageState extends State<NotesPage> {
       directoryPath: directory,
       kind: kind,
     );
-    if (notes.isEmpty) {
+    NoteFile? currentDailyNote;
+    if (kind == NoteKind.daily) {
+      currentDailyNote = await widget.noteService.ensureCurrentMarkdownFile(
+        directoryPath: directory,
+        kind: kind,
+      );
+      notes = await widget.noteService.listMarkdownFiles(
+        directoryPath: directory,
+        kind: kind,
+      );
+    } else if (notes.isEmpty) {
       final current = await widget.noteService.ensureCurrentMarkdownFile(
         directoryPath: directory,
         kind: kind,
@@ -182,7 +192,12 @@ class _NotesPageState extends State<NotesPage> {
     }
 
     final selected = selectedPath == null
-        ? notes.first
+        ? currentDailyNote == null
+              ? notes.first
+              : notes.firstWhere(
+                  (note) => _samePath(note.path, currentDailyNote!.path),
+                  orElse: () => currentDailyNote!,
+                )
         : notes.firstWhere(
             (note) => note.path == selectedPath,
             orElse: () => notes.first,
