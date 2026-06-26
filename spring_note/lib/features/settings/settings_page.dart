@@ -4125,7 +4125,8 @@ String _formatNumber(int value) {
 class _AboutPanel extends StatelessWidget {
   const _AboutPanel();
 
-  static const _projectUrl = 'https://github.com/Radiant303/SpringNote';
+  static const _websiteUrl = 'https://radiant303.github.io/SpringNote';
+  static const _githubUrl = 'https://github.com/Radiant303/SpringNote';
   static const _licenseUrl =
       'https://github.com/Radiant303/SpringNote/blob/main/LICENSE';
   static const _qqGroupUrl = 'https://qm.qq.com/q/4gWWKvwhP2';
@@ -4181,12 +4182,12 @@ class _AboutPanel extends StatelessWidget {
             _AboutListRow(
               icon: _AboutRowIconType.globe,
               label: '官网',
-              onTap: () => _externalLinkService.open(_projectUrl),
+              onTap: () => _externalLinkService.open(_websiteUrl),
             ),
             _AboutListRow(
               icon: _AboutRowIconType.github,
               label: 'GitHub',
-              onTap: () => _externalLinkService.open(_projectUrl),
+              onTap: () => _externalLinkService.open(_githubUrl),
             ),
             _AboutListRow(
               icon: _AboutRowIconType.license,
