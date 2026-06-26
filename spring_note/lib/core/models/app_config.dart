@@ -1,6 +1,29 @@
 import 'desktop_widget_position.dart';
 import 'provider_config.dart';
 
+const defaultDailyMergePrompt = '''你是 SpringNote 的日报整理助手。
+你的任务是根据已有日报和新增随手记录，整理生成一篇自然、真实、便于继续编辑的日报。
+
+已知信息：
+- 日期：{date}
+- 已有日报：{existing_markdown}
+- 新增随手记录：{raw_input}
+- 用户所在行业：{industry}
+
+整理要求：
+1. 综合利用所有已提供的信息进行整理，空变量自动忽略。
+2. 如果已有日报存在，优先保留其中仍然有效的内容，并将新增记录自然融合进去；如果已有日报为空，则根据新增记录整理生成日报。
+3. 严格保留事实，不得编造任何不存在的任务、时间、人员、原因、进展、结果、计划、评价或情绪。
+4. 在不改变事实的前提下，可以自由整理语言，包括补充完整句子、调整语序、合并重复内容、优化表达，使内容更加自然流畅。
+5. 当新增记录只是关键词、短语或简短描述时，应主动整理成符合正常书面表达的完整内容，而不是直接照抄原文。允许适度扩展描述，使表达更加自然，但扩展内容只能服务于表达已有事实，不得引入新的事实信息。
+6. 将零散记录整理成连贯的工作记录，使全文具有连续阅读体验，读起来像用户亲自整理后的日报，而不是 AI 自动汇总的结果。
+7. 内容较少时保持简洁，避免为了丰富内容而重复表达；内容较多时可自然分段或按主题组织，但不要为了分组而分组。
+8. 表达应符合真实开发者或职场人士日常记录工作的习惯，语言自然、克制、顺畅，避免机械、模板化或过于正式的总结语气。
+9. 可以结合所在行业调整专业术语和表达习惯，但不得补充任何事实。
+10. 如果已有日报与新增记录存在重复，应保留表达更完整、更自然的一份，避免重复描述。
+11. 保留已有日报的整体结构和可继续编辑性，不随意改变已有内容的组织方式。
+12. 不输出变量名称，不解释整理过程，不添加任何说明，仅输出最终日报内容。''';
+
 class AppConfig {
   const AppConfig({
     required this.dailyWorkHours,
@@ -22,6 +45,7 @@ class AppConfig {
     required this.memoryKeywordSearchResultLimit,
     required this.memoryKeywordContextBefore,
     required this.memoryKeywordContextAfter,
+    required this.dailyMergePrompt,
     required this.apiLogEnabled,
     required this.providers,
     required this.defaultModels,
@@ -47,6 +71,7 @@ class AppConfig {
   final double memoryKeywordSearchResultLimit;
   final double memoryKeywordContextBefore;
   final double memoryKeywordContextAfter;
+  final String dailyMergePrompt;
   final bool apiLogEnabled;
   final List<ProviderConfig> providers;
   final Map<String, String?> defaultModels;
@@ -73,6 +98,7 @@ class AppConfig {
       memoryKeywordSearchResultLimit: 12,
       memoryKeywordContextBefore: 1400,
       memoryKeywordContextAfter: 2600,
+      dailyMergePrompt: defaultDailyMergePrompt,
       apiLogEnabled: false,
       providers: [],
       defaultModels: {
@@ -124,6 +150,10 @@ class AppConfig {
         json['memoryKeywordContextAfter'],
         2600,
       ),
+      dailyMergePrompt: _readString(
+        json['dailyMergePrompt'],
+        defaultDailyMergePrompt,
+      ),
       apiLogEnabled: json['apiLogEnabled'] as bool? ?? false,
       providers: _readProviders(json['providers']),
       defaultModels: _readStringMap(
@@ -155,6 +185,7 @@ class AppConfig {
       'memoryKeywordSearchResultLimit': memoryKeywordSearchResultLimit,
       'memoryKeywordContextBefore': memoryKeywordContextBefore,
       'memoryKeywordContextAfter': memoryKeywordContextAfter,
+      'dailyMergePrompt': dailyMergePrompt,
       'apiLogEnabled': apiLogEnabled,
       'providers': providers.map((provider) => provider.toJson()).toList(),
       'defaultModels': defaultModels,
@@ -182,6 +213,7 @@ class AppConfig {
     double? memoryKeywordSearchResultLimit,
     double? memoryKeywordContextBefore,
     double? memoryKeywordContextAfter,
+    String? dailyMergePrompt,
     bool? apiLogEnabled,
     List<ProviderConfig>? providers,
     Map<String, String?>? defaultModels,
@@ -219,6 +251,7 @@ class AppConfig {
           memoryKeywordContextBefore ?? this.memoryKeywordContextBefore,
       memoryKeywordContextAfter:
           memoryKeywordContextAfter ?? this.memoryKeywordContextAfter,
+      dailyMergePrompt: dailyMergePrompt ?? this.dailyMergePrompt,
       apiLogEnabled: apiLogEnabled ?? this.apiLogEnabled,
       providers: providers ?? this.providers,
       defaultModels: defaultModels ?? this.defaultModels,
@@ -231,6 +264,13 @@ class AppConfig {
       return value.toDouble();
     }
     return fallback;
+  }
+
+  static String _readString(Object? value, String fallback) {
+    if (value is! String) {
+      return fallback;
+    }
+    return value.trim().isEmpty ? fallback : value;
   }
 
   static String? _readOptionalString(Object? value) {

@@ -67,6 +67,7 @@ pub struct DailyMergeRequest {
     pub plans: Vec<String>,
     pub date: String,
     pub industry: String,
+    pub merge_prompt: String,
     pub api_log_enabled: bool,
 }
 
@@ -325,12 +326,11 @@ pub async fn generate_structured_note(request: StructuredNoteRequest) -> Structu
 }
 
 pub async fn merge_daily_note(request: DailyMergeRequest) -> AiTextResult {
-    let system_prompt = daily_merge_system_prompt(&request.industry);
     chat(AiChatRequest {
         app_data_dir: request.app_data_dir.clone(),
         provider: request.provider.clone(),
         model: request.model.clone(),
-        system_prompt,
+        system_prompt: daily_merge_system_prompt(&request),
         user_prompt: daily_merge_user_prompt(&request),
         purpose: "daily_note_merge".to_string(),
         api_log_enabled: request.api_log_enabled,
@@ -576,31 +576,39 @@ fn read_i32(value: &Value, path: &[&str]) -> Option<i32> {
     current.as_i64().map(|value| value as i32)
 }
 
-fn daily_merge_user_prompt(request: &DailyMergeRequest) -> String {
-    format!(
-        "日期：{}\n\n已有日报 Markdown：\n{}\n\n新增随手记录：\n{}\n\n新增结构化内容：\n完成事项：\n{}\n\n问题记录：\n{}\n\n明日计划：\n{}",
-        request.date,
-        if request.existing_markdown.trim().is_empty() {
-            "（空）"
-        } else {
-            request.existing_markdown.trim()
-        },
-        request.raw_input.trim(),
-        format_items(&request.completed),
-        format_items(&request.issues),
-        format_items(&request.plans),
-    )
+fn daily_merge_system_prompt(request: &DailyMergeRequest) -> String {
+    let custom_prompt = request.merge_prompt.trim();
+    if !custom_prompt.is_empty() {
+        return custom_prompt.to_string();
+    }
+
+    render_daily_merge_prompt(DAILY_MERGE_SYSTEM_PROMPT, request)
 }
 
-fn format_items(items: &[String]) -> String {
-    if items.is_empty() {
-        return "- 暂无".to_string();
-    }
-    items
-        .iter()
-        .map(|item| format!("- {item}"))
-        .collect::<Vec<_>>()
-        .join("\n")
+fn render_daily_merge_prompt(template: &str, request: &DailyMergeRequest) -> String {
+    template
+        .replace("{date}", request.date.trim())
+        .replace(
+            "{existing_markdown}",
+            if request.existing_markdown.trim().is_empty() {
+                "（空）"
+            } else {
+                request.existing_markdown.trim()
+            },
+        )
+        .replace("{raw_input}", request.raw_input.trim())
+        .replace(
+            "{industry}",
+            if request.industry.trim().is_empty() {
+                "未设置"
+            } else {
+                request.industry.trim()
+            },
+        )
+}
+
+fn daily_merge_user_prompt(_request: &DailyMergeRequest) -> String {
+    String::new()
 }
 
 fn report_user_prompt(period_label: &str, source_markdown: &str) -> String {
@@ -797,18 +805,28 @@ fn structured_system_prompt(industry: &str) -> String {
     with_industry_context(STRUCTURED_SYSTEM_PROMPT, industry)
 }
 
-const DAILY_MERGE_SYSTEM_PROMPT: &str = r#"你是 SpringNote 的日报整理助手。请把已有日报 Markdown 和新增记录合并成一篇自然、清晰、可继续编辑的日报。
-写作原则：
-1. 保留事实，不编造进展、时间、结论或情绪。
-2. 去掉重复表达，把零散记录整理成顺口的人类工作记录。
-3. Markdown 要美观清爽，可以自由使用标题、短段落、列表、引用等结构，不要拘泥于“完成事项 / 问题记录 / 明日计划”三段式。
-4. 如果内容很少，就保持简短；如果内容较多，可以自然分组并突出重点、卡点和下一步。
-5. 语气像认真写给自己或团队看的日报，不要像模板填空，也不要过度正式。
-6. 只输出最终 Markdown，不要解释。"#;
+const DAILY_MERGE_SYSTEM_PROMPT: &str = r#"你是 SpringNote 的日报整理助手。
+你的任务是根据已有日报和新增随手记录，整理生成一篇自然、真实、便于继续编辑的日报。
 
-fn daily_merge_system_prompt(industry: &str) -> String {
-    with_industry_context(DAILY_MERGE_SYSTEM_PROMPT, industry)
-}
+已知信息：
+- 日期：{date}
+- 已有日报：{existing_markdown}
+- 新增随手记录：{raw_input}
+- 用户所在行业：{industry}
+
+整理要求：
+1. 综合利用所有已提供的信息进行整理，空变量自动忽略。
+2. 如果已有日报存在，优先保留其中仍然有效的内容，并将新增记录自然融合进去；如果已有日报为空，则根据新增记录整理生成日报。
+3. 严格保留事实，不得编造任何不存在的任务、时间、人员、原因、进展、结果、计划、评价或情绪。
+4. 在不改变事实的前提下，可以自由整理语言，包括补充完整句子、调整语序、合并重复内容、优化表达，使内容更加自然流畅。
+5. 当新增记录只是关键词、短语或简短描述时，应主动整理成符合正常书面表达的完整内容，而不是直接照抄原文。允许适度扩展描述，使表达更加自然，但扩展内容只能服务于表达已有事实，不得引入新的事实信息。
+6. 将零散记录整理成连贯的工作记录，使全文具有连续阅读体验，读起来像用户亲自整理后的日报，而不是 AI 自动汇总的结果。
+7. 内容较少时保持简洁，避免为了丰富内容而重复表达；内容较多时可自然分段或按主题组织，但不要为了分组而分组。
+8. 表达应符合真实开发者或职场人士日常记录工作的习惯，语言自然、克制、顺畅，避免机械、模板化或过于正式的总结语气。
+9. 可以结合所在行业调整专业术语和表达习惯，但不得补充任何事实。
+10. 如果已有日报与新增记录存在重复，应保留表达更完整、更自然的一份，避免重复描述。
+11. 保留已有日报的整体结构和可继续编辑性，不随意改变已有内容的组织方式。
+12. 不输出变量名称，不解释整理过程，不添加任何说明，仅输出最终日报内容。"#;
 
 fn with_industry_context(base_prompt: &str, industry: &str) -> String {
     let industry = industry.trim();
@@ -899,8 +917,9 @@ mod tests {
     }
 
     #[test]
-    fn builds_daily_merge_prompt_in_rust() {
-        let prompt = daily_merge_user_prompt(&DailyMergeRequest {
+    fn renders_default_daily_merge_system_prompt_in_rust() {
+        let date = "2026-06-18";
+        let request = DailyMergeRequest {
             app_data_dir: ".".to_string(),
             provider: request().provider,
             model: request().model,
@@ -909,15 +928,43 @@ mod tests {
             completed: vec!["A".to_string()],
             issues: vec![],
             plans: vec!["B".to_string()],
+            date: date.to_string(),
+            industry: String::new(),
+            merge_prompt: String::new(),
+            api_log_enabled: false,
+        };
+
+        let prompt = daily_merge_system_prompt(&request);
+        assert!(prompt.contains(&format!("日期：{date}")));
+        assert!(prompt.contains("已有日报：# old"));
+        assert!(prompt.contains("新增随手记录：done"));
+        assert!(prompt.contains("用户所在行业：未设置"));
+        assert!(!prompt.contains("{date}"));
+        assert!(!prompt.contains("{existing_markdown}"));
+        assert!(!prompt.contains("{raw_input}"));
+        assert!(!prompt.contains("{industry}"));
+        assert_eq!(daily_merge_user_prompt(&request), "");
+    }
+
+    #[test]
+    fn custom_daily_merge_prompt_is_system_prompt() {
+        let request = DailyMergeRequest {
+            app_data_dir: ".".to_string(),
+            provider: request().provider,
+            model: request().model,
+            existing_markdown: "# old".to_string(),
+            raw_input: "done".to_string(),
+            completed: vec![],
+            issues: vec![],
+            plans: vec![],
             date: "2026-06-18".to_string(),
             industry: String::new(),
+            merge_prompt: "custom system prompt".to_string(),
             api_log_enabled: false,
-        });
+        };
 
-        assert!(prompt.contains("日期：2026-06-18"));
-        assert!(prompt.contains("- A"));
-        assert!(prompt.contains("- 暂无"));
-        assert!(prompt.contains("- B"));
+        assert_eq!(daily_merge_system_prompt(&request), "custom system prompt");
+        assert_eq!(daily_merge_user_prompt(&request), "");
     }
 
     #[test]

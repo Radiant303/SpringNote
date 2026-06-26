@@ -850,8 +850,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   DailyMergeRequest dco_decode_daily_merge_request(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 11)
-      throw Exception('unexpected arr length: expect 11 but see ${arr.length}');
+    if (arr.length != 12)
+      throw Exception('unexpected arr length: expect 12 but see ${arr.length}');
     return DailyMergeRequest(
       appDataDir: dco_decode_String(arr[0]),
       provider: dco_decode_ai_provider(arr[1]),
@@ -863,7 +863,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       plans: dco_decode_list_String(arr[7]),
       date: dco_decode_String(arr[8]),
       industry: dco_decode_String(arr[9]),
-      apiLogEnabled: dco_decode_bool(arr[10]),
+      mergePrompt: dco_decode_String(arr[10]),
+      apiLogEnabled: dco_decode_bool(arr[11]),
     );
   }
 
@@ -1367,6 +1368,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_plans = sse_decode_list_String(deserializer);
     var var_date = sse_decode_String(deserializer);
     var var_industry = sse_decode_String(deserializer);
+    var var_mergePrompt = sse_decode_String(deserializer);
     var var_apiLogEnabled = sse_decode_bool(deserializer);
     return DailyMergeRequest(
       appDataDir: var_appDataDir,
@@ -1379,6 +1381,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       plans: var_plans,
       date: var_date,
       industry: var_industry,
+      mergePrompt: var_mergePrompt,
       apiLogEnabled: var_apiLogEnabled,
     );
   }
@@ -1996,6 +1999,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_list_String(self.plans, serializer);
     sse_encode_String(self.date, serializer);
     sse_encode_String(self.industry, serializer);
+    sse_encode_String(self.mergePrompt, serializer);
     sse_encode_bool(self.apiLogEnabled, serializer);
   }
 

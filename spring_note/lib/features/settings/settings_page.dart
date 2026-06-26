@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
@@ -318,6 +319,8 @@ class _SettingsPageState extends State<SettingsPage> {
         onChanged: _updateConfig,
         dataDirectory: widget.localDataState.dataDirectory,
         configPath: widget.localDataState.configPath,
+        appDataDir: widget.localDataState.dataDirectory,
+        aiClientService: widget.aiClientService,
         saving: _saving,
         errorMessage: _settingsError,
         onDataDirectoryChanged: _migrateDataDirectory,
@@ -760,6 +763,8 @@ class _PreferencesPanel extends StatelessWidget {
     required this.onChanged,
     required this.dataDirectory,
     required this.configPath,
+    required this.appDataDir,
+    required this.aiClientService,
     required this.saving,
     required this.errorMessage,
     required this.onDataDirectoryChanged,
@@ -769,6 +774,8 @@ class _PreferencesPanel extends StatelessWidget {
   final ValueChanged<AppConfig> onChanged;
   final String dataDirectory;
   final String configPath;
+  final String appDataDir;
+  final AiClientService aiClientService;
   final bool saving;
   final String? errorMessage;
   final ValueChanged<String?> onDataDirectoryChanged;
@@ -933,6 +940,28 @@ class _PreferencesPanel extends StatelessWidget {
                   ? (value) =>
                         onChanged(config.copyWith(desktopWidgetOrbMode: value))
                   : null,
+            ),
+          ],
+        ),
+        _SettingsCard(
+          title: '提示词',
+          children: [
+            _ActionSettingRow(
+              label: '日报整理提示词',
+              value: '',
+              onTap: () async {
+                final prompt = await showDialog<String>(
+                  context: context,
+                  builder: (_) => _DailyMergePromptDialog(
+                    appDataDir: appDataDir,
+                    config: config,
+                    aiClientService: aiClientService,
+                  ),
+                );
+                if (prompt != null) {
+                  onChanged(config.copyWith(dailyMergePrompt: prompt));
+                }
+              },
             ),
           ],
         ),
@@ -5095,6 +5124,800 @@ class _SettingsCard extends StatelessWidget {
             ),
           ),
           ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionSettingRow extends StatefulWidget {
+  const _ActionSettingRow({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+
+  @override
+  State<_ActionSettingRow> createState() => _ActionSettingRowState();
+}
+
+class _ActionSettingRowState extends State<_ActionSettingRow> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = _hovered;
+    final foreground = active ? AppTheme.text : AppTheme.textSubtle;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 58),
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: Color(0xFFEEEEEE))),
+          ),
+          child: Stack(
+            alignment: Alignment.centerLeft,
+            children: [
+              Positioned.fill(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    opacity: active ? 1 : 0,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0F0F0),
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 8,
+                ),
+                child: TweenAnimationBuilder<Color?>(
+                  tween: ColorTween(
+                    end: active ? AppTheme.text : AppTheme.text,
+                  ),
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, color, _) {
+                    final labelColor = color ?? AppTheme.text;
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            widget.label,
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.copyWith(color: labelColor),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        if (widget.value.isNotEmpty) ...[
+                          Flexible(
+                            child: Text(
+                              widget.value,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.right,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(color: foreground),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: 18,
+                          color: foreground,
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DailyMergePromptDialog extends StatefulWidget {
+  const _DailyMergePromptDialog({
+    required this.appDataDir,
+    required this.config,
+    required this.aiClientService,
+  });
+
+  final String appDataDir;
+  final AppConfig config;
+  final AiClientService aiClientService;
+
+  @override
+  State<_DailyMergePromptDialog> createState() =>
+      _DailyMergePromptDialogState();
+}
+
+class _DailyMergePromptDialogState extends State<_DailyMergePromptDialog> {
+  late final _PromptFimTextEditingController _controller =
+      _PromptFimTextEditingController(text: widget.config.dailyMergePrompt);
+  late final FocusNode _focusNode = FocusNode(onKeyEvent: _handleKeyEvent);
+  final ScrollController _scrollController = ScrollController();
+  Timer? _fimDebounce;
+  int _fimGeneration = 0;
+  String? _fimPrediction;
+  String? _fimMessage;
+  bool _predicting = false;
+  bool _acceptingFim = false;
+  late String _lastPromptText = _controller.text;
+  late TextSelection _lastPromptSelection = _controller.selection;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_handleChanged);
+  }
+
+  @override
+  void dispose() {
+    _fimDebounce?.cancel();
+    _controller
+      ..removeListener(_handleChanged)
+      ..dispose();
+    _scrollController.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Dialog(
+      key: const ValueKey('daily-merge-prompt-dialog'),
+      backgroundColor: Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: SizedBox(
+        width: 720,
+        height: 680,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 20, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '编辑日报整理提示词',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.titleMedium?.copyWith(
+                        color: AppTheme.text,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  _PromptFimStatusPill(
+                    statusText: _promptFimStatusText,
+                    active: _promptFimActive,
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: '关闭',
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Prompt',
+                      style: textTheme.labelLarge?.copyWith(
+                        color: AppTheme.text,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFAFAFA),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: TextSelectionTheme(
+                            data: TextSelectionTheme.of(context).copyWith(
+                              cursorColor: const Color(0xFF6E6E6E),
+                              selectionColor: const Color(
+                                0xFFBDBDBD,
+                              ).withValues(alpha: 0.34),
+                              selectionHandleColor: const Color(0xFF737373),
+                            ),
+                            child: ScrollConfiguration(
+                              behavior: const _PromptTextFieldScrollBehavior(),
+                              child: TextField(
+                                controller: _controller,
+                                focusNode: _focusNode,
+                                scrollController: _scrollController,
+                                expands: true,
+                                maxLines: null,
+                                minLines: null,
+                                textAlignVertical: TextAlignVertical.top,
+                                keyboardType: TextInputType.multiline,
+                                style:
+                                    textTheme.bodyLarge?.copyWith(
+                                      color: const Color(0xFF3A3A3A),
+                                      fontSize: 14,
+                                      height: 1.55,
+                                    ) ??
+                                    const TextStyle(
+                                      color: Color(0xFF3A3A3A),
+                                      fontSize: 14,
+                                      height: 1.55,
+                                    ),
+                                cursorColor: const Color(0xFF6E6E6E),
+                                cursorWidth: 1.25,
+                                cursorRadius: const Radius.circular(1),
+                                selectionControls:
+                                    desktopTextSelectionHandleControls,
+                                enableInteractiveSelection: true,
+                                decoration: const InputDecoration(
+                                  hintText: '输入日报整理 Prompt...',
+                                  hintStyle: TextStyle(
+                                    color: Color(0xFFCFCFCF),
+                                  ),
+                                  filled: true,
+                                  fillColor: Color(0xFFFAFAFA),
+                                  hoverColor: Color(0xFFFAFAFA),
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  disabledBorder: InputBorder.none,
+                                  contentPadding: EdgeInsets.fromLTRB(
+                                    16,
+                                    0,
+                                    16,
+                                    0,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                ),
+              ),
+            ),
+            const Divider(height: 1, color: Color(0xFFEDEDED)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 14, 24, 12),
+              child: _PromptVariablesHint(textTheme: textTheme),
+            ),
+            const Divider(height: 1, color: Color(0xFFEDEDED)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 14, 24, 18),
+              child: Row(
+                children: [
+                  _ProviderTestDialogButton(
+                    label: '恢复默认',
+                    filled: false,
+                    onTap: _restoreDefault,
+                  ),
+                  const Spacer(),
+                  _ProviderTestDialogButton(
+                    label: '取消',
+                    filled: false,
+                    onTap: () => Navigator.of(context).pop(),
+                  ),
+                  const SizedBox(width: 10),
+                  _ProviderTestDialogButton(
+                    label: '保存',
+                    filled: true,
+                    onTap: () => Navigator.of(context).pop(_controller.text),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String get _promptFimStatusText {
+    if (_predicting) {
+      return 'AI 补全预测中';
+    }
+    if (_fimPrediction != null) {
+      return 'Tab 全部 · Ctrl+L 单行 · Ctrl+K 单字';
+    }
+    if (_fimMessage != null) {
+      return _fimMessage!;
+    }
+    return 'AI 实时补全已就绪';
+  }
+
+  bool get _promptFimActive =>
+      _predicting || _fimPrediction != null || _fimMessage == null;
+
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) {
+      return KeyEventResult.ignored;
+    }
+    final key = event.logicalKey;
+    final controlPressed =
+        HardwareKeyboard.instance.isControlPressed ||
+        HardwareKeyboard.instance.isMetaPressed;
+    if (key == LogicalKeyboardKey.tab) {
+      if (_fimPrediction == null) {
+        _insertText('\t');
+      } else {
+        _acceptFim(_PromptFimAcceptMode.all);
+      }
+      return KeyEventResult.handled;
+    }
+    if (_fimPrediction == null) {
+      return KeyEventResult.ignored;
+    }
+    if (controlPressed && key == LogicalKeyboardKey.keyL) {
+      _acceptFim(_PromptFimAcceptMode.line);
+      return KeyEventResult.handled;
+    }
+    if (controlPressed && key == LogicalKeyboardKey.keyK) {
+      _acceptFim(_PromptFimAcceptMode.character);
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  void _handleChanged() {
+    final text = _controller.text;
+    final selection = _controller.selection;
+    final textChanged = text != _lastPromptText;
+    final selectionChanged = selection != _lastPromptSelection;
+
+    _lastPromptText = text;
+    _lastPromptSelection = selection;
+
+    if (_acceptingFim) {
+      return;
+    }
+
+    if (textChanged || selectionChanged) {
+      _invalidateFimPrediction(scheduleNext: true);
+    }
+  }
+
+  void _invalidateFimPrediction({required bool scheduleNext}) {
+    _fimGeneration++;
+    _fimDebounce?.cancel();
+
+    if (_fimPrediction != null || _predicting) {
+      setState(() {
+        _fimPrediction = null;
+        _predicting = false;
+        _fimMessage = null;
+        _controller.clearFimPrediction();
+      });
+    }
+
+    if (!scheduleNext) {
+      return;
+    }
+
+    final generation = _fimGeneration;
+    final text = _controller.text;
+    final selection = _controller.selection;
+
+    if (!selection.isValid || !selection.isCollapsed) {
+      return;
+    }
+
+    final reason = widget.aiClientService.fimUnavailableReason(widget.config);
+    if (reason != null) {
+      setState(() => _fimMessage = 'FIM 未触发：$reason');
+      return;
+    }
+
+    if (_fimMessage != null) {
+      setState(() => _fimMessage = null);
+    }
+
+    _fimDebounce = Timer(const Duration(milliseconds: 300), () {
+      _requestFimPrediction(
+        generation: generation,
+        text: text,
+        selection: selection,
+      );
+    });
+  }
+
+  Future<void> _requestFimPrediction({
+    required int generation,
+    required String text,
+    required TextSelection selection,
+  }) async {
+    if (!mounted ||
+        generation != _fimGeneration ||
+        text != _controller.text ||
+        selection != _controller.selection) {
+      return;
+    }
+
+    setState(() => _predicting = true);
+    final offset = selection.baseOffset;
+    String? prediction;
+    String? fimError;
+    try {
+      final result = await widget.aiClientService.fimCompleteMarkdown(
+        appDataDir: widget.appDataDir,
+        config: widget.config,
+        prompt: text.substring(0, offset),
+        suffix: text.substring(offset),
+      );
+      prediction = result.content;
+      fimError = result.error;
+    } catch (_) {
+      prediction = null;
+    }
+
+    if (!mounted ||
+        generation != _fimGeneration ||
+        text != _controller.text ||
+        selection != _controller.selection) {
+      return;
+    }
+
+    setState(() {
+      _predicting = false;
+      if (prediction?.isEmpty ?? true) {
+        _fimPrediction = null;
+        _fimMessage = fimError != null && fimError.isNotEmpty
+            ? 'FIM 请求失败：$fimError'
+            : 'FIM 已请求，但没有返回可用预测';
+      } else {
+        _fimPrediction = prediction;
+        _fimMessage = null;
+        _controller.setFimPrediction(prediction!, offset: selection.baseOffset);
+      }
+    });
+  }
+
+  void _acceptFim(_PromptFimAcceptMode mode) {
+    final prediction = _fimPrediction;
+    final selection = _controller.selection;
+    if (prediction == null || prediction.isEmpty || !selection.isValid) {
+      return;
+    }
+    final accepted = switch (mode) {
+      _PromptFimAcceptMode.all => prediction,
+      _PromptFimAcceptMode.line => _firstPredictionLine(prediction),
+      _PromptFimAcceptMode.character => prediction.characters.first,
+    };
+    final remaining = prediction.substring(accepted.length);
+    final text = _controller.text;
+    final start = selection.start;
+    final end = selection.end;
+    final nextText = text.replaceRange(start, end, accepted);
+    final nextOffset = start + accepted.length;
+    _acceptingFim = true;
+    _controller.value = TextEditingValue(
+      text: nextText,
+      selection: TextSelection.collapsed(offset: nextOffset),
+    );
+    _acceptingFim = false;
+    setState(() {
+      if (remaining.isEmpty) {
+        _fimPrediction = null;
+        _controller.clearFimPrediction();
+      } else {
+        _fimPrediction = remaining;
+        _controller.setFimPrediction(remaining, offset: nextOffset);
+      }
+      _fimMessage = null;
+    });
+  }
+
+  void _insertText(String value) {
+    final selection = _controller.selection;
+    if (!selection.isValid) {
+      return;
+    }
+    final text = _controller.text;
+    final nextText = text.replaceRange(selection.start, selection.end, value);
+    final nextOffset = selection.start + value.length;
+    _controller.value = TextEditingValue(
+      text: nextText,
+      selection: TextSelection.collapsed(offset: nextOffset),
+    );
+  }
+
+  String _firstPredictionLine(String prediction) {
+    final newlineIndex = prediction.indexOf('\n');
+    if (newlineIndex == -1) {
+      return prediction;
+    }
+    return prediction.substring(0, newlineIndex + 1);
+  }
+
+  void _restoreDefault() {
+    _controller.value = const TextEditingValue(
+      text: defaultDailyMergePrompt,
+      selection: TextSelection.collapsed(
+        offset: defaultDailyMergePrompt.length,
+      ),
+    );
+  }
+}
+
+enum _PromptFimAcceptMode { all, line, character }
+
+class _PromptTextFieldScrollBehavior extends ScrollBehavior {
+  const _PromptTextFieldScrollBehavior();
+
+  @override
+  Widget buildScrollbar(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    return child;
+  }
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    return child;
+  }
+}
+
+class _PromptFimStatusPill extends StatelessWidget {
+  const _PromptFimStatusPill({required this.statusText, required this.active});
+
+  final String statusText;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = active
+        ? const Color(0xFF10B981)
+        : const Color(0xFF666666);
+    final background = active
+        ? const Color(0xFFECFDF5)
+        : const Color(0xFFF5F5F5);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 140),
+      curve: Curves.easeOutCubic,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.auto_awesome_outlined, size: 12, color: foreground),
+          const SizedBox(width: 4),
+          Text(
+            statusText,
+            maxLines: 1,
+            softWrap: false,
+            style: TextStyle(
+              color: foreground,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              height: 1.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PromptFimTextEditingController extends TextEditingController {
+  _PromptFimTextEditingController({super.text});
+
+  String? _fimPrediction;
+  int? _fimOffset;
+
+  void setFimPrediction(String prediction, {required int offset}) {
+    final normalizedOffset = offset.clamp(0, text.length);
+    if (_fimPrediction == prediction && _fimOffset == normalizedOffset) {
+      return;
+    }
+    _fimPrediction = prediction;
+    _fimOffset = normalizedOffset;
+    notifyListeners();
+  }
+
+  void clearFimPrediction() {
+    if (_fimPrediction == null && _fimOffset == null) {
+      return;
+    }
+    _fimPrediction = null;
+    _fimOffset = null;
+    notifyListeners();
+  }
+
+  TextSpan _bottomSpacer(TextStyle style) {
+    return TextSpan(
+      text: '\n',
+      style: style.copyWith(color: Colors.transparent),
+    );
+  }
+
+  @override
+  TextSpan buildTextSpan({
+    required BuildContext context,
+    TextStyle? style,
+    required bool withComposing,
+  }) {
+    final prediction = _fimPrediction;
+    final offset = _fimOffset;
+    final effectiveStyle = style ?? const TextStyle();
+    if (prediction == null ||
+        prediction.isEmpty ||
+        offset == null ||
+        offset < 0 ||
+        offset > text.length) {
+      return TextSpan(
+        style: effectiveStyle,
+        children: [
+          super.buildTextSpan(
+            context: context,
+            style: style,
+            withComposing: withComposing,
+          ),
+          _bottomSpacer(effectiveStyle),
+        ],
+      );
+    }
+    return TextSpan(
+      style: effectiveStyle,
+      children: [
+        TextSpan(text: text.substring(0, offset)),
+        TextSpan(
+          text: prediction,
+          style: effectiveStyle.copyWith(color: const Color(0xFF9AA0A6)),
+        ),
+        TextSpan(text: text.substring(offset)),
+        _bottomSpacer(effectiveStyle),
+      ],
+    );
+  }
+}
+
+class _PromptVariablesHint extends StatelessWidget {
+  const _PromptVariablesHint({required this.textTheme});
+
+  final TextTheme textTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    const variables = [
+      (Icons.calendar_month_outlined, '{date}', '当前日期'),
+      (Icons.article_outlined, '{existing_markdown}', '已有日报内容'),
+      (Icons.edit_note_rounded, '{raw_input}', '新增随手记录'),
+      (Icons.business_center_outlined, '{industry}', '用户所在行业'),
+    ];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 760
+            ? 4
+            : (constraints.maxWidth >= 460 ? 2 : 1);
+        const spacing = 10.0;
+        final itemWidth =
+            (constraints.maxWidth - spacing * (columns - 1)) / columns;
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: [
+            for (final item in variables)
+              SizedBox(
+                width: itemWidth,
+                child: _PromptVariableChip(
+                  icon: item.$1,
+                  name: item.$2,
+                  description: item.$3,
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _PromptVariableChip extends StatelessWidget {
+  const _PromptVariableChip({
+    required this.icon,
+    required this.name,
+    required this.description,
+  });
+
+  final IconData icon;
+  final String name;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F7F7),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFEDEDED)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: AppTheme.textMuted),
+          const SizedBox(width: 7),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppTheme.text,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w500,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                description,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppTheme.textSubtle,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w400,
+                  height: 1,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

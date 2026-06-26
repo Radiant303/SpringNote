@@ -670,12 +670,14 @@ pub async fn fim_complete(request: &FimCompleteRequest) -> Result<AiTextResult, 
 }
 
 pub fn build_chat_body(request: &AiChatRequest) -> Value {
+    let mut messages = vec![json!({"role": "system", "content": request.system_prompt})];
+    if !request.user_prompt.trim().is_empty() {
+        messages.push(json!({"role": "user", "content": request.user_prompt}));
+    }
+
     let mut body = json!({
         "model": request.model.model_id,
-        "messages": [
-            {"role": "system", "content": request.system_prompt},
-            {"role": "user", "content": request.user_prompt}
-        ],
+        "messages": messages,
         "temperature": 0.2
     });
     if disables_thinking(&request.purpose) {
@@ -1618,6 +1620,35 @@ mod tests {
         assert_eq!(body["model"], "gpt-test");
         assert_eq!(body["messages"][0]["role"], "system");
         assert_eq!(body["messages"][1]["content"], "user");
+    }
+
+    #[test]
+    fn omits_empty_user_prompt_from_openai_chat_payload() {
+        let request = AiChatRequest {
+            app_data_dir: ".".to_string(),
+            provider: AiProvider {
+                id: "p".to_string(),
+                name: "OpenAI".to_string(),
+                protocol: "openaiCompatible".to_string(),
+                api_key: "key".to_string(),
+                base_url: "https://api.example.com/v1".to_string(),
+                api_path: "/chat/completions".to_string(),
+            },
+            model: AiModel {
+                model_id: "gpt-test".to_string(),
+                display_name: "GPT Test".to_string(),
+            },
+            system_prompt: "system".to_string(),
+            user_prompt: String::new(),
+            purpose: "test".to_string(),
+            api_log_enabled: false,
+        };
+
+        let body = build_chat_body(&request);
+        let messages = body["messages"].as_array().unwrap();
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0]["role"], "system");
+        assert_eq!(messages[0]["content"], "system");
     }
 
     #[test]

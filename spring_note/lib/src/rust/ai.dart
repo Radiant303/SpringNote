@@ -184,6 +184,7 @@ class DailyMergeRequest {
   final List<String> plans;
   final String date;
   final String industry;
+  final String mergePrompt;
   final bool apiLogEnabled;
 
   const DailyMergeRequest({
@@ -197,6 +198,7 @@ class DailyMergeRequest {
     required this.plans,
     required this.date,
     required this.industry,
+    required this.mergePrompt,
     required this.apiLogEnabled,
   });
 
@@ -212,6 +214,7 @@ class DailyMergeRequest {
       plans.hashCode ^
       date.hashCode ^
       industry.hashCode ^
+      mergePrompt.hashCode ^
       apiLogEnabled.hashCode;
 
   @override
@@ -229,6 +232,7 @@ class DailyMergeRequest {
           plans == other.plans &&
           date == other.date &&
           industry == other.industry &&
+          mergePrompt == other.mergePrompt &&
           apiLogEnabled == other.apiLogEnabled;
 }
 

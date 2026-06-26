@@ -790,6 +790,7 @@ impl SseDecode for crate::ai::DailyMergeRequest {
         let mut var_plans = <Vec<String>>::sse_decode(deserializer);
         let mut var_date = <String>::sse_decode(deserializer);
         let mut var_industry = <String>::sse_decode(deserializer);
+        let mut var_mergePrompt = <String>::sse_decode(deserializer);
         let mut var_apiLogEnabled = <bool>::sse_decode(deserializer);
         return crate::ai::DailyMergeRequest {
             app_data_dir: var_appDataDir,
@@ -802,6 +803,7 @@ impl SseDecode for crate::ai::DailyMergeRequest {
             plans: var_plans,
             date: var_date,
             industry: var_industry,
+            merge_prompt: var_mergePrompt,
             api_log_enabled: var_apiLogEnabled,
         };
     }
@@ -1436,6 +1438,7 @@ impl flutter_rust_bridge::IntoDart for crate::ai::DailyMergeRequest {
             self.plans.into_into_dart().into_dart(),
             self.date.into_into_dart().into_dart(),
             self.industry.into_into_dart().into_dart(),
+            self.merge_prompt.into_into_dart().into_dart(),
             self.api_log_enabled.into_into_dart().into_dart(),
         ]
         .into_dart()
@@ -1891,6 +1894,7 @@ impl SseEncode for crate::ai::DailyMergeRequest {
         <Vec<String>>::sse_encode(self.plans, serializer);
         <String>::sse_encode(self.date, serializer);
         <String>::sse_encode(self.industry, serializer);
+        <String>::sse_encode(self.merge_prompt, serializer);
         <bool>::sse_encode(self.api_log_enabled, serializer);
     }
 }

@@ -71,6 +71,13 @@ class AiClientService {
         plans: note.plans,
         date: _formatDate(date),
         industry: config.industry,
+        mergePrompt: _renderDailyMergePrompt(
+          config.dailyMergePrompt,
+          date: _formatDate(date),
+          existingMarkdown: existingMarkdown,
+          note: note,
+          industry: config.industry,
+        ),
         apiLogEnabled: config.apiLogEnabled,
       ),
     );
@@ -312,6 +319,38 @@ class AiClientService {
       apiLogEnabled: apiLogEnabled,
       provider: _toRustProvider(provider),
     );
+  }
+
+  String _renderDailyMergePrompt(
+    String template, {
+    required String date,
+    required String existingMarkdown,
+    required StructuredWorkNote note,
+    required String industry,
+  }) {
+    final replacements = <String, String>{
+      '{date}': date,
+      '{existing_markdown}': existingMarkdown.trim().isEmpty
+          ? '（空）'
+          : existingMarkdown.trim(),
+      '{raw_input}': note.rawInput.trim(),
+      '{completed}': _formatPromptItems(note.completed),
+      '{issues}': _formatPromptItems(note.issues),
+      '{plans}': _formatPromptItems(note.plans),
+      '{industry}': industry.trim().isEmpty ? '未设置' : industry.trim(),
+    };
+    var rendered = template.trim().isEmpty ? defaultDailyMergePrompt : template;
+    for (final entry in replacements.entries) {
+      rendered = rendered.replaceAll(entry.key, entry.value);
+    }
+    return rendered;
+  }
+
+  String _formatPromptItems(List<String> items) {
+    if (items.isEmpty) {
+      return '（空）';
+    }
+    return items.map((item) => '- $item').join('\n');
   }
 
   Future<({String? content, String? error})> fimCompleteMarkdown({
