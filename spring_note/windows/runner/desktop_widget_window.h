@@ -47,6 +47,10 @@ class DesktopWidgetWindow {
   void MoveToSavedOrDefaultPosition();
   RECT WorkAreaForMonitor(HMONITOR monitor) const;
   HMONITOR MonitorForPosition(const WidgetPosition& position) const;
+  static BOOL CALLBACK FindMonitorById(HMONITOR monitor,
+                                       HDC device_context,
+                                       LPRECT monitor_rect,
+                                       LPARAM data);
   RECT ClampedRectForOrigin(int x, int y, HMONITOR preferred_monitor) const;
   void SetBoundedWindowOrigin(int x, int y);
   void ClampWindowToVisibleMonitor(bool notify);

@@ -17,6 +17,11 @@ constexpr int kWindowWidth = 260;
 constexpr int kWindowHeight = 140;
 constexpr int kCornerRadius = 16;
 
+struct MonitorSearchContext {
+  const std::string* target_id;
+  HMONITOR monitor = nullptr;
+};
+
 int ReadInt(const flutter::EncodableMap& map,
             const char* key,
             int fallback = 0) {
@@ -99,6 +104,9 @@ std::wstring Utf8ToWide(const std::string& value) {
 }
 
 std::string WideToUtf8(const wchar_t* value) {
+  if (!value) {
+    return "";
+  }
   const int wide_length = lstrlenW(value);
   if (wide_length <= 0) {
     return "";
@@ -313,33 +321,33 @@ RECT DesktopWidgetWindow::WorkAreaForMonitor(HMONITOR monitor) const {
 HMONITOR DesktopWidgetWindow::MonitorForPosition(
     const WidgetPosition& position) const {
   if (!position.screen_id.empty()) {
-    struct SearchContext {
-      const std::string* target_id;
-      HMONITOR monitor = nullptr;
-    } context{&position.screen_id, nullptr};
+    MonitorSearchContext context{&position.screen_id, nullptr};
 
-    EnumDisplayMonitors(
-        nullptr, nullptr,
-        [](HMONITOR monitor, HDC, LPRECT, LPARAM data) -> BOOL {
-          auto* context = reinterpret_cast<SearchContext*>(data);
-          MONITORINFOEX monitor_info{};
-          monitor_info.cbSize = sizeof(MONITORINFOEX);
-          if (GetMonitorInfo(monitor, &monitor_info)) {
-            if (WideToUtf8(monitor_info.szDevice) == *context->target_id) {
-              context->monitor = monitor;
-              return FALSE;
-            }
-          }
-          return TRUE;
-        },
-        reinterpret_cast<LPARAM>(&context));
+    EnumDisplayMonitors(nullptr, nullptr, FindMonitorById,
+                        reinterpret_cast<LPARAM>(&context));
     if (context.monitor) {
       return context.monitor;
     }
   }
 
-  const POINT point{position.x + kWindowWidth / 2, position.y + kWindowHeight / 2};
+  const POINT point{position.x + kWindowWidth / 2,
+                    position.y + kWindowHeight / 2};
   return MonitorFromPoint(point, MONITOR_DEFAULTTONEAREST);
+}
+
+BOOL CALLBACK DesktopWidgetWindow::FindMonitorById(HMONITOR monitor,
+                                                   HDC,
+                                                   LPRECT,
+                                                   LPARAM data) {
+  auto* context = reinterpret_cast<MonitorSearchContext*>(data);
+  MONITORINFOEX monitor_info{};
+  monitor_info.cbSize = sizeof(MONITORINFOEX);
+  if (GetMonitorInfo(monitor, &monitor_info) &&
+      WideToUtf8(monitor_info.szDevice) == *context->target_id) {
+    context->monitor = monitor;
+    return FALSE;
+  }
+  return TRUE;
 }
 
 RECT DesktopWidgetWindow::ClampedRectForOrigin(
@@ -347,10 +355,12 @@ RECT DesktopWidgetWindow::ClampedRectForOrigin(
     int y,
     HMONITOR preferred_monitor) const {
   const RECT work_area = WorkAreaForMonitor(preferred_monitor);
-  const int min_x = work_area.left;
-  const int max_x = std::max(min_x, work_area.right - kWindowWidth);
-  const int min_y = work_area.top;
-  const int max_y = std::max(min_y, work_area.bottom - kWindowHeight);
+  const int min_x = static_cast<int>(work_area.left);
+  const int max_x =
+      std::max(min_x, static_cast<int>(work_area.right) - kWindowWidth);
+  const int min_y = static_cast<int>(work_area.top);
+  const int max_y =
+      std::max(min_y, static_cast<int>(work_area.bottom) - kWindowHeight);
   const int left = std::clamp(x, min_x, max_x);
   const int top = std::clamp(y, min_y, max_y);
   return RECT{
@@ -513,14 +523,14 @@ void DesktopWidgetWindow::UpdateSavedPosition(
     const flutter::EncodableMap& arguments) {
   const auto* position = ReadMap(arguments, "position");
   if (!position) {
-    saved_position_.reset();
     return;
   }
 
-  const double x = ReadDouble(*position, "x", std::numeric_limits<double>::quiet_NaN());
-  const double y = ReadDouble(*position, "y", std::numeric_limits<double>::quiet_NaN());
+  const double x = ReadDouble(
+      *position, "x", std::numeric_limits<double>::quiet_NaN());
+  const double y = ReadDouble(
+      *position, "y", std::numeric_limits<double>::quiet_NaN());
   if (!std::isfinite(x) || !std::isfinite(y)) {
-    saved_position_.reset();
     return;
   }
 

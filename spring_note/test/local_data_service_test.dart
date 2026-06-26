@@ -21,14 +21,22 @@ void main() {
     );
 
     final reloaded = AppConfig.fromJson(config.toJson());
+    final cleared = reloaded.copyWith(desktopWidgetPosition: null);
 
     expect(reloaded.desktopWidgetPosition, position);
+    expect(cleared.desktopWidgetPosition, isNull);
     expect(AppConfig.fromJson({}).desktopWidgetPosition, isNull);
     expect(
       AppConfig.fromJson({
         'desktopWidgetPosition': {'x': double.nan, 'y': 10},
       }).desktopWidgetPosition,
       isNull,
+    );
+    expect(
+      AppConfig.fromJson({
+        'desktopWidgetPosition': {'x': -1000000, 'y': 1000000},
+      }).desktopWidgetPosition,
+      const DesktopWidgetPosition(x: -1000000, y: 1000000),
     );
   });
 

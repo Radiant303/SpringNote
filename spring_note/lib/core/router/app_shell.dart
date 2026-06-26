@@ -62,6 +62,8 @@ class _AppShellState extends State<AppShell> {
       ValueNotifier(null);
   UpdateCheckResult _updateCheckResult = UpdateCheckResult.idle;
   int _noteExternalUpdateRevision = 0;
+  Timer? _desktopWidgetPositionSaveTimer;
+  AppConfig? _pendingDesktopWidgetPositionConfig;
 
   @override
   void initState() {
@@ -105,6 +107,7 @@ class _AppShellState extends State<AppShell> {
   void dispose() {
     _desktopWidgetController.removeListener(_syncDesktopWidgetWindow);
     _levelProgressController.removeListener(_handleLevelProgressChanged);
+    _flushDesktopWidgetPositionSave();
     unawaited(_globalHotkeyService.unregisterToggleWindowHotkey());
     unawaited(_trayService.dispose());
     unawaited(_desktopWidgetWindow.dispose());
@@ -122,6 +125,9 @@ class _AppShellState extends State<AppShell> {
   }
 
   void _handleDesktopWidgetPositionChanged(DesktopWidgetPosition position) {
+    if (!mounted) {
+      return;
+    }
     final config = _localDataState.config;
     if (config.desktopWidgetPosition == position) {
       return;
@@ -131,7 +137,27 @@ class _AppShellState extends State<AppShell> {
       _localDataState = _localDataState.copyWith(config: nextConfig);
     });
     widget.onConfigChanged?.call(nextConfig);
-    unawaited(_saveDesktopWidgetPosition(nextConfig));
+    _scheduleDesktopWidgetPositionSave(nextConfig);
+  }
+
+  void _scheduleDesktopWidgetPositionSave(AppConfig config) {
+    _pendingDesktopWidgetPositionConfig = config;
+    _desktopWidgetPositionSaveTimer?.cancel();
+    _desktopWidgetPositionSaveTimer = Timer(
+      const Duration(milliseconds: 200),
+      _flushDesktopWidgetPositionSave,
+    );
+  }
+
+  void _flushDesktopWidgetPositionSave() {
+    final config = _pendingDesktopWidgetPositionConfig;
+    if (config == null) {
+      return;
+    }
+    _pendingDesktopWidgetPositionConfig = null;
+    _desktopWidgetPositionSaveTimer?.cancel();
+    _desktopWidgetPositionSaveTimer = null;
+    unawaited(_saveDesktopWidgetPosition(config));
   }
 
   Future<void> _saveDesktopWidgetPosition(AppConfig config) async {
