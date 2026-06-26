@@ -13,7 +13,7 @@ hero:
 
 <div class="hero-actions">
   <a class="primary" href="https://github.com/Radiant303/SpringNote/releases/latest">下载最新版</a>
-  <a href="/features">阅读文档</a>
+  <a href="./features">阅读文档</a>
 </div>
 
 <div class="home-showcase">

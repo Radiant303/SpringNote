@@ -3,10 +3,11 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: 'SpringNote',
   description: 'AI-native note taking for daily work, memory, and review.',
+  base: process.env.DOCS_BASE || '/',
   cleanUrls: true,
   lastUpdated: true,
   head: [
-    ['link', { rel: 'icon', href: '/images/logo.png' }],
+    ['link', { rel: 'icon', href: `${process.env.DOCS_BASE || '/'}images/logo.png` }],
     ['meta', { name: 'theme-color', content: '#16b981' }]
   ],
   locales: {
