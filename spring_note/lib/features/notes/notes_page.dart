@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,9 +10,19 @@ import '../../core/models/note_external_update.dart';
 import '../../core/models/note_file.dart';
 import '../../core/services/ai_client_service.dart';
 import '../../core/services/note_service.dart';
+import '../../core/services/pasted_image_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/page_scaffold.dart';
 import 'markdown_preview.dart';
+
+typedef NoteImagePicker = Future<List<NoteImageAttachment>> Function();
+
+class NoteImageAttachment {
+  const NoteImageAttachment({required this.path, required this.name});
+
+  final String path;
+  final String name;
+}
 
 class NotesPage extends StatefulWidget {
   const NotesPage({
@@ -19,13 +30,17 @@ class NotesPage extends StatefulWidget {
     required this.localDataState,
     this.noteService = const NoteService(),
     this.aiClientService = const AiClientService(),
+    this.pastedImageService = const PastedImageService(),
     this.externalNoteUpdate,
+    this.imagePicker,
   });
 
   final LocalDataState localDataState;
   final NoteService noteService;
   final AiClientService aiClientService;
+  final PastedImageService pastedImageService;
   final ValueListenable<NoteExternalUpdate?>? externalNoteUpdate;
+  final NoteImagePicker? imagePicker;
 
   @override
   State<NotesPage> createState() => _NotesPageState();
@@ -50,7 +65,10 @@ class _NotesPageState extends State<NotesPage> {
   int _fimGeneration = 0;
   String? _fimPrediction;
   String? _fimMessage;
+  String? _editorMessage;
   bool _consumingFimPrediction = false;
+  bool _insertingImage = false;
+  int _notesLoadGeneration = 0;
 
   @override
   void initState() {
@@ -68,6 +86,9 @@ class _NotesPageState extends State<NotesPage> {
     if (widget.externalNoteUpdate != oldWidget.externalNoteUpdate) {
       oldWidget.externalNoteUpdate?.removeListener(_handleExternalNoteUpdate);
       widget.externalNoteUpdate?.addListener(_handleExternalNoteUpdate);
+    }
+    if (_localDataDirectoryChanged(oldWidget.localDataState)) {
+      unawaited(_loadNotes(kind: _kind));
     }
   }
 
@@ -109,6 +130,14 @@ class _NotesPageState extends State<NotesPage> {
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
+  }
+
+  bool _localDataDirectoryChanged(LocalDataState previous) {
+    final current = widget.localDataState;
+    return previous.dataDirectory != current.dataDirectory ||
+        previous.dailyNotesDirectory != current.dailyNotesDirectory ||
+        previous.weeklyNotesDirectory != current.weeklyNotesDirectory ||
+        previous.monthlyNotesDirectory != current.monthlyNotesDirectory;
   }
 
   void _handleExternalNoteUpdate() {
@@ -162,6 +191,7 @@ class _NotesPageState extends State<NotesPage> {
     required NoteKind kind,
     String? selectedPath,
   }) async {
+    final generation = ++_notesLoadGeneration;
     setState(() {
       _kind = kind;
       _loading = true;
@@ -204,7 +234,7 @@ class _NotesPageState extends State<NotesPage> {
           );
     final content = await widget.noteService.readMarkdown(selected.path);
 
-    if (!mounted) {
+    if (!mounted || generation != _notesLoadGeneration) {
       return;
     }
 
@@ -260,6 +290,9 @@ class _NotesPageState extends State<NotesPage> {
     if (textChanged || selectionChanged) {
       _invalidateFimPrediction(scheduleNext: true);
     }
+    if (textChanged && _editorMessage != null) {
+      setState(() => _editorMessage = null);
+    }
 
     if (!textChanged) {
       return;
@@ -311,6 +344,7 @@ class _NotesPageState extends State<NotesPage> {
     _fimPrediction = null;
     _predicting = false;
     _fimMessage = null;
+    _editorMessage = null;
     _editorController.clearFimPrediction();
   }
 
@@ -498,6 +532,147 @@ class _NotesPageState extends State<NotesPage> {
     );
   }
 
+  Future<void> _insertImageFromPicker() async {
+    final selected = _selectedNote;
+    if (_loading || selected == null || _insertingImage) {
+      return;
+    }
+
+    _insertingImage = true;
+    try {
+      final images = await (widget.imagePicker ?? _defaultImagePicker)();
+      if (!mounted) {
+        return;
+      }
+      if (images.isEmpty) {
+        setState(() => _editorMessage = '已取消选择图片');
+        return;
+      }
+      final copiedImages = <NoteImageAttachment>[];
+      for (final image in images) {
+        if (image.path.trim().isEmpty) {
+          continue;
+        }
+        final saved = await widget.pastedImageService.copyImageFileForNote(
+          notePath: selected.path,
+          sourcePath: image.path,
+          sourceName: image.name,
+        );
+        copiedImages.add(
+          NoteImageAttachment(path: saved.path, name: saved.name),
+        );
+      }
+      final snippets = copiedImages.map(_markdownImageSnippet).toList();
+      if (snippets.isEmpty) {
+        return;
+      }
+      _insertPlainText(_insertionTextForBlock(snippets.join('\n')));
+      setState(() {
+        _editorMessage = '已插入图片';
+        _fimMessage = null;
+      });
+      _editorFocusNode.requestFocus();
+    } on ArgumentError catch (error, stackTrace) {
+      debugPrint('Unsupported image selected: $error\n$stackTrace');
+      if (mounted) {
+        setState(() => _editorMessage = '图片格式不支持，请重新选择文件。');
+      }
+    } catch (error, stackTrace) {
+      debugPrint('Failed to insert image: $error\n$stackTrace');
+      if (mounted) {
+        setState(() => _editorMessage = '无法插入图片，请重新选择文件。');
+      }
+    } finally {
+      _insertingImage = false;
+    }
+  }
+
+  Future<List<NoteImageAttachment>> _defaultImagePicker() async {
+    final files = await openFiles(
+      acceptedTypeGroups: const [
+        XTypeGroup(
+          label: 'Images',
+          extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'bmp'],
+          mimeTypes: ['image/*'],
+          uniformTypeIdentifiers: ['public.image'],
+          webWildCards: ['image/*'],
+        ),
+      ],
+      confirmButtonText: '选择图片',
+    );
+    return files
+        .map(
+          (file) => NoteImageAttachment(path: file.path, name: _fileName(file)),
+        )
+        .toList();
+  }
+
+  String _fileName(XFile file) {
+    final name = file.name.trim();
+    if (name.isNotEmpty) {
+      return name;
+    }
+    final segments = file.path.split(RegExp(r'[\\/]')).where((item) {
+      return item.trim().isNotEmpty;
+    }).toList();
+    if (segments.isEmpty) {
+      return file.path;
+    }
+    return segments.last;
+  }
+
+  String _markdownImageSnippet(NoteImageAttachment image) {
+    return '![${_escapeImageAltText(image.name)}](${_imageUri(image.path)})';
+  }
+
+  String _escapeImageAltText(String value) {
+    return value
+        .replaceAll(RegExp(r'[\u0000-\u001F\u007F]+'), ' ')
+        .replaceAll('\\', r'\\')
+        .replaceAll('[', r'\[')
+        .replaceAll(']', r'\]')
+        .replaceAll('(', r'\(')
+        .replaceAll(')', r'\)')
+        .trim();
+  }
+
+  String _imageUri(String path) {
+    if (_isWindowsPath(path)) {
+      return Uri.file(path, windows: true).toString();
+    }
+    final uri = Uri.tryParse(path);
+    if (uri != null && uri.hasScheme) {
+      return uri.toString();
+    }
+    return Uri.file(path).toString();
+  }
+
+  bool _isWindowsPath(String path) {
+    return RegExp(r'^[a-zA-Z]:[\\/]').hasMatch(path) || path.startsWith(r'\\');
+  }
+
+  String _parentDirectoryPath(String path) {
+    final slash = path.lastIndexOf('/');
+    final backslash = path.lastIndexOf('\\');
+    final index = slash > backslash ? slash : backslash;
+    if (index <= 0) {
+      return path;
+    }
+    return path.substring(0, index);
+  }
+
+  String _insertionTextForBlock(String block) {
+    final selection = _editorController.selection;
+    final text = _editorController.text;
+    final start = selection.isValid ? selection.start : text.length;
+    final end = selection.isValid ? selection.end : text.length;
+    final before = text.substring(0, start);
+    final after = text.substring(end);
+    final prefix = before.isEmpty || before.endsWith('\n') ? '' : '\n';
+    final suffix = after.isEmpty || after.startsWith('\n') ? '' : '\n';
+    return '$prefix$block$suffix';
+  }
+
   String _firstPredictionLine(String prediction) {
     final newlineIndex = prediction.indexOf('\n');
     if (newlineIndex == -1) {
@@ -553,11 +728,17 @@ class _NotesPageState extends State<NotesPage> {
               statusText: _editorStatusText,
               enabled: selected != null && !_loading,
               predicting: _predicting,
+              onInsertImage: _insertImageFromPicker,
             ),
           ),
           Expanded(
             flex: 32,
-            child: _PreviewPane(markdown: _editorController.text),
+            child: _PreviewPane(
+              markdown: _editorController.text,
+              localImageBasePath: selected == null
+                  ? null
+                  : _parentDirectoryPath(selected.path),
+            ),
           ),
         ],
       ),
@@ -576,6 +757,9 @@ class _NotesPageState extends State<NotesPage> {
     }
     if (_fimMessage != null) {
       return _fimMessage!;
+    }
+    if (_editorMessage != null) {
+      return _editorMessage!;
     }
     return _statusText;
   }
@@ -1280,6 +1464,7 @@ class _EditorPane extends StatefulWidget {
     required this.statusText,
     required this.enabled,
     required this.predicting,
+    required this.onInsertImage,
   });
 
   final TextEditingController controller;
@@ -1287,6 +1472,7 @@ class _EditorPane extends StatefulWidget {
   final String statusText;
   final bool enabled;
   final bool predicting;
+  final VoidCallback onInsertImage;
 
   @override
   State<_EditorPane> createState() => _EditorPaneState();
@@ -1340,6 +1526,12 @@ class _EditorPaneState extends State<_EditorPane> {
             ),
           ),
           const SizedBox(width: 12),
+          SpringNoteIconButton(
+            tooltip: '插入图片',
+            icon: Icons.image_outlined,
+            onPressed: widget.enabled ? widget.onInsertImage : null,
+          ),
+          const SizedBox(width: 8),
           _EditorStatusPill(statusText: widget.statusText),
         ],
       ),
@@ -1486,9 +1678,13 @@ class _EditorStatusPill extends StatelessWidget {
 }
 
 class _PreviewPane extends StatelessWidget {
-  const _PreviewPane({required this.markdown});
+  const _PreviewPane({
+    required this.markdown,
+    required this.localImageBasePath,
+  });
 
   final String markdown;
+  final String? localImageBasePath;
 
   @override
   Widget build(BuildContext context) {
@@ -1513,7 +1709,10 @@ class _PreviewPane extends StatelessWidget {
           ),
         ],
       ),
-      child: MarkdownPreview(markdown: markdown),
+      child: MarkdownPreview(
+        markdown: markdown,
+        localImageBasePath: localImageBasePath,
+      ),
     );
   }
 }

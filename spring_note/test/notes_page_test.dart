@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,6 +10,7 @@ import 'package:spring_note/core/models/note_file.dart';
 import 'package:spring_note/core/models/provider_config.dart';
 import 'package:spring_note/core/services/ai_client_service.dart';
 import 'package:spring_note/core/services/note_service.dart';
+import 'package:spring_note/core/services/pasted_image_service.dart';
 import 'package:spring_note/core/theme/app_theme.dart';
 import 'package:spring_note/features/notes/notes_page.dart';
 
@@ -269,6 +272,271 @@ final value = 1;
     expect(noteService.contents.values.single, '# 日报\n前缀\t');
   });
 
+  testWidgets('notes editor inserts selected image markdown', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const imagePath = 'D:\\Temp\\SpringNote\\assets\\screenshot final.png';
+    final pastedImageService = _MemoryPastedImageService(
+      const SavedPastedImage(
+        path: 'D:\\Temp\\SpringNote\\notes\\daily\\images\\screenshot #1.png',
+        name: 'screenshot [final](copy)\ncopy.png',
+      ),
+    );
+    final noteService = _MemoryNoteService({
+      'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-18.md': '# 日报\n前缀',
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: NotesPage(
+          localDataState: _localDataState,
+          noteService: noteService,
+          pastedImageService: pastedImageService,
+          imagePicker: () async => const [
+            NoteImageAttachment(path: imagePath, name: 'screenshot final.png'),
+          ],
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('插入图片'));
+    await tester.pump();
+    await tester.pump();
+
+    final expectedPath = Uri.file(
+      pastedImageService.savedImage.path,
+      windows: true,
+    );
+    final expectedImage =
+        r'![screenshot \[final\]\(copy\) copy.png]'
+        '($expectedPath)';
+    expect(noteService.contents.values.single, '# 日报\n前缀\n$expectedImage');
+    expect(pastedImageService.notePath, contains('2026-06-18.md'));
+    expect(pastedImageService.sourcePath, imagePath);
+    expect(pastedImageService.sourceName, 'screenshot final.png');
+    expect(
+      tester
+          .widget<EditableText>(find.byType(EditableText).last)
+          .focusNode
+          .hasFocus,
+      isTrue,
+    );
+    expect(find.text('已插入图片'), findsOneWidget);
+  });
+
+  testWidgets('notes editor ignores empty image picker result', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final pastedImageService = _MemoryPastedImageService(
+      const SavedPastedImage(path: 'unused', name: 'unused.png'),
+    );
+    final noteService = _MemoryNoteService({
+      'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-18.md': '# 日报\n前缀',
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: NotesPage(
+          localDataState: _localDataState,
+          noteService: noteService,
+          pastedImageService: pastedImageService,
+          imagePicker: () async => const [],
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('插入图片'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(noteService.contents.values.single, '# 日报\n前缀');
+    expect(pastedImageService.copyCalls, 0);
+    expect(find.text('已插入图片'), findsNothing);
+    expect(find.text('已取消选择图片'), findsOneWidget);
+    expect(find.text('无法插入图片，请重新选择文件。'), findsNothing);
+  });
+
+  testWidgets('notes editor shows error when image picker fails', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final noteService = _MemoryNoteService({
+      'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-18.md': '# 日报\n前缀',
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: NotesPage(
+          localDataState: _localDataState,
+          noteService: noteService,
+          imagePicker: () async => throw StateError('picker failed'),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('插入图片'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(noteService.contents.values.single, '# 日报\n前缀');
+    expect(find.text('无法插入图片，请重新选择文件。'), findsOneWidget);
+  });
+
+  testWidgets(
+    'notes editor ignores repeated image insert while picker is open',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final pickerCompleter = Completer<List<NoteImageAttachment>>();
+      var pickerCalls = 0;
+      final pastedImageService = _MemoryPastedImageService(
+        const SavedPastedImage(
+          path: 'D:\\Temp\\SpringNote\\notes\\daily\\images\\screenshot.png',
+          name: 'screenshot.png',
+        ),
+      );
+      final noteService = _MemoryNoteService({
+        'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-18.md': '# 日报\n前缀',
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: NotesPage(
+            localDataState: _localDataState,
+            noteService: noteService,
+            pastedImageService: pastedImageService,
+            imagePicker: () {
+              pickerCalls++;
+              return pickerCompleter.future;
+            },
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.byTooltip('插入图片'));
+      await tester.pump();
+      await tester.tap(find.byTooltip('插入图片'));
+      await tester.pump();
+
+      expect(pickerCalls, 1);
+
+      pickerCompleter.complete(const [
+        NoteImageAttachment(
+          path: 'D:\\Temp\\SpringNote\\assets\\screenshot.png',
+          name: 'screenshot.png',
+        ),
+      ]);
+      await tester.pump();
+      await tester.pump();
+
+      expect(pastedImageService.copyCalls, 1);
+      expect(noteService.contents.values.single, contains('![screenshot.png]'));
+    },
+  );
+
+  testWidgets(
+    'notes editor saves selected images under migrated note directory',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      const imagePath = 'D:\\Temp\\SpringNote\\assets\\screenshot.png';
+      final migratedState = _localDataState.copyWith(
+        dataDirectory: 'E:\\SpringNoteData',
+        configPath: 'E:\\SpringNoteData\\config.json',
+        dailyNotesDirectory: 'E:\\SpringNoteData\\notes\\daily',
+        weeklyNotesDirectory: 'E:\\SpringNoteData\\notes\\weekly',
+        monthlyNotesDirectory: 'E:\\SpringNoteData\\notes\\monthly',
+      );
+      final pastedImageService = _MemoryPastedImageService(
+        const SavedPastedImage(
+          path: 'E:\\SpringNoteData\\notes\\daily\\images\\screenshot.png',
+          name: 'screenshot.png',
+        ),
+      );
+      final noteService = _MemoryNoteService({
+        'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-18.md': '# 旧目录\n',
+        'E:\\SpringNoteData\\notes\\daily\\2026-06-18.md': '# 迁移后\n',
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: NotesPage(
+            localDataState: _localDataState,
+            noteService: noteService,
+            pastedImageService: pastedImageService,
+            imagePicker: () async => const [
+              NoteImageAttachment(path: imagePath, name: 'screenshot.png'),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: NotesPage(
+            localDataState: migratedState,
+            noteService: noteService,
+            pastedImageService: pastedImageService,
+            imagePicker: () async => const [
+              NoteImageAttachment(path: imagePath, name: 'screenshot.png'),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.byTooltip('插入图片'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(
+        pastedImageService.notePath,
+        'E:\\SpringNoteData\\notes\\daily\\2026-06-18.md',
+      );
+      expect(
+        noteService.contents['E:\\SpringNoteData\\notes\\daily\\2026-06-18.md'],
+        contains('![screenshot.png]'),
+      );
+      expect(
+        noteService
+            .contents['D:\\Temp\\SpringNote\\notes\\daily\\2026-06-18.md'],
+        '# 旧目录\n',
+      );
+    },
+  );
+
   testWidgets('notes editor shows FIM unavailable reason', (
     WidgetTester tester,
   ) async {
@@ -443,5 +711,28 @@ class _FakeAiClientService extends AiClientService {
     _calls++;
     _lastPrompt = prompt;
     return (content: prediction, error: null);
+  }
+}
+
+class _MemoryPastedImageService extends PastedImageService {
+  _MemoryPastedImageService(this.savedImage);
+
+  final SavedPastedImage savedImage;
+  int copyCalls = 0;
+  String? notePath;
+  String? sourcePath;
+  String? sourceName;
+
+  @override
+  Future<SavedPastedImage> copyImageFileForNote({
+    required String notePath,
+    required String sourcePath,
+    required String sourceName,
+  }) async {
+    copyCalls++;
+    this.notePath = notePath;
+    this.sourcePath = sourcePath;
+    this.sourceName = sourceName;
+    return savedImage;
   }
 }

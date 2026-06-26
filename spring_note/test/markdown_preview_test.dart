@@ -1,9 +1,27 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spring_note/core/theme/app_theme.dart';
+import 'package:spring_note/features/notes/markdown_local_image_io.dart';
 import 'package:spring_note/features/notes/markdown_preview.dart';
 
 void main() {
+  late Directory noteDirectory;
+
+  setUp(() async {
+    noteDirectory = await Directory.systemTemp.createTemp(
+      'spring_note_markdown_preview_',
+    );
+  });
+
+  tearDown(() async {
+    if (await noteDirectory.exists()) {
+      await noteDirectory.delete(recursive: true);
+    }
+  });
+
   testWidgets('markdown preview renders strong emphasis', (
     WidgetTester tester,
   ) async {
@@ -25,6 +43,210 @@ void main() {
     expect(plainText, isNot(contains('**SQL 注入**')));
     expect(_hasBoldText(richTexts, 'SQL 注入'), isTrue);
   });
+
+  test(
+    'markdown local image uses file provider for file uri inside note directory',
+    () {
+      final imageFile = File(
+        _joinPath(noteDirectory.path, 'images/screenshot.png'),
+      );
+      final imageUri = imageFile.uri.toString();
+
+      final image = buildMarkdownLocalImage(
+        url: imageUri,
+        baseDirectoryPath: noteDirectory.path,
+        width: null,
+        height: null,
+        fit: BoxFit.contain,
+        errorBuilder: _imageErrorBuilder,
+      );
+
+      expect(image, isA<Image>());
+      expect((image as Image).image, isA<FileImage>());
+    },
+  );
+
+  test(
+    'markdown local image uses file provider for relative images inside note directory',
+    () {
+      final image = buildMarkdownLocalImage(
+        url: 'images/screenshot.png',
+        baseDirectoryPath: noteDirectory.path,
+        width: null,
+        height: null,
+        fit: BoxFit.contain,
+        errorBuilder: _imageErrorBuilder,
+      );
+
+      expect(image, isA<Image>());
+      expect((image as Image).image, isA<FileImage>());
+    },
+  );
+
+  test(
+    'markdown local image blocks file images outside note directory',
+    () async {
+      final outsideFile = File(
+        _joinPath(noteDirectory.parent.path, 'outside-secret.png'),
+      );
+      await outsideFile.writeAsBytes(_pngBytes);
+
+      final image = buildMarkdownLocalImage(
+        url: outsideFile.uri.toString(),
+        baseDirectoryPath: noteDirectory.path,
+        width: null,
+        height: null,
+        fit: BoxFit.contain,
+        errorBuilder: _imageErrorBuilder,
+      );
+
+      expect(image, isNull);
+    },
+  );
+
+  test(
+    'markdown local image blocks absolute local paths without scheme',
+    () async {
+      final outsideFile = File(
+        _joinPath(noteDirectory.parent.path, 'absolute-secret.png'),
+      );
+      await outsideFile.writeAsBytes(_pngBytes);
+
+      final image = buildMarkdownLocalImage(
+        url: outsideFile.path,
+        baseDirectoryPath: noteDirectory.path,
+        width: null,
+        height: null,
+        fit: BoxFit.contain,
+        errorBuilder: _imageErrorBuilder,
+      );
+
+      expect(image, isNull);
+    },
+  );
+
+  test('markdown local image blocks Windows paths outside note directory', () {
+    final image = buildMarkdownLocalImage(
+      url: 'C:/Windows/secret.png',
+      baseDirectoryPath: noteDirectory.path,
+      width: null,
+      height: null,
+      fit: BoxFit.contain,
+      errorBuilder: _imageErrorBuilder,
+    );
+
+    expect(image, isNull);
+  });
+
+  test(
+    'markdown local image blocks relative traversal outside note directory',
+    () async {
+      final secretFile = File(
+        _joinPath(noteDirectory.parent.path, 'secret.png'),
+      );
+      await secretFile.writeAsBytes(_pngBytes);
+
+      final image = buildMarkdownLocalImage(
+        url: '../secret.png',
+        baseDirectoryPath: noteDirectory.path,
+        width: null,
+        height: null,
+        fit: BoxFit.contain,
+        errorBuilder: _imageErrorBuilder,
+      );
+
+      expect(image, isNull);
+    },
+  );
+
+  test(
+    'markdown local image blocks nested relative traversal outside note directory',
+    () async {
+      final secretFile = File(
+        _joinPath(noteDirectory.parent.path, 'secret.png'),
+      );
+      await secretFile.writeAsBytes(_pngBytes);
+
+      final image = buildMarkdownLocalImage(
+        url: 'images/../../secret.png',
+        baseDirectoryPath: noteDirectory.path,
+        width: null,
+        height: null,
+        fit: BoxFit.contain,
+        errorBuilder: _imageErrorBuilder,
+      );
+
+      expect(image, isNull);
+    },
+  );
+
+  test(
+    'markdown local image blocks symlink images outside note directory',
+    () async {
+      if (Platform.isWindows) {
+        return;
+      }
+
+      final outsideFile = File(
+        _joinPath(noteDirectory.parent.path, 'linked-secret.png'),
+      );
+      await outsideFile.writeAsBytes(_pngBytes);
+      final link = Link(_joinPath(noteDirectory.path, 'images/linked.png'));
+      await link.parent.create(recursive: true);
+      await link.create(outsideFile.path);
+
+      final image = buildMarkdownLocalImage(
+        url: 'images/linked.png',
+        baseDirectoryPath: noteDirectory.path,
+        width: null,
+        height: null,
+        fit: BoxFit.contain,
+        errorBuilder: _imageErrorBuilder,
+      );
+
+      expect(image, isNull);
+    },
+  );
+
+  testWidgets('markdown preview keeps network images on network provider', (
+    WidgetTester tester,
+  ) async {
+    await _pumpPreview(tester, '![remote](https://example.com/image.png)');
+
+    final image = tester.widget<Image>(find.byType(Image));
+
+    expect(image.image, isA<NetworkImage>());
+  });
+}
+
+Widget _imageErrorBuilder(
+  BuildContext context,
+  Object error,
+  StackTrace? stackTrace,
+) {
+  return const SizedBox.shrink();
+}
+
+final _pngBytes = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=',
+);
+
+Future<void> _pumpPreview(
+  WidgetTester tester,
+  String markdown, {
+  String? localImageBasePath,
+}) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: AppTheme.light(),
+      home: Scaffold(
+        body: MarkdownPreview(
+          markdown: markdown,
+          localImageBasePath: localImageBasePath,
+        ),
+      ),
+    ),
+  );
 }
 
 bool _hasBoldText(Iterable<RichText> richTexts, String text) {
@@ -34,6 +256,13 @@ bool _hasBoldText(Iterable<RichText> richTexts, String text) {
     }
   }
   return false;
+}
+
+String _joinPath(String left, String right) {
+  if (left.endsWith(Platform.pathSeparator)) {
+    return '$left$right';
+  }
+  return '$left${Platform.pathSeparator}$right';
 }
 
 bool _spanHasBoldText(InlineSpan span, String text, TextStyle? inheritedStyle) {
