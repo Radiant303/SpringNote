@@ -854,7 +854,8 @@ fn apply_thinking_options(body: &mut Value, enabled: bool, effort: &str) {
 fn apply_responses_thinking_options(body: &mut Value, enabled: bool, effort: &str) {
     if enabled {
         body["reasoning"] = json!({
-            "effort": normalize_responses_reasoning_effort(effort)
+            "effort": normalize_responses_reasoning_effort(effort),
+            "summary": "auto"
         });
     } else {
         body["temperature"] = Value::from(0.2);
@@ -1798,6 +1799,7 @@ mod tests {
         assert_eq!(body["input"][2]["call_id"], "call_1");
         assert_eq!(body["input"][2]["output"], "{\"results\":[]}");
         assert_eq!(body["reasoning"]["effort"], "high");
+        assert_eq!(body["reasoning"]["summary"], "auto");
         assert!(body.get("thinking").is_none());
         assert!(body.get("reasoning_effort").is_none());
     }
@@ -1833,6 +1835,7 @@ mod tests {
         let body = build_memory_tool_responses_stream_body(&request, "system");
         assert_eq!(body["stream"], true);
         assert_eq!(body["reasoning"]["effort"], "xhigh");
+        assert_eq!(body["reasoning"]["summary"], "auto");
         assert!(body.get("stream_options").is_none());
     }
 
@@ -1860,6 +1863,7 @@ mod tests {
 
         let body = build_memory_tool_responses_body(&request, "system");
         assert_eq!(body["reasoning"]["effort"], "xhigh");
+        assert_eq!(body["reasoning"]["summary"], "auto");
     }
 
     #[test]
