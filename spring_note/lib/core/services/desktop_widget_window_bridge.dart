@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../models/desktop_widget_position.dart';
 import 'platform_feature_support.dart';
 
 class DesktopWidgetWindowSnapshot {
@@ -16,6 +17,7 @@ class DesktopWidgetWindowSnapshot {
     required this.progress,
     required this.appFont,
     required this.fontScaleFactor,
+    required this.position,
     required this.orbMode,
   });
 
@@ -28,6 +30,7 @@ class DesktopWidgetWindowSnapshot {
   final double progress;
   final String appFont;
   final double fontScaleFactor;
+  final DesktopWidgetPosition? position;
   final bool orbMode;
 
   Map<String, Object?> toJson() {
@@ -41,6 +44,7 @@ class DesktopWidgetWindowSnapshot {
       'progress': progress,
       'appFont': appFont,
       'fontScaleFactor': fontScaleFactor,
+      'position': position?.toJson(),
       'orbMode': orbMode,
     };
   }
@@ -61,6 +65,7 @@ class DesktopWidgetWindowBridge {
   Future<void> initialize({
     required VoidCallback onToggle,
     required VoidCallback onOpenHome,
+    required ValueChanged<DesktopWidgetPosition> onPositionChanged,
   }) async {
     if (!isSupported || _initialized) {
       return;
@@ -73,6 +78,12 @@ class DesktopWidgetWindowBridge {
           return;
         case 'openHome':
           onOpenHome();
+          return;
+        case 'positionChanged':
+          final position = DesktopWidgetPosition.fromJson(call.arguments);
+          if (position != null) {
+            onPositionChanged(position);
+          }
           return;
       }
     });

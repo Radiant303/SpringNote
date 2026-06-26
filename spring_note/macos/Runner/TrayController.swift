@@ -37,6 +37,10 @@ private func stringValue(_ arguments: [String: Any], _ key: String, fallback: St
   arguments[key] as? String ?? fallback
 }
 
+private func stringMapValue(_ arguments: [String: Any], _ key: String) -> [String: Any]? {
+  arguments[key] as? [String: Any]
+}
+
 final class TrayController: NSObject {
   private var statusItem: NSStatusItem?
   private var channel: FlutterMethodChannel?
@@ -630,11 +634,13 @@ struct DesktopWidgetState {
 final class DesktopWidgetWindowController: NSObject {
   private let expandedSize = NSSize(width: 260, height: 140)
   private let orbSize = NSSize(width: 64, height: 64)
+  private let defaultMargin: CGFloat = 28
   private var channel: FlutterMethodChannel?
   private weak var mainWindow: NSWindow?
   private var panel: DesktopWidgetPanel?
   private var state = DesktopWidgetState()
   private var positioned = false
+  private var savedPosition: DesktopWidgetPosition?
   private var expanded = true
 
   func attach(mainWindow: NSWindow, messenger: FlutterBinaryMessenger) {
@@ -692,6 +698,8 @@ final class DesktopWidgetWindowController: NSObject {
     } else if !wasOrbMode || panel == nil {
       expanded = false
     }
+    savedPosition = DesktopWidgetPosition.from(arguments: arguments)
+      ?? DesktopWidgetPosition.fromUserDefaults()
 
     let panel = ensurePanel()
     panel.widgetView.expanded = expanded
@@ -699,8 +707,10 @@ final class DesktopWidgetWindowController: NSObject {
     applyPanelSize(panel, preserveBottomRight: positioned)
     panel.widgetView.needsDisplay = true
     if !positioned {
-      moveToDefaultPosition(panel)
+      moveToSavedOrDefaultPosition(panel)
       positioned = true
+    } else {
+      clampPanelToVisibleScreen(panel, notify: false)
     }
     panel.orderFrontRegardless()
   }
@@ -736,17 +746,127 @@ final class DesktopWidgetWindowController: NSObject {
       frame.origin.y = frame.maxY - size.height
     }
     frame.size = size
+    frame.origin = clampedOrigin(
+      frame.origin,
+      size: size,
+      screen: nearestScreen(to: frame.center, fallback: panel.screen)
+    )
     panel.setFrame(frame, display: true)
   }
 
-  private func moveToDefaultPosition(_ panel: NSPanel) {
-    let screenFrame = NSScreen.main?.visibleFrame ?? NSScreen.screens.first?.visibleFrame
-    guard let screenFrame else {
+  private func moveToSavedOrDefaultPosition(_ panel: NSPanel) {
+    if let savedPosition {
+      let screen = screen(for: savedPosition.screenId) ?? nearestScreen(
+        to: NSPoint(x: savedPosition.x, y: savedPosition.y),
+        fallback: nil
+      )
+      let origin = clampedOrigin(
+        NSPoint(x: savedPosition.x, y: savedPosition.y),
+        size: panel.frame.size,
+        screen: screen
+      )
+      panel.setFrameOrigin(origin)
+      notifyPositionChanged(panel)
       return
     }
-    let x = screenFrame.maxX - panel.frame.width - 28
-    let y = screenFrame.minY + 28
+
+    let screen = NSScreen.main ?? NSScreen.screens.first
+    guard let screen else {
+      return
+    }
+    let screenFrame = screen.visibleFrame
+    let x = screenFrame.maxX - panel.frame.width - defaultMargin
+    let y = screenFrame.minY + defaultMargin
     panel.setFrameOrigin(NSPoint(x: x, y: y))
+    notifyPositionChanged(panel)
+  }
+
+  private func clampPanelToVisibleScreen(_ panel: NSPanel, notify: Bool) {
+    let origin = clampedOrigin(
+      panel.frame.origin,
+      size: panel.frame.size,
+      screen: nearestScreen(to: panel.frame.center, fallback: panel.screen)
+    )
+    if panel.frame.origin != origin {
+      panel.setFrameOrigin(origin)
+    }
+    if notify {
+      notifyPositionChanged(panel)
+    }
+  }
+
+  private func clampedOrigin(
+    _ origin: NSPoint,
+    size: NSSize,
+    screen preferredScreen: NSScreen?
+  ) -> NSPoint {
+    let screen = preferredScreen ?? nearestScreen(
+      to: NSPoint(x: origin.x + size.width / 2, y: origin.y + size.height / 2),
+      fallback: nil
+    )
+    guard let screenFrame = screen?.visibleFrame else {
+      return origin
+    }
+    let minX = screenFrame.minX
+    let maxX = screenFrame.maxX - size.width
+    let minY = screenFrame.minY
+    let maxY = screenFrame.maxY - size.height
+    return NSPoint(
+      x: min(max(origin.x, minX), max(minX, maxX)),
+      y: min(max(origin.y, minY), max(minY, maxY))
+    )
+  }
+
+  private func nearestScreen(to point: NSPoint, fallback: NSScreen?) -> NSScreen? {
+    if let containing = NSScreen.screens.first(where: { $0.visibleFrame.contains(point) }) {
+      return containing
+    }
+    return NSScreen.screens.min { lhs, rhs in
+      lhs.visibleFrame.distanceSquared(to: point) < rhs.visibleFrame.distanceSquared(to: point)
+    } ?? fallback ?? NSScreen.main ?? NSScreen.screens.first
+  }
+
+  private func screen(for id: String?) -> NSScreen? {
+    guard let id else {
+      return nil
+    }
+    return NSScreen.screens.first { $0.springNoteScreenId == id }
+  }
+
+  func boundedOrigin(for proposedOrigin: NSPoint, size: NSSize) -> NSPoint {
+    clampedOrigin(
+      proposedOrigin,
+      size: size,
+      screen: nearestScreen(
+        to: NSPoint(x: proposedOrigin.x + size.width / 2, y: proposedOrigin.y + size.height / 2),
+        fallback: panel?.screen
+      )
+    )
+  }
+
+  func finishMovingPanel() {
+    guard let panel else {
+      return
+    }
+    clampPanelToVisibleScreen(panel, notify: true)
+  }
+
+  private func notifyPositionChanged(_ panel: NSPanel) {
+    let screen = nearestScreen(to: panel.frame.center, fallback: panel.screen)
+    let position = DesktopWidgetPosition(
+      screenId: screen?.springNoteScreenId,
+      x: panel.frame.origin.x,
+      y: panel.frame.origin.y
+    )
+    position.saveToUserDefaults()
+    channel?.invokeMethod(
+      "positionChanged",
+      arguments: [
+        "screenId": position.screenId ?? "",
+        "x": Double(position.x),
+        "y": Double(position.y),
+      ]
+    )
   }
 
   func toggle() {
@@ -850,9 +970,10 @@ final class DesktopWidgetView: NSView {
   }
 
   override func mouseExited(with event: NSEvent) {
-    if mouseDownLocation == nil {
-      controller?.setExpanded(false)
+    guard mouseDownLocation == nil, !isMouseInsideWindowFrame() else {
+      return
     }
+    controller?.setExpanded(false)
   }
 
   override func draw(_ dirtyRect: NSRect) {
@@ -993,16 +1114,21 @@ final class DesktopWidgetView: NSView {
     if abs(dx) > 3 || abs(dy) > 3 {
       movedWhilePressed = true
     }
-    window.setFrameOrigin(NSPoint(x: windowStartOrigin.x + dx, y: windowStartOrigin.y + dy))
+    let nextOrigin = controller?.boundedOrigin(
+      for: NSPoint(x: windowStartOrigin.x + dx, y: windowStartOrigin.y + dy),
+      size: window.frame.size
+    ) ?? NSPoint(x: windowStartOrigin.x + dx, y: windowStartOrigin.y + dy)
+    window.setFrameOrigin(nextOrigin)
   }
 
   override func mouseUp(with event: NSEvent) {
     if !movedWhilePressed {
       controller?.toggle()
     }
-    let shouldCollapse = state.orbMode && !bounds.contains(convert(event.locationInWindow, from: nil))
+    let shouldCollapse = state.orbMode && !isMouseInsideWindowFrame()
     mouseDownLocation = nil
     windowStartOrigin = nil
+    controller?.finishMovingPanel()
     if shouldCollapse {
       controller?.setExpanded(false)
     }
@@ -1014,6 +1140,13 @@ final class DesktopWidgetView: NSView {
 
   private func scaled(_ size: CGFloat) -> CGFloat {
     max(1, size * CGFloat(state.fontScaleFactor))
+  }
+
+  private func isMouseInsideWindowFrame() -> Bool {
+    guard let window else {
+      return false
+    }
+    return window.frame.contains(NSEvent.mouseLocation)
   }
 
   private func drawRoundedRect(_ rect: NSRect, radius: CGFloat, color: NSColor) {
@@ -1048,6 +1181,83 @@ final class DesktopWidgetView: NSView {
     let minutes = (seconds % 3600) / 60
     let remainingSeconds = seconds % 60
     return String(format: "%02d:%02d:%02d", hours, minutes, remainingSeconds)
+  }
+}
+
+private struct DesktopWidgetPosition {
+  private static let storedKey = "desktopWidgetPosition.stored"
+  private static let screenIdKey = "desktopWidgetPosition.screenId"
+  private static let xKey = "desktopWidgetPosition.x"
+  private static let yKey = "desktopWidgetPosition.y"
+
+  let screenId: String?
+  let x: CGFloat
+  let y: CGFloat
+
+  static func from(arguments: [String: Any]) -> DesktopWidgetPosition? {
+    guard let position = stringMapValue(arguments, "position") else {
+      return nil
+    }
+    let x = doubleValue(position, "x", fallback: .nan)
+    let y = doubleValue(position, "y", fallback: .nan)
+    guard x.isFinite && y.isFinite else {
+      return nil
+    }
+    let screenId = stringValue(position, "screenId")
+    return DesktopWidgetPosition(
+      screenId: screenId.isEmpty ? nil : screenId,
+      x: CGFloat(x),
+      y: CGFloat(y)
+    )
+  }
+
+  static func fromUserDefaults() -> DesktopWidgetPosition? {
+    let defaults = UserDefaults.standard
+    guard defaults.bool(forKey: storedKey) else {
+      return nil
+    }
+    let x = defaults.double(forKey: xKey)
+    let y = defaults.double(forKey: yKey)
+    guard x.isFinite && y.isFinite else {
+      return nil
+    }
+    let screenId = defaults.string(forKey: screenIdKey)
+    return DesktopWidgetPosition(
+      screenId: screenId?.isEmpty == true ? nil : screenId,
+      x: CGFloat(x),
+      y: CGFloat(y)
+    )
+  }
+
+  func saveToUserDefaults() {
+    let defaults = UserDefaults.standard
+    defaults.set(true, forKey: Self.storedKey)
+    defaults.set(screenId ?? "", forKey: Self.screenIdKey)
+    defaults.set(Double(x), forKey: Self.xKey)
+    defaults.set(Double(y), forKey: Self.yKey)
+  }
+}
+
+private extension NSRect {
+  var center: NSPoint {
+    NSPoint(x: midX, y: midY)
+  }
+
+  func distanceSquared(to point: NSPoint) -> CGFloat {
+    let clampedX = min(max(point.x, minX), maxX)
+    let clampedY = min(max(point.y, minY), maxY)
+    let dx = point.x - clampedX
+    let dy = point.y - clampedY
+    return dx * dx + dy * dy
+  }
+}
+
+private extension NSScreen {
+  var springNoteScreenId: String {
+    if let number = deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber {
+      return number.stringValue
+    }
+    return frame.debugDescription
   }
 }
 

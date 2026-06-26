@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
+#include <limits>
 #include <sstream>
 #include <string>
 
@@ -16,6 +17,11 @@ constexpr int kExpandedWindowWidth = 260;
 constexpr int kExpandedWindowHeight = 140;
 constexpr int kExpandedCornerRadius = 16;
 constexpr int kOrbWindowSize = 64;
+
+struct MonitorSearchContext {
+  const std::string* target_id;
+  HMONITOR monitor = nullptr;
+};
 
 int ReadInt(const flutter::EncodableMap& map,
             const char* key,
@@ -72,6 +78,15 @@ std::string ReadString(const flutter::EncodableMap& map,
   return std::get<std::string>(it->second);
 }
 
+const flutter::EncodableMap* ReadMap(const flutter::EncodableMap& map,
+                                     const char* key) {
+  const auto it = map.find(flutter::EncodableValue(key));
+  if (it == map.end()) {
+    return nullptr;
+  }
+  return std::get_if<flutter::EncodableMap>(&it->second);
+}
+
 std::wstring Utf8ToWide(const std::string& value) {
   if (value.empty()) {
     return L"";
@@ -86,6 +101,25 @@ std::wstring Utf8ToWide(const std::string& value) {
   MultiByteToWideChar(CP_UTF8, 0, value.c_str(),
                       static_cast<int>(value.size()), result.data(),
                       required_size);
+  return result;
+}
+
+std::string WideToUtf8(const wchar_t* value) {
+  if (!value) {
+    return "";
+  }
+  const int wide_length = lstrlenW(value);
+  if (wide_length <= 0) {
+    return "";
+  }
+  const int required_size = WideCharToMultiByte(
+      CP_UTF8, 0, value, wide_length, nullptr, 0, nullptr, nullptr);
+  if (required_size <= 0) {
+    return "";
+  }
+  std::string result(required_size, '\0');
+  WideCharToMultiByte(CP_UTF8, 0, value, wide_length, result.data(),
+                      required_size, nullptr, nullptr);
   return result;
 }
 
@@ -202,14 +236,17 @@ void DesktopWidgetWindow::ShowOrUpdate(const flutter::EncodableMap& arguments) {
   } else if (!was_orb_mode || window_ == nullptr) {
     expanded_ = false;
   }
+  UpdateSavedPosition(arguments);
 
   if (!EnsureWindow()) {
     return;
   }
   ApplyWindowShapeAndSize(positioned_);
   if (!positioned_) {
-    MoveToDefaultPosition();
+    MoveToSavedOrDefaultPosition();
     positioned_ = true;
+  } else {
+    ClampWindowToVisibleMonitor(false);
   }
   ShowWindow(window_, SW_SHOWNOACTIVATE);
   SetWindowPos(window_, HWND_TOPMOST, 0, 0, 0, 0,
@@ -262,12 +299,29 @@ void DesktopWidgetWindow::MoveToDefaultPosition() {
                SWP_NOACTIVATE);
 }
 
+void DesktopWidgetWindow::MoveToSavedOrDefaultPosition() {
+  if (saved_position_.has_value()) {
+    const HMONITOR monitor = MonitorForPosition(saved_position_.value());
+    const RECT next =
+        ClampedRectForOrigin(saved_position_->x, saved_position_->y, monitor);
+    SetWindowPos(window_, HWND_TOPMOST, next.left, next.top, CurrentWidth(),
+                 CurrentHeight(), SWP_NOACTIVATE);
+    NotifyPositionChanged();
+    return;
+  }
+
+  MoveToDefaultPosition();
+  ClampWindowToVisibleMonitor(true);
+}
+
 int DesktopWidgetWindow::CurrentWidth() const {
-  return state_.orb_mode && !expanded_ ? kOrbWindowSize : kExpandedWindowWidth;
+  return state_.orb_mode && !expanded_ ? kOrbWindowSize
+                                       : kExpandedWindowWidth;
 }
 
 int DesktopWidgetWindow::CurrentHeight() const {
-  return state_.orb_mode && !expanded_ ? kOrbWindowSize : kExpandedWindowHeight;
+  return state_.orb_mode && !expanded_ ? kOrbWindowSize
+                                       : kExpandedWindowHeight;
 }
 
 int DesktopWidgetWindow::CurrentCornerRadius() const {
@@ -290,8 +344,10 @@ void DesktopWidgetWindow::ApplyWindowShapeAndSize(bool preserve_bottom_right) {
     x = rect.right - width;
     y = rect.bottom - height;
   }
-
-  SetWindowPos(window_, HWND_TOPMOST, x, y, width, height, SWP_NOACTIVATE);
+  const RECT next =
+      ClampedRectForOrigin(x, y, MonitorFromRect(&rect, MONITOR_DEFAULTTONEAREST));
+  SetWindowPos(window_, HWND_TOPMOST, next.left, next.top, width, height,
+               SWP_NOACTIVATE);
   const int radius = CurrentCornerRadius();
   HRGN region =
       CreateRoundRectRgn(0, 0, width + 1, height + 1, radius * 2, radius * 2);
@@ -308,14 +364,116 @@ void DesktopWidgetWindow::SetExpanded(bool expanded) {
 }
 
 void DesktopWidgetWindow::TrackMouseLeave() {
-  if (!window_ || tracking_mouse_leave_) {
+  if (!window_) {
     return;
   }
   TRACKMOUSEEVENT event{};
   event.cbSize = sizeof(TRACKMOUSEEVENT);
+  event.dwFlags = TME_QUERY;
+  event.hwndTrack = window_;
+  if (TrackMouseEvent(&event) != 0 && (event.dwFlags & TME_LEAVE) != 0) {
+    tracking_mouse_leave_ = true;
+    return;
+  }
+
+  event = {};
+  event.cbSize = sizeof(TRACKMOUSEEVENT);
   event.dwFlags = TME_LEAVE;
   event.hwndTrack = window_;
   tracking_mouse_leave_ = TrackMouseEvent(&event) != 0;
+}
+
+RECT DesktopWidgetWindow::WorkAreaForMonitor(HMONITOR monitor) const {
+  MONITORINFO monitor_info{};
+  monitor_info.cbSize = sizeof(MONITORINFO);
+  if (monitor && GetMonitorInfo(monitor, &monitor_info)) {
+    return monitor_info.rcWork;
+  }
+
+  RECT work_area{};
+  SystemParametersInfo(SPI_GETWORKAREA, 0, &work_area, 0);
+  return work_area;
+}
+
+HMONITOR DesktopWidgetWindow::MonitorForPosition(
+    const WidgetPosition& position) const {
+  if (!position.screen_id.empty()) {
+    MonitorSearchContext context{&position.screen_id, nullptr};
+
+    EnumDisplayMonitors(nullptr, nullptr, FindMonitorById,
+                        reinterpret_cast<LPARAM>(&context));
+    if (context.monitor) {
+      return context.monitor;
+    }
+  }
+
+  const POINT point{position.x + CurrentWidth() / 2,
+                    position.y + CurrentHeight() / 2};
+  return MonitorFromPoint(point, MONITOR_DEFAULTTONEAREST);
+}
+
+BOOL CALLBACK DesktopWidgetWindow::FindMonitorById(HMONITOR monitor,
+                                                   HDC,
+                                                   LPRECT,
+                                                   LPARAM data) {
+  auto* context = reinterpret_cast<MonitorSearchContext*>(data);
+  MONITORINFOEX monitor_info{};
+  monitor_info.cbSize = sizeof(MONITORINFOEX);
+  if (GetMonitorInfo(monitor, &monitor_info) &&
+      WideToUtf8(monitor_info.szDevice) == *context->target_id) {
+    context->monitor = monitor;
+    return FALSE;
+  }
+  return TRUE;
+}
+
+RECT DesktopWidgetWindow::ClampedRectForOrigin(
+    int x,
+    int y,
+    HMONITOR preferred_monitor) const {
+  const RECT work_area = WorkAreaForMonitor(preferred_monitor);
+  const int width = CurrentWidth();
+  const int height = CurrentHeight();
+  const int min_x = static_cast<int>(work_area.left);
+  const int max_x =
+      std::max(min_x, static_cast<int>(work_area.right) - width);
+  const int min_y = static_cast<int>(work_area.top);
+  const int max_y =
+      std::max(min_y, static_cast<int>(work_area.bottom) - height);
+  const int left = std::clamp(x, min_x, max_x);
+  const int top = std::clamp(y, min_y, max_y);
+  return RECT{
+      left,
+      top,
+      left + width,
+      top + height,
+  };
+}
+
+void DesktopWidgetWindow::SetBoundedWindowOrigin(int x, int y) {
+  const RECT proposed{x, y, x + CurrentWidth(), y + CurrentHeight()};
+  const HMONITOR monitor = MonitorFromRect(&proposed, MONITOR_DEFAULTTONEAREST);
+  const RECT next = ClampedRectForOrigin(x, y, monitor);
+  SetWindowPos(window_, HWND_TOPMOST, next.left, next.top, 0, 0,
+               SWP_NOSIZE | SWP_NOACTIVATE);
+}
+
+void DesktopWidgetWindow::ClampWindowToVisibleMonitor(bool notify) {
+  if (!window_) {
+    return;
+  }
+
+  RECT rect{};
+  GetWindowRect(window_, &rect);
+  const HMONITOR monitor = MonitorFromRect(&rect, MONITOR_DEFAULTTONEAREST);
+  const RECT next = ClampedRectForOrigin(rect.left, rect.top, monitor);
+  if (next.left != rect.left || next.top != rect.top) {
+    SetWindowPos(window_, HWND_TOPMOST, next.left, next.top, 0, 0,
+                 SWP_NOSIZE | SWP_NOACTIVATE);
+  }
+  if (notify) {
+    NotifyPositionChanged();
+  }
 }
 
 void DesktopWidgetWindow::Paint() {
@@ -464,6 +622,55 @@ void DesktopWidgetWindow::InvokeFlutterMethod(const std::string& method) {
   channel_->InvokeMethod(method, std::make_unique<flutter::EncodableValue>());
 }
 
+void DesktopWidgetWindow::NotifyPositionChanged() {
+  if (!channel_ || !window_) {
+    return;
+  }
+
+  RECT rect{};
+  GetWindowRect(window_, &rect);
+  const HMONITOR monitor = MonitorFromRect(&rect, MONITOR_DEFAULTTONEAREST);
+  MONITORINFOEX monitor_info{};
+  monitor_info.cbSize = sizeof(MONITORINFOEX);
+  std::string screen_id;
+  if (monitor && GetMonitorInfo(monitor, &monitor_info)) {
+    screen_id = WideToUtf8(monitor_info.szDevice);
+  }
+
+  flutter::EncodableMap arguments;
+  arguments[flutter::EncodableValue("screenId")] =
+      flutter::EncodableValue(screen_id);
+  arguments[flutter::EncodableValue("x")] =
+      flutter::EncodableValue(static_cast<double>(rect.left));
+  arguments[flutter::EncodableValue("y")] =
+      flutter::EncodableValue(static_cast<double>(rect.top));
+  channel_->InvokeMethod(
+      "positionChanged",
+      std::make_unique<flutter::EncodableValue>(std::move(arguments)));
+}
+
+void DesktopWidgetWindow::UpdateSavedPosition(
+    const flutter::EncodableMap& arguments) {
+  const auto* position = ReadMap(arguments, "position");
+  if (!position) {
+    return;
+  }
+
+  const double x = ReadDouble(
+      *position, "x", std::numeric_limits<double>::quiet_NaN());
+  const double y = ReadDouble(
+      *position, "y", std::numeric_limits<double>::quiet_NaN());
+  if (!std::isfinite(x) || !std::isfinite(y)) {
+    return;
+  }
+
+  saved_position_ = WidgetPosition{
+      ReadString(*position, "screenId"),
+      static_cast<int>(std::round(x)),
+      static_cast<int>(std::round(y)),
+  };
+}
+
 void DesktopWidgetWindow::OpenMainWindow() {
   if (!main_window_) {
     return;
@@ -532,16 +739,26 @@ LRESULT DesktopWidgetWindow::HandleMessage(HWND hwnd,
         if (std::abs(dx) > 3 || std::abs(dy) > 3) {
           moved_while_pressed_ = true;
         }
-        SetWindowPos(hwnd, HWND_TOPMOST, drag_start_rect_.left + dx,
-                     drag_start_rect_.top + dy, 0, 0,
-                     SWP_NOSIZE | SWP_NOACTIVATE);
+        SetBoundedWindowOrigin(drag_start_rect_.left + dx,
+                               drag_start_rect_.top + dy);
       }
       return 0;
     case WM_MOUSELEAVE:
       tracking_mouse_leave_ = false;
-      if (!dragging_) {
-        SetExpanded(false);
+      if (dragging_) {
+        return 0;
       }
+      if (state_.orb_mode) {
+        POINT cursor{};
+        GetCursorPos(&cursor);
+        RECT window_rect{};
+        GetWindowRect(hwnd, &window_rect);
+        if (PtInRect(&window_rect, cursor)) {
+          TrackMouseLeave();
+          return 0;
+        }
+      }
+      SetExpanded(false);
       return 0;
     case WM_LBUTTONUP:
       if (dragging_) {
@@ -550,11 +767,16 @@ LRESULT DesktopWidgetWindow::HandleMessage(HWND hwnd,
         if (!moved_while_pressed_) {
           InvokeFlutterMethod("toggle");
         }
+        ClampWindowToVisibleMonitor(true);
         RECT client{};
         GetClientRect(hwnd, &client);
         POINT release_point{GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
-        if (state_.orb_mode && !PtInRect(&client, release_point)) {
-          SetExpanded(false);
+        if (state_.orb_mode) {
+          if (PtInRect(&client, release_point)) {
+            TrackMouseLeave();
+          } else {
+            SetExpanded(false);
+          }
         }
       }
       return 0;

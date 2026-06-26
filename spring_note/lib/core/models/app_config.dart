@@ -1,3 +1,4 @@
+import 'desktop_widget_position.dart';
 import 'provider_config.dart';
 
 class AppConfig {
@@ -11,6 +12,7 @@ class AppConfig {
     required this.autoStart,
     required this.showUpdates,
     required this.showDesktopWidget,
+    required this.desktopWidgetPosition,
     required this.desktopWidgetOrbMode,
     required this.showTrayIcon,
     required this.closeToTray,
@@ -30,6 +32,7 @@ class AppConfig {
   final bool autoStart;
   final bool showUpdates;
   final bool showDesktopWidget;
+  final DesktopWidgetPosition? desktopWidgetPosition;
   final bool desktopWidgetOrbMode;
   final bool showTrayIcon;
   final bool closeToTray;
@@ -50,6 +53,7 @@ class AppConfig {
       autoStart: false,
       showUpdates: true,
       showDesktopWidget: true,
+      desktopWidgetPosition: null,
       desktopWidgetOrbMode: false,
       showTrayIcon: true,
       closeToTray: true,
@@ -76,6 +80,9 @@ class AppConfig {
       autoStart: json['autoStart'] as bool? ?? false,
       showUpdates: json['showUpdates'] as bool? ?? true,
       showDesktopWidget: json['showDesktopWidget'] as bool? ?? true,
+      desktopWidgetPosition: DesktopWidgetPosition.fromJson(
+        json['desktopWidgetPosition'],
+      ),
       desktopWidgetOrbMode: json['desktopWidgetOrbMode'] as bool? ?? false,
       showTrayIcon: json['showTrayIcon'] as bool? ?? true,
       closeToTray:
@@ -103,6 +110,7 @@ class AppConfig {
       'autoStart': autoStart,
       'showUpdates': showUpdates,
       'showDesktopWidget': showDesktopWidget,
+      'desktopWidgetPosition': desktopWidgetPosition?.toJson(),
       'desktopWidgetOrbMode': desktopWidgetOrbMode,
       'showTrayIcon': showTrayIcon,
       'closeToTray': closeToTray,
@@ -124,6 +132,7 @@ class AppConfig {
     bool? autoStart,
     bool? showUpdates,
     bool? showDesktopWidget,
+    Object? desktopWidgetPosition = _sentinel,
     bool? desktopWidgetOrbMode,
     bool? showTrayIcon,
     bool? closeToTray,
@@ -148,6 +157,9 @@ class AppConfig {
       autoStart: autoStart ?? this.autoStart,
       showUpdates: showUpdates ?? this.showUpdates,
       showDesktopWidget: showDesktopWidget ?? this.showDesktopWidget,
+      desktopWidgetPosition: desktopWidgetPosition == _sentinel
+          ? this.desktopWidgetPosition
+          : desktopWidgetPosition as DesktopWidgetPosition?,
       desktopWidgetOrbMode: desktopWidgetOrbMode ?? this.desktopWidgetOrbMode,
       showTrayIcon: nextShowTrayIcon,
       closeToTray: nextCloseToTray,

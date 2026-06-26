@@ -7,6 +7,7 @@
 #include <windows.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 
 class DesktopWidgetWindow {
@@ -34,16 +35,34 @@ class DesktopWidgetWindow {
     bool orb_mode = false;
   };
 
+  struct WidgetPosition {
+    std::string screen_id;
+    int x = 0;
+    int y = 0;
+  };
+
   bool EnsureWindow();
   void RegisterChannelHandler();
   void Paint();
   void MoveToDefaultPosition();
+  void MoveToSavedOrDefaultPosition();
   int CurrentWidth() const;
   int CurrentHeight() const;
   int CurrentCornerRadius() const;
   void ApplyWindowShapeAndSize(bool preserve_bottom_right);
   void SetExpanded(bool expanded);
   void TrackMouseLeave();
+  RECT WorkAreaForMonitor(HMONITOR monitor) const;
+  HMONITOR MonitorForPosition(const WidgetPosition& position) const;
+  static BOOL CALLBACK FindMonitorById(HMONITOR monitor,
+                                       HDC device_context,
+                                       LPRECT monitor_rect,
+                                       LPARAM data);
+  RECT ClampedRectForOrigin(int x, int y, HMONITOR preferred_monitor) const;
+  void SetBoundedWindowOrigin(int x, int y);
+  void ClampWindowToVisibleMonitor(bool notify);
+  void NotifyPositionChanged();
+  void UpdateSavedPosition(const flutter::EncodableMap& arguments);
   void InvokeFlutterMethod(const std::string& method);
   void OpenMainWindow();
   std::wstring FormatDuration() const;
@@ -61,6 +80,7 @@ class DesktopWidgetWindow {
   HWND window_ = nullptr;
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel_;
   WidgetState state_;
+  std::optional<WidgetPosition> saved_position_;
   bool positioned_ = false;
   bool expanded_ = true;
   bool tracking_mouse_leave_ = false;
