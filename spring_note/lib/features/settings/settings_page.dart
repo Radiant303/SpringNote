@@ -6799,7 +6799,8 @@ class _BoundedNumberTextFieldState extends State<_BoundedNumberTextField> {
     return TextField(
       controller: _controller,
       textAlign: TextAlign.right,
-      keyboardType: TextInputType.number,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [_DecimalNumberTextInputFormatter()],
       onChanged: _handleChanged,
       onSubmitted: _commit,
       onEditingComplete: () => _commit(_controller.text),
@@ -6812,11 +6813,20 @@ class _BoundedNumberTextFieldState extends State<_BoundedNumberTextField> {
     if (parsed == null) {
       return;
     }
-    final clamped = _clamp(parsed);
-    if (clamped != parsed) {
-      _setText(_formatNumber(clamped));
+
+    final min = widget.minValue;
+    if (min != null && parsed < min) {
+      return;
     }
-    widget.onChanged(clamped);
+
+    final max = widget.maxValue;
+    if (max != null && parsed > max) {
+      _setText(_formatNumber(max));
+      widget.onChanged(max);
+      return;
+    }
+
+    widget.onChanged(parsed);
   }
 
   void _commit(String text) {
@@ -6853,6 +6863,20 @@ class _BoundedNumberTextFieldState extends State<_BoundedNumberTextField> {
     return value == value.roundToDouble()
         ? value.toStringAsFixed(0)
         : value.toString();
+  }
+}
+
+class _DecimalNumberTextInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text;
+    if (text.isEmpty || RegExp(r'^\d*\.?\d*$').hasMatch(text)) {
+      return newValue;
+    }
+    return oldValue;
   }
 }
 
