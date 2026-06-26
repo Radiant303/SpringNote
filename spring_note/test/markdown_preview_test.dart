@@ -83,6 +83,28 @@ void main() {
     },
   );
 
+  test('markdown local image decodes escaped relative image paths', () async {
+    final imageFile = File(
+      _joinPath(noteDirectory.path, 'images/screenshot #1.png'),
+    );
+    await imageFile.parent.create(recursive: true);
+    await imageFile.writeAsBytes(_pngBytes);
+
+    final image = buildMarkdownLocalImage(
+      url: 'images/screenshot%20%231.png',
+      baseDirectoryPath: noteDirectory.path,
+      width: null,
+      height: null,
+      fit: BoxFit.contain,
+      errorBuilder: _imageErrorBuilder,
+    );
+
+    expect(image, isA<Image>());
+    final provider = (image as Image).image;
+    expect(provider, isA<FileImage>());
+    expect((provider as FileImage).file.path, imageFile.path);
+  });
+
   test(
     'markdown local image blocks file images outside note directory',
     () async {
@@ -197,6 +219,36 @@ void main() {
 
       final image = buildMarkdownLocalImage(
         url: 'images/linked.png',
+        baseDirectoryPath: noteDirectory.path,
+        width: null,
+        height: null,
+        fit: BoxFit.contain,
+        errorBuilder: _imageErrorBuilder,
+      );
+
+      expect(image, isNull);
+    },
+  );
+
+  test(
+    'markdown local image blocks images under symlinked directories',
+    () async {
+      if (Platform.isWindows) {
+        return;
+      }
+
+      final outsideDirectory = Directory(
+        _joinPath(noteDirectory.parent.path, 'outside-images'),
+      );
+      await outsideDirectory.create();
+      final outsideFile = File(_joinPath(outsideDirectory.path, 'secret.png'));
+      await outsideFile.writeAsBytes(_pngBytes);
+      final link = Link(_joinPath(noteDirectory.path, 'images/linked-dir'));
+      await link.parent.create(recursive: true);
+      await link.create(outsideDirectory.path);
+
+      final image = buildMarkdownLocalImage(
+        url: 'images/linked-dir/secret.png',
         baseDirectoryPath: noteDirectory.path,
         width: null,
         height: null,

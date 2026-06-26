@@ -27,6 +27,8 @@ bool FlutterWindow::OnCreate() {
   RegisterPlugins(flutter_controller_->engine());
   auto_start_manager_ = std::make_unique<AutoStartManager>(
       flutter_controller_->engine()->messenger());
+  clipboard_image_manager_ = std::make_unique<ClipboardImageManager>(
+      flutter_controller_->engine()->messenger());
   desktop_widget_window_ = std::make_unique<DesktopWidgetWindow>(
       flutter_controller_->engine()->messenger(), GetHandle());
   global_hotkey_manager_ = std::make_unique<GlobalHotkeyManager>(
@@ -51,6 +53,7 @@ void FlutterWindow::OnDestroy() {
   auto_start_manager_ = nullptr;
   tray_manager_ = nullptr;
   global_hotkey_manager_ = nullptr;
+  clipboard_image_manager_ = nullptr;
   desktop_widget_window_ = nullptr;
   if (flutter_controller_) {
     flutter_controller_ = nullptr;

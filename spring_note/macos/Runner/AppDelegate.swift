@@ -4,6 +4,7 @@ import FlutterMacOS
 @main
 class AppDelegate: FlutterAppDelegate {
   let autoStartController = AutoStartController()
+  let clipboardImageController = ClipboardImageController()
   let desktopWidgetController = DesktopWidgetWindowController()
   let globalHotkeyController = GlobalHotkeyController()
   let securityScopedDirectoryController = SecurityScopedDirectoryController()

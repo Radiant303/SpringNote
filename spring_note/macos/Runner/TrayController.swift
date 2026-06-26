@@ -41,6 +41,54 @@ private func stringMapValue(_ arguments: [String: Any], _ key: String) -> [Strin
   arguments[key] as? [String: Any]
 }
 
+final class ClipboardImageController {
+  private var channel: FlutterMethodChannel?
+
+  func attach(messenger: FlutterBinaryMessenger) {
+    channel = FlutterMethodChannel(
+      name: "spring_note/clipboard_image",
+      binaryMessenger: messenger
+    )
+    channel?.setMethodCallHandler { [weak self] call, result in
+      self?.handle(call: call, result: result)
+    }
+  }
+
+  private func handle(call: FlutterMethodCall, result: FlutterResult) {
+    switch call.method {
+    case "readPngImage":
+      result(readPngImage())
+    default:
+      result(FlutterMethodNotImplemented)
+    }
+  }
+
+  private func readPngImage() -> FlutterStandardTypedData? {
+    let pasteboard = NSPasteboard.general
+    if let data = pasteboard.data(forType: .png), !data.isEmpty {
+      return FlutterStandardTypedData(bytes: data)
+    }
+    if let data = pasteboard.data(forType: .tiff),
+       let image = NSImage(data: data),
+       let pngData = pngData(from: image) {
+      return FlutterStandardTypedData(bytes: pngData)
+    }
+    if let image = NSImage(pasteboard: pasteboard),
+       let pngData = pngData(from: image) {
+      return FlutterStandardTypedData(bytes: pngData)
+    }
+    return nil
+  }
+
+  private func pngData(from image: NSImage) -> Data? {
+    guard let tiffData = image.tiffRepresentation,
+          let bitmap = NSBitmapImageRep(data: tiffData) else {
+      return nil
+    }
+    return bitmap.representation(using: .png, properties: [:])
+  }
+}
+
 final class TrayController: NSObject {
   private var statusItem: NSStatusItem?
   private var channel: FlutterMethodChannel?

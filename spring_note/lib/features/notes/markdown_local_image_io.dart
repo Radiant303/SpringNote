@@ -34,13 +34,13 @@ File? _localImageFile(String value, String? baseDirectoryPath) {
   }
 
   final base = _resolvedDirectoryPath(baseDirectoryPath);
-  final path = _resolvedFilePath(candidate);
-  if (base == null || path == null) {
+  final resolvedFile = _resolvedFile(candidate);
+  if (base == null || resolvedFile == null) {
     return null;
   }
 
-  if (_isSameOrInsideDirectory(path: path, base: base)) {
-    return File(path);
+  if (_isSameOrInsideDirectory(path: resolvedFile.path, base: base)) {
+    return resolvedFile.file;
   }
   return null;
 }
@@ -63,7 +63,7 @@ File? _candidateFile(String value, String baseDirectoryPath) {
   if (_isRootedPath(value)) {
     return File(value);
   }
-  return File(_joinPath(baseDirectoryPath, value));
+  return File(_joinPath(baseDirectoryPath, Uri.decodeComponent(value)));
 }
 
 bool _hasAllowedImageExtension(String path) {
@@ -155,11 +155,14 @@ String? _resolvedDirectoryPath(String path) {
   }
 }
 
-String? _resolvedFilePath(File file) {
+({String path, File file})? _resolvedFile(File file) {
   try {
-    return _canonicalPath(file.resolveSymbolicLinksSync());
+    return (
+      path: _canonicalPath(file.resolveSymbolicLinksSync()),
+      file: file.absolute,
+    );
   } on FileSystemException {
-    return _canonicalPath(file.absolute.path);
+    return (path: _canonicalPath(file.absolute.path), file: file.absolute);
   }
 }
 

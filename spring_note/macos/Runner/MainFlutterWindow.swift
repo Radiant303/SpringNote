@@ -17,6 +17,9 @@ class MainFlutterWindow: NSWindow {
       appDelegate.autoStartController.attach(
         messenger: flutterViewController.engine.binaryMessenger
       )
+      appDelegate.clipboardImageController.attach(
+        messenger: flutterViewController.engine.binaryMessenger
+      )
       appDelegate.desktopWidgetController.attach(
         mainWindow: self,
         messenger: flutterViewController.engine.binaryMessenger

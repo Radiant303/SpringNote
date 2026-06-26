@@ -107,6 +107,40 @@ void main() {
 
     expect(saved.name, 'image.tar.gz.png');
   });
+
+  test('copy image stops after too many file name conflicts', () async {
+    final temp = await Directory.systemTemp.createTemp(
+      'spring_note_pasted_image_',
+    );
+    addTearDown(() async {
+      if (await temp.exists()) {
+        await temp.delete(recursive: true);
+      }
+    });
+
+    final noteFile = File(_join(temp.path, 'notes/daily.md'));
+    await noteFile.parent.create(recursive: true);
+    await noteFile.writeAsString('');
+
+    final imageDirectory = Directory(_join(noteFile.parent.path, 'images'));
+    await imageDirectory.create();
+    for (var attempt = 1; attempt <= 100; attempt++) {
+      final name = attempt == 1 ? 'source.png' : 'source-$attempt.png';
+      await File(_join(imageDirectory.path, name)).writeAsBytes([9]);
+    }
+
+    final sourceFile = File(_join(temp.path, 'source.png'));
+    await sourceFile.writeAsBytes([1, 2, 3]);
+
+    await expectLater(
+      const PastedImageService().copyImageFileForNote(
+        notePath: noteFile.path,
+        sourcePath: sourceFile.path,
+        sourceName: 'source.png',
+      ),
+      throwsStateError,
+    );
+  });
 }
 
 String _join(String left, String right) {

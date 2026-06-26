@@ -9,6 +9,7 @@ import '../../core/models/local_data_state.dart';
 import '../../core/models/note_external_update.dart';
 import '../../core/models/note_file.dart';
 import '../../core/services/ai_client_service.dart';
+import '../../core/services/clipboard_image_service.dart';
 import '../../core/services/note_service.dart';
 import '../../core/services/pasted_image_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -30,6 +31,7 @@ class NotesPage extends StatefulWidget {
     required this.localDataState,
     this.noteService = const NoteService(),
     this.aiClientService = const AiClientService(),
+    this.clipboardImageService = const ClipboardImageService(),
     this.pastedImageService = const PastedImageService(),
     this.externalNoteUpdate,
     this.imagePicker,
@@ -38,6 +40,7 @@ class NotesPage extends StatefulWidget {
   final LocalDataState localDataState;
   final NoteService noteService;
   final AiClientService aiClientService;
+  final ClipboardImageService clipboardImageService;
   final PastedImageService pastedImageService;
   final ValueListenable<NoteExternalUpdate?>? externalNoteUpdate;
   final NoteImagePicker? imagePicker;
@@ -68,6 +71,7 @@ class _NotesPageState extends State<NotesPage> {
   String? _editorMessage;
   bool _consumingFimPrediction = false;
   bool _insertingImage = false;
+  bool _pastingClipboard = false;
   int _notesLoadGeneration = 0;
 
   @override
@@ -110,6 +114,16 @@ class _NotesPageState extends State<NotesPage> {
     }
     final logicalKey = event.logicalKey;
     final controlPressed = HardwareKeyboard.instance.isControlPressed;
+    final metaPressed = HardwareKeyboard.instance.isMetaPressed;
+    if (event is KeyDownEvent &&
+        logicalKey == LogicalKeyboardKey.keyV &&
+        _isPasteModifierPressed(
+          controlPressed: controlPressed,
+          metaPressed: metaPressed,
+        )) {
+      unawaited(_handlePasteShortcut());
+      return KeyEventResult.handled;
+    }
     if (logicalKey == LogicalKeyboardKey.tab) {
       if (_fimPrediction == null) {
         _insertPlainText('\t');
@@ -130,6 +144,16 @@ class _NotesPageState extends State<NotesPage> {
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
+  }
+
+  bool _isPasteModifierPressed({
+    required bool controlPressed,
+    required bool metaPressed,
+  }) {
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.iOS || TargetPlatform.macOS => metaPressed,
+      _ => controlPressed,
+    };
   }
 
   bool _localDataDirectoryChanged(LocalDataState previous) {
@@ -562,7 +586,9 @@ class _NotesPageState extends State<NotesPage> {
           NoteImageAttachment(path: saved.path, name: saved.name),
         );
       }
-      final snippets = copiedImages.map(_markdownImageSnippet).toList();
+      final snippets = copiedImages
+          .map((image) => _markdownImageSnippet(image, notePath: selected.path))
+          .toList();
       if (snippets.isEmpty) {
         return;
       }
@@ -585,6 +611,91 @@ class _NotesPageState extends State<NotesPage> {
     } finally {
       _insertingImage = false;
     }
+  }
+
+  Future<void> _handlePasteShortcut() async {
+    if (_loading || _selectedNote == null || _pastingClipboard) {
+      return;
+    }
+
+    _pastingClipboard = true;
+    try {
+      final imageBytes = await _readClipboardImage();
+      if (!mounted || _loading) {
+        return;
+      }
+      final selected = _selectedNote;
+
+      if (selected != null && imageBytes != null && imageBytes.isNotEmpty) {
+        await _pasteClipboardImage(selected.path, imageBytes);
+        return;
+      }
+
+      await _pasteClipboardText();
+    } finally {
+      _pastingClipboard = false;
+    }
+  }
+
+  Future<Uint8List?> _readClipboardImage() async {
+    try {
+      return widget.clipboardImageService.readPngImage();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _pasteClipboardImage(
+    String notePath,
+    Uint8List imageBytes,
+  ) async {
+    try {
+      final saved = await widget.pastedImageService.savePngForNote(
+        notePath: notePath,
+        pngBytes: imageBytes,
+      );
+      if (!mounted) {
+        return;
+      }
+      final image = NoteImageAttachment(path: saved.path, name: saved.name);
+      _insertPlainText(
+        _insertionTextForBlock(
+          _markdownImageSnippet(image, notePath: notePath),
+        ),
+      );
+      setState(() {
+        _editorMessage = '已粘贴图片';
+        _fimMessage = null;
+      });
+      _editorFocusNode.requestFocus();
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _editorMessage = '无法粘贴图片，请重新获取图片后重试。');
+    }
+  }
+
+  Future<void> _pasteClipboardText() async {
+    final ClipboardData? data;
+    try {
+      data = await Clipboard.getData(Clipboard.kTextPlain);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _editorMessage = '无法读取剪贴板文字。');
+      }
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+    final text = data?.text;
+    if (text == null || text.isEmpty) {
+      setState(() => _editorMessage = '剪贴板中没有可粘贴的内容。');
+      return;
+    }
+    _insertPlainText(text);
+    _editorFocusNode.requestFocus();
   }
 
   Future<List<NoteImageAttachment>> _defaultImagePicker() async {
@@ -621,8 +732,15 @@ class _NotesPageState extends State<NotesPage> {
     return segments.last;
   }
 
-  String _markdownImageSnippet(NoteImageAttachment image) {
-    return '![${_escapeImageAltText(image.name)}](${_imageUri(image.path)})';
+  String _markdownImageSnippet(
+    NoteImageAttachment image, {
+    required String notePath,
+  }) {
+    final imagePath = _portableImagePath(
+      imagePath: image.path,
+      notePath: notePath,
+    );
+    return '![${_escapeImageAltText(image.name)}]($imagePath)';
   }
 
   String _escapeImageAltText(String value) {
@@ -649,6 +767,54 @@ class _NotesPageState extends State<NotesPage> {
 
   bool _isWindowsPath(String path) {
     return RegExp(r'^[a-zA-Z]:[\\/]').hasMatch(path) || path.startsWith(r'\\');
+  }
+
+  String _portableImagePath({
+    required String imagePath,
+    required String notePath,
+  }) {
+    final noteDirectory = _parentDirectoryPath(notePath);
+    final relative = _relativePathIfInside(
+      path: imagePath,
+      baseDirectory: noteDirectory,
+    );
+    if (relative != null) {
+      return Uri(path: relative).toString();
+    }
+    return _imageUri(imagePath);
+  }
+
+  String? _relativePathIfInside({
+    required String path,
+    required String baseDirectory,
+  }) {
+    final normalizedPath = path.replaceAll('\\', '/');
+    final normalizedBase = _trimTrailingSlashes(
+      baseDirectory.replaceAll('\\', '/'),
+    );
+    final compareCaseInsensitive =
+        RegExp(r'^[a-zA-Z]:/').hasMatch(normalizedPath) ||
+        RegExp(r'^[a-zA-Z]:/').hasMatch(normalizedBase);
+    final comparablePath = compareCaseInsensitive
+        ? normalizedPath.toLowerCase()
+        : normalizedPath;
+    final comparableBase = compareCaseInsensitive
+        ? normalizedBase.toLowerCase()
+        : normalizedBase;
+    final prefix = '$comparableBase/';
+    if (!comparablePath.startsWith(prefix)) {
+      return null;
+    }
+    final relative = normalizedPath.substring(normalizedBase.length + 1);
+    return relative.isEmpty ? null : relative;
+  }
+
+  String _trimTrailingSlashes(String value) {
+    var end = value.length;
+    while (end > 0 && value.codeUnitAt(end - 1) == 47) {
+      end--;
+    }
+    return value.substring(0, end);
   }
 
   String _parentDirectoryPath(String path) {

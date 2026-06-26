@@ -9,6 +9,7 @@ import 'package:spring_note/core/models/model_config.dart';
 import 'package:spring_note/core/models/note_file.dart';
 import 'package:spring_note/core/models/provider_config.dart';
 import 'package:spring_note/core/services/ai_client_service.dart';
+import 'package:spring_note/core/services/clipboard_image_service.dart';
 import 'package:spring_note/core/services/note_service.dart';
 import 'package:spring_note/core/services/pasted_image_service.dart';
 import 'package:spring_note/core/theme/app_theme.dart';
@@ -310,13 +311,9 @@ final value = 1;
     await tester.pump();
     await tester.pump();
 
-    final expectedPath = Uri.file(
-      pastedImageService.savedImage.path,
-      windows: true,
-    );
     final expectedImage =
         r'![screenshot \[final\]\(copy\) copy.png]'
-        '($expectedPath)';
+        '(images/screenshot%20%231.png)';
     expect(noteService.contents.values.single, '# 日报\n前缀\n$expectedImage');
     expect(pastedImageService.notePath, contains('2026-06-18.md'));
     expect(pastedImageService.sourcePath, imagePath);
@@ -527,7 +524,7 @@ final value = 1;
       );
       expect(
         noteService.contents['E:\\SpringNoteData\\notes\\daily\\2026-06-18.md'],
-        contains('![screenshot.png]'),
+        contains('![screenshot.png](images/screenshot.png)'),
       );
       expect(
         noteService
@@ -536,6 +533,157 @@ final value = 1;
       );
     },
   );
+
+  testWidgets('notes editor pastes clipboard image as saved markdown link', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final imageBytes = Uint8List.fromList([1, 2, 3, 4]);
+    final clipboardImageService = _FakeClipboardImageService(imageBytes);
+    final pastedImageService = _MemoryPastedImageService(
+      const SavedPastedImage(
+        path:
+            'D:\\Temp\\SpringNote\\notes\\daily\\images\\pasted-image-20260618-120000-000.png',
+        name: 'pasted-image-20260618-120000-000.png',
+      ),
+    );
+    final noteService = _MemoryNoteService({
+      'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-18.md': '# 日报\n前缀',
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: NotesPage(
+          localDataState: _localDataState,
+          noteService: noteService,
+          clipboardImageService: clipboardImageService,
+          pastedImageService: pastedImageService,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byType(TextField).last);
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pump();
+    await tester.pump();
+
+    final expectedImage =
+        '![pasted-image-20260618-120000-000.png]'
+        '(images/pasted-image-20260618-120000-000.png)';
+    expect(noteService.contents.values.single, '# 日报\n前缀\n$expectedImage');
+    expect(clipboardImageService.calls, 1);
+    expect(pastedImageService.savedBytes, imageBytes);
+    expect(pastedImageService.notePath, contains('2026-06-18.md'));
+    expect(find.text('已粘贴图片'), findsOneWidget);
+  });
+
+  testWidgets('notes editor keeps text paste when clipboard has no image', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.getData') {
+        expect(call.arguments, Clipboard.kTextPlain);
+        return {'text': '粘贴文字'};
+      }
+      return null;
+    });
+    addTearDown(
+      () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
+    );
+
+    final clipboardImageService = _FakeClipboardImageService(null);
+    final noteService = _MemoryNoteService({
+      'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-18.md': '# 日报\n前缀',
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: NotesPage(
+          localDataState: _localDataState,
+          noteService: noteService,
+          clipboardImageService: clipboardImageService,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byType(TextField).last);
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pump();
+    await tester.pump();
+
+    expect(noteService.contents.values.single, '# 日报\n前缀粘贴文字');
+    expect(clipboardImageService.calls, 1);
+  });
+
+  testWidgets('notes editor ignores text clipboard errors when pasting', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.getData') {
+        throw PlatformException(code: 'clipboard-error');
+      }
+      return null;
+    });
+    addTearDown(
+      () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
+    );
+
+    final clipboardImageService = _FakeClipboardImageService(null);
+    final noteService = _MemoryNoteService({
+      'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-18.md': '# 日报\n前缀',
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: NotesPage(
+          localDataState: _localDataState,
+          noteService: noteService,
+          clipboardImageService: clipboardImageService,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byType(TextField).last);
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pump();
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(noteService.contents.values.single, '# 日报\n前缀');
+    expect(clipboardImageService.calls, 1);
+    expect(find.text('无法读取剪贴板文字。'), findsOneWidget);
+  });
 
   testWidgets('notes editor shows FIM unavailable reason', (
     WidgetTester tester,
@@ -714,14 +862,39 @@ class _FakeAiClientService extends AiClientService {
   }
 }
 
+class _FakeClipboardImageService extends ClipboardImageService {
+  _FakeClipboardImageService(this.imageBytes);
+
+  final Uint8List? imageBytes;
+  int calls = 0;
+
+  @override
+  Future<Uint8List?> readPngImage() async {
+    calls++;
+    return imageBytes;
+  }
+}
+
 class _MemoryPastedImageService extends PastedImageService {
   _MemoryPastedImageService(this.savedImage);
 
   final SavedPastedImage savedImage;
   int copyCalls = 0;
+  Uint8List? savedBytes;
   String? notePath;
   String? sourcePath;
   String? sourceName;
+
+  @override
+  Future<SavedPastedImage> savePngForNote({
+    required String notePath,
+    required Uint8List pngBytes,
+    DateTime? now,
+  }) async {
+    this.notePath = notePath;
+    savedBytes = pngBytes;
+    return savedImage;
+  }
 
   @override
   Future<SavedPastedImage> copyImageFileForNote({

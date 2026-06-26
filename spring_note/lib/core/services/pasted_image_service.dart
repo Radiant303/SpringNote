@@ -11,6 +11,8 @@ class SavedPastedImage {
 class PastedImageService {
   const PastedImageService();
 
+  static const int _maxImageFileNameAttempts = 100;
+
   Future<SavedPastedImage> savePngForNote({
     required String notePath,
     required Uint8List pngBytes,
@@ -23,17 +25,13 @@ class PastedImageService {
     final imageDirectory = await _ensureImageDirectory(notePath);
 
     final timestamp = _timestamp(now ?? DateTime.now());
-    var name = 'pasted-image-$timestamp.png';
-    var file = File(_join(imageDirectory.path, name));
-    var index = 2;
-    while (await file.exists()) {
-      name = 'pasted-image-$timestamp-$index.png';
-      file = File(_join(imageDirectory.path, name));
-      index++;
-    }
+    final available = await _availableImageFile(
+      imageDirectory: imageDirectory,
+      preferredName: 'pasted-image-$timestamp.png',
+    );
 
-    await file.writeAsBytes(pngBytes, flush: true);
-    return SavedPastedImage(path: file.path, name: name);
+    await available.file.writeAsBytes(pngBytes, flush: true);
+    return SavedPastedImage(path: available.file.path, name: available.name);
   }
 
   Future<SavedPastedImage> copyImageFileForNote({
@@ -46,17 +44,13 @@ class PastedImageService {
       sourcePath,
     );
     final imageDirectory = await _ensureImageDirectory(notePath);
-    var name = preferredName;
-    var file = File(_join(imageDirectory.path, name));
-    var index = 2;
-    while (await file.exists()) {
-      name = _deduplicatedName(preferredName, index);
-      file = File(_join(imageDirectory.path, name));
-      index++;
-    }
+    final available = await _availableImageFile(
+      imageDirectory: imageDirectory,
+      preferredName: preferredName,
+    );
 
-    await File(sourcePath).copy(file.path);
-    return SavedPastedImage(path: file.path, name: name);
+    await File(sourcePath).copy(available.file.path);
+    return SavedPastedImage(path: available.file.path, name: available.name);
   }
 
   Future<Directory> _ensureImageDirectory(String notePath) async {
@@ -66,6 +60,22 @@ class PastedImageService {
       await imageDirectory.create(recursive: true);
     }
     return imageDirectory;
+  }
+
+  Future<({File file, String name})> _availableImageFile({
+    required Directory imageDirectory,
+    required String preferredName,
+  }) async {
+    for (var attempt = 1; attempt <= _maxImageFileNameAttempts; attempt++) {
+      final name = attempt == 1
+          ? preferredName
+          : _deduplicatedName(preferredName, attempt);
+      final file = File(_join(imageDirectory.path, name));
+      if (!await file.exists()) {
+        return (file: file, name: name);
+      }
+    }
+    throw StateError('Unable to find an available image file name.');
   }
 
   String _safeImageFileName(String value, String sourcePath) {
