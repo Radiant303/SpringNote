@@ -142,13 +142,24 @@ class LocalDataService {
       return config;
     }
 
-    final decoded = jsonDecode(content);
-    if (decoded is! Map) {
-      throw const FormatException('config.json must contain a JSON object');
+    var repaired = false;
+    var decoded = _tryDecodeJsonMap(content);
+    if (decoded == null) {
+      await _backupMalformedFile(file);
+      decoded = _tryDecodeFirstJsonMap(content);
+      if (decoded == null) {
+        final config = AppConfig.defaults();
+        await _writeConfig(file, config);
+        return config;
+      }
+      repaired = true;
     }
 
-    final json = decoded.map((key, value) => MapEntry(key.toString(), value));
-    return AppConfig.fromJson(json);
+    final config = AppConfig.fromJson(decoded);
+    if (repaired) {
+      await _writeConfig(file, config);
+    }
+    return config;
   }
 
   Future<void> _writeConfig(File file, AppConfig config) async {
@@ -275,8 +286,16 @@ class LocalDataService {
     if (content.trim().isEmpty) {
       return null;
     }
-    final decoded = jsonDecode(content);
-    if (decoded is! Map) {
+    var decoded = _tryDecodeJsonMap(content);
+    if (decoded == null) {
+      await _backupMalformedFile(file);
+      decoded = _tryDecodeFirstJsonMap(content);
+      if (decoded == null) {
+        return null;
+      }
+      await _writeJson(file, decoded);
+    }
+    if (decoded.isEmpty) {
       return null;
     }
     final path = decoded['dataDirectory'];
@@ -293,11 +312,90 @@ class LocalDataService {
         ? defaultRoot.path
         : customPath.trim();
 
-    const encoder = JsonEncoder.withIndent('  ');
     await file.parent.create(recursive: true);
-    await file.writeAsString(
-      '${encoder.convert({'dataDirectory': activePath})}\n',
-    );
+    await _writeJson(file, {'dataDirectory': activePath});
+  }
+
+  Future<void> _writeJson(File file, Map<String, Object?> json) async {
+    const encoder = JsonEncoder.withIndent('  ');
+    await file.writeAsString('${encoder.convert(json)}\n');
+  }
+
+  Map<String, Object?>? _tryDecodeJsonMap(String content) {
+    try {
+      final decoded = jsonDecode(content);
+      if (decoded is! Map) {
+        return null;
+      }
+      return decoded.map((key, value) => MapEntry(key.toString(), value));
+    } on FormatException {
+      return null;
+    }
+  }
+
+  Map<String, Object?>? _tryDecodeFirstJsonMap(String content) {
+    final end = _firstJsonObjectEnd(content);
+    if (end == null) {
+      return null;
+    }
+    return _tryDecodeJsonMap(content.substring(0, end));
+  }
+
+  int? _firstJsonObjectEnd(String content) {
+    var depth = 0;
+    var inString = false;
+    var escaped = false;
+    var started = false;
+
+    for (var index = 0; index < content.length; index++) {
+      final codeUnit = content.codeUnitAt(index);
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+        } else if (codeUnit == 92) {
+          escaped = true;
+        } else if (codeUnit == 34) {
+          inString = false;
+        }
+        continue;
+      }
+
+      if (codeUnit == 34) {
+        inString = true;
+        continue;
+      }
+      if (codeUnit == 123) {
+        depth++;
+        started = true;
+        continue;
+      }
+      if (codeUnit == 125) {
+        if (!started) {
+          return null;
+        }
+        depth--;
+        if (depth == 0) {
+          return index + 1;
+        }
+        if (depth < 0) {
+          return null;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  Future<void> _backupMalformedFile(File file) async {
+    if (!await file.exists()) {
+      return;
+    }
+    final stamp = DateTime.now()
+        .toIso8601String()
+        .replaceAll(RegExp(r'[^0-9]'), '')
+        .padRight(17, '0')
+        .substring(0, 17);
+    await file.copy('${file.path}.invalid-$stamp');
   }
 
   Future<File> _activeDataDirectoryPointerFile() async {

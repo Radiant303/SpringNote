@@ -256,6 +256,80 @@ void main() {
   });
 
   test(
+    'local data service repairs config with trailing invalid json',
+    () async {
+      final temp = await Directory.systemTemp.createTemp(
+        'spring_note_repair_config_',
+      );
+      addTearDown(() async {
+        if (await temp.exists()) {
+          await temp.delete(recursive: true);
+        }
+      });
+
+      final service = LocalDataService(
+        appDataPath: temp.path,
+        executableDirectoryPath: '${temp.path}${Platform.pathSeparator}bin',
+      );
+      final state = await service.initialize();
+      final configFile = File(state.configPath);
+      final configJson = jsonDecode(await configFile.readAsString()) as Map;
+      configJson['dailyWorkHours'] = 6;
+      const encoder = JsonEncoder.withIndent('  ');
+      await configFile.writeAsString(
+        '${encoder.convert(configJson)}\n  }\n}\n',
+      );
+
+      final reinitialized = await service.initialize();
+
+      expect(reinitialized.config.dailyWorkHours, 6);
+      expect(
+        await configFile.parent.list().any(
+          (entity) =>
+              entity is File && entity.path.contains('config.json.invalid-'),
+        ),
+        isTrue,
+      );
+      expect(() => jsonDecode(configFile.readAsStringSync()), returnsNormally);
+    },
+  );
+
+  test('local data service ignores malformed data directory pointer', () async {
+    final temp = await Directory.systemTemp.createTemp(
+      'spring_note_bad_pointer_',
+    );
+    addTearDown(() async {
+      if (await temp.exists()) {
+        await temp.delete(recursive: true);
+      }
+    });
+
+    final executableDir = Directory('${temp.path}${Platform.pathSeparator}bin');
+    await executableDir.create(recursive: true);
+    await File(
+      '${executableDir.path}${Platform.pathSeparator}data-directory.json',
+    ).writeAsString('}\n');
+
+    final state = await LocalDataService(
+      appDataPath: temp.path,
+      executableDirectoryPath: executableDir.path,
+    ).initialize();
+
+    expect(
+      state.dataDirectory,
+      '${temp.path}${Platform.pathSeparator}SpringNote',
+    );
+    expect(
+      await executableDir.list().any(
+        (entity) =>
+            entity is File &&
+            entity.path.contains('data-directory.json.invalid-'),
+      ),
+      isTrue,
+    );
+  });
+
+  test(
     'local data service switches to existing data directory without overwriting config',
     () async {
       final temp = await Directory.systemTemp.createTemp(
