@@ -69,14 +69,7 @@ void main() {
 
     final fakeDailyNoteService = _FakeDailyNoteService();
     final fakeHomeOverviewService = _FakeHomeOverviewService();
-    final localDataState = LocalDataState(
-      dataDirectory: 'D:\\Temp\\SpringNote',
-      configPath: 'D:\\Temp\\SpringNote\\config.json',
-      dailyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\daily',
-      weeklyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\weekly',
-      monthlyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\monthly',
-      config: AppConfig.defaults(),
-    );
+    final localDataState = _testLocalDataState();
 
     await tester.pumpWidget(
       MaterialApp(
@@ -95,16 +88,17 @@ void main() {
     );
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('home-smart-generate-button')));
-    for (var index = 0; index < 20; index++) {
-      await tester.pump(const Duration(milliseconds: 100));
-      if (fakeHomeOverviewService.savedOverview != null) {
-        break;
-      }
-    }
+    await _pumpUntil(
+      tester,
+      () => fakeHomeOverviewService.savedOverview != null,
+      'home overview to be saved',
+    );
 
     expect(find.text('完成首页输入流程'), findsOneWidget);
     expect(find.text('问题：按钮状态需要校验'), findsOneWidget);
     expect(find.text('明天补充更多测试'), findsOneWidget);
+    expect(fakeDailyNoteService.savedNote, isNotNull);
+    expect(fakeHomeOverviewService.savedOverview, isNotNull);
     expect(fakeDailyNoteService.savedNote?.rawInput, contains('完成首页输入流程'));
     expect(
       fakeHomeOverviewService.savedOverview?.completed,
@@ -126,14 +120,7 @@ void main() {
 
       final fakeDailyNoteService = _FakeDailyNoteService();
       final fakeHomeOverviewService = _FakeHomeOverviewService();
-      final localDataState = LocalDataState(
-        dataDirectory: 'D:\\Temp\\SpringNote',
-        configPath: 'D:\\Temp\\SpringNote\\config.json',
-        dailyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\daily',
-        weeklyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\weekly',
-        monthlyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\monthly',
-        config: AppConfig.defaults(),
-      );
+      final localDataState = _testLocalDataState();
 
       await tester.pumpWidget(
         MaterialApp(
@@ -150,13 +137,14 @@ void main() {
       await tester.sendKeyDownEvent(shortcut.key);
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.sendKeyUpEvent(shortcut.key);
-      for (var index = 0; index < 20; index++) {
-        await tester.pump(const Duration(milliseconds: 100));
-        if (fakeDailyNoteService.savedNote != null) {
-          break;
-        }
-      }
+      await _pumpUntil(
+        tester,
+        () => fakeDailyNoteService.savedNote != null,
+        'daily note to be saved after ${shortcut.name}',
+      );
 
+      expect(fakeDailyNoteService.savedNote, isNotNull);
+      expect(fakeHomeOverviewService.savedOverview, isNotNull);
       expect(fakeDailyNoteService.savedNote?.rawInput, contains('用快捷键整理首页内容'));
       expect(
         fakeHomeOverviewService.savedOverview?.completed,
@@ -177,14 +165,7 @@ void main() {
     final fakeDailyNoteService = _FakeDailyNoteService();
     final fakeHomeOverviewService = _FakeHomeOverviewService();
     final fakePendingImageService = _FakePendingImageService();
-    final localDataState = LocalDataState(
-      dataDirectory: 'D:\\Temp\\SpringNote',
-      configPath: 'D:\\Temp\\SpringNote\\config.json',
-      dailyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\daily',
-      weeklyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\weekly',
-      monthlyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\monthly',
-      config: AppConfig.defaults(),
-    );
+    final localDataState = _testLocalDataState();
 
     await tester.pumpWidget(
       MaterialApp(
@@ -224,13 +205,13 @@ void main() {
     await tester.enterText(find.byType(TextField), '整理附件内容');
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('home-smart-generate-button')));
-    for (var index = 0; index < 20; index++) {
-      await tester.pump(const Duration(milliseconds: 100));
-      if (fakeDailyNoteService.savedNote != null) {
-        break;
-      }
-    }
+    await _pumpUntil(
+      tester,
+      () => fakeDailyNoteService.savedNote != null,
+      'daily note with attachments to be saved',
+    );
 
+    expect(fakeDailyNoteService.savedNote, isNotNull);
     expect(fakePendingImageService.savedBytes.single, imageBytes);
     final rawInput = fakeDailyNoteService.savedNote?.rawInput ?? '';
     expect(rawInput, contains('整理附件内容'));
@@ -253,14 +234,7 @@ void main() {
     final fakeDailyNoteService = _FakeDailyNoteService();
     final fakeHomeOverviewService = _FakeHomeOverviewService();
     final fakePendingImageService = _FakePendingImageService();
-    final localDataState = LocalDataState(
-      dataDirectory: 'D:\\Temp\\SpringNote',
-      configPath: 'D:\\Temp\\SpringNote\\config.json',
-      dailyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\daily',
-      weeklyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\weekly',
-      monthlyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\monthly',
-      config: AppConfig.defaults(),
-    );
+    final localDataState = _testLocalDataState();
 
     await tester.pumpWidget(
       MaterialApp(
@@ -289,14 +263,17 @@ void main() {
     await tester.enterText(find.byType(TextField), '整理带图日报');
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('home-smart-generate-button')));
-    for (var index = 0; index < 20; index++) {
-      await tester.pump(const Duration(milliseconds: 100));
-      if (fakeDailyNoteService.savedNote != null) {
-        break;
-      }
-    }
+    await _pumpUntil(
+      tester,
+      () => fakeDailyNoteService.savedNote != null,
+      'daily note with pasted image to be saved',
+    );
 
-    expect(fakePendingImageService.notePath, contains('notes\\daily'));
+    expect(fakeDailyNoteService.savedNote, isNotNull);
+    expect(
+      fakePendingImageService.notePath,
+      contains(_joinPath('notes', 'daily')),
+    );
     expect(fakePendingImageService.notePath, endsWith('.md'));
     expect(fakePendingImageService.savedBytes.single, imageBytes);
     final rawInput = fakeDailyNoteService.savedNote?.rawInput ?? '';
@@ -317,14 +294,7 @@ void main() {
     final fakeDailyNoteService = _FakeDailyNoteService();
     final fakeHomeOverviewService = _FakeHomeOverviewService();
     final fakePendingImageService = _FakePendingImageService();
-    final localDataState = LocalDataState(
-      dataDirectory: 'D:\\Temp\\SpringNote',
-      configPath: 'D:\\Temp\\SpringNote\\config.json',
-      dailyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\daily',
-      weeklyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\weekly',
-      monthlyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\monthly',
-      config: AppConfig.defaults(),
-    );
+    final localDataState = _testLocalDataState();
 
     await tester.pumpWidget(
       MaterialApp(
@@ -349,13 +319,13 @@ void main() {
     await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('home-smart-generate-button')));
-    for (var index = 0; index < 20; index++) {
-      await tester.pump(const Duration(milliseconds: 100));
-      if (fakeDailyNoteService.savedNote != null) {
-        break;
-      }
-    }
+    await _pumpUntil(
+      tester,
+      () => fakeDailyNoteService.savedNote != null,
+      'daily note with non-ascii image to be saved',
+    );
 
+    expect(fakeDailyNoteService.savedNote, isNotNull);
     final rawInput = fakeDailyNoteService.savedNote?.rawInput ?? '';
     expect(
       rawInput,
@@ -371,12 +341,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final localDataState = LocalDataState(
-      dataDirectory: 'D:\\Temp\\SpringNote',
-      configPath: 'D:\\Temp\\SpringNote\\config.json',
-      dailyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\daily',
-      weeklyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\weekly',
-      monthlyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\monthly',
+    final localDataState = _testLocalDataState(
       config: AppConfig.defaults().copyWith(
         dailyWorkHours: 1,
         dailySalary: 3600,
@@ -407,6 +372,71 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     controller.dispose();
   });
+
+  testWidgets('desktop widget controller flushes pending income on shutdown', (
+    WidgetTester tester,
+  ) async {
+    final statsService = _RecordingStatsService();
+    final localDataState = _testLocalDataState(
+      config: AppConfig.defaults().copyWith(
+        dailyWorkHours: 1,
+        dailySalary: 3600,
+      ),
+    );
+    final controller = DesktopWidgetController(
+      statsService: statsService,
+      tickDuration: const Duration(seconds: 1),
+    )..attach(localDataState);
+
+    await tester.pump(const Duration(seconds: 30));
+    await controller.flush();
+
+    expect(statsService.recordedWorkSeconds, [30]);
+    expect(statsService.recordedCoins.single, 30);
+
+    controller.dispose();
+  });
+}
+
+LocalDataState _testLocalDataState({AppConfig? config}) {
+  final tempDir = Directory.systemTemp.createTempSync(
+    'spring_note_widget_test_',
+  );
+  addTearDown(() {
+    if (tempDir.existsSync()) {
+      tempDir.deleteSync(recursive: true);
+    }
+  });
+  final notes = _joinPath(tempDir.path, 'notes');
+  return LocalDataState(
+    dataDirectory: tempDir.path,
+    configPath: _joinPath(tempDir.path, 'config.json'),
+    dailyNotesDirectory: _joinPath(notes, 'daily'),
+    weeklyNotesDirectory: _joinPath(notes, 'weekly'),
+    monthlyNotesDirectory: _joinPath(notes, 'monthly'),
+    config: config ?? AppConfig.defaults(),
+  );
+}
+
+Future<void> _pumpUntil(
+  WidgetTester tester,
+  bool Function() condition,
+  String description,
+) async {
+  for (var index = 0; index < 20; index++) {
+    await tester.pump(const Duration(milliseconds: 100));
+    if (condition()) {
+      return;
+    }
+  }
+  fail('Timed out waiting for $description.');
+}
+
+String _joinPath(String left, String right) {
+  if (left.endsWith(Platform.pathSeparator)) {
+    return '$left$right';
+  }
+  return '$left${Platform.pathSeparator}$right';
 }
 
 class _FakeDailyNoteService extends DailyNoteService {
@@ -546,6 +576,30 @@ class _FakeStatsService extends StatsService {
     required int workSeconds,
     required double coins,
   }) async {}
+}
+
+class _RecordingStatsService extends StatsService {
+  final List<int> recordedWorkSeconds = [];
+  final List<double> recordedCoins = [];
+
+  @override
+  Future<rust_stats.StatsSnapshot> readSnapshot({
+    required LocalDataState localDataState,
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    return StatsService.emptySnapshot;
+  }
+
+  @override
+  Future<void> recordWorkTime({
+    required String appDataDir,
+    required int workSeconds,
+    required double coins,
+  }) async {
+    recordedWorkSeconds.add(workSeconds);
+    recordedCoins.add(coins);
+  }
 }
 
 const _transparentPngBytes = [

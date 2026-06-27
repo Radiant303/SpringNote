@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../../features/home/home_page.dart';
 import '../../features/memory/memory_page.dart';
@@ -14,6 +16,7 @@ import '../models/note_external_update.dart';
 import '../models/note_file.dart';
 import '../services/auto_start_service.dart';
 import '../services/desktop_widget_controller.dart';
+import '../services/desktop_window_controller.dart';
 import '../services/desktop_widget_window_bridge.dart';
 import '../services/global_hotkey_service.dart';
 import '../services/level_progress_controller.dart';
@@ -46,7 +49,7 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell> with WindowListener {
   AppSection _section = AppSection.home;
   late LocalDataState _localDataState = widget.localDataState;
   late final DesktopWidgetController _desktopWidgetController =
@@ -64,10 +67,15 @@ class _AppShellState extends State<AppShell> {
   int _noteExternalUpdateRevision = 0;
   Timer? _desktopWidgetPositionSaveTimer;
   AppConfig? _pendingDesktopWidgetPositionConfig;
+  bool _destroyingWindow = false;
 
   @override
   void initState() {
     super.initState();
+    if (DesktopWindowController.supportsWindowManager) {
+      windowManager.addListener(this);
+      unawaited(_setPreventClose(true));
+    }
     _desktopWidgetController.addListener(_syncDesktopWidgetWindow);
     _levelProgressController.addListener(_handleLevelProgressChanged);
     unawaited(
@@ -105,6 +113,10 @@ class _AppShellState extends State<AppShell> {
 
   @override
   void dispose() {
+    if (DesktopWindowController.supportsWindowManager) {
+      windowManager.removeListener(this);
+      unawaited(_setPreventClose(false));
+    }
     _desktopWidgetController.removeListener(_syncDesktopWidgetWindow);
     _levelProgressController.removeListener(_handleLevelProgressChanged);
     _flushDesktopWidgetPositionSave();
@@ -115,6 +127,58 @@ class _AppShellState extends State<AppShell> {
     _desktopWidgetController.dispose();
     _levelProgressController.dispose();
     super.dispose();
+  }
+
+  @override
+  void onWindowClose() {
+    if (_destroyingWindow) {
+      return;
+    }
+    _destroyingWindow = true;
+    unawaited(_flushAndDestroyWindow());
+  }
+
+  Future<void> _flushAndDestroyWindow() async {
+    try {
+      await _desktopWidgetController.flush();
+    } catch (error, stackTrace) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: 'spring_note',
+          context: ErrorDescription('flushing work stats before window close'),
+        ),
+      );
+    } finally {
+      try {
+        await windowManager.destroy();
+      } catch (error, stackTrace) {
+        _destroyingWindow = false;
+        FlutterError.reportError(
+          FlutterErrorDetails(
+            exception: error,
+            stack: stackTrace,
+            library: 'spring_note',
+            context: ErrorDescription(
+              'destroying window after work stats flush',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _setPreventClose(bool value) async {
+    try {
+      await windowManager.setPreventClose(value);
+    } on MissingPluginException {
+      // Window manager can be unavailable in tests.
+    } on PlatformException {
+      // Window manager can be unavailable during shutdown races.
+    } on UnsupportedError {
+      // Window manager can be unavailable in tests or during shutdown races.
+    }
   }
 
   void _openHomeFromDesktopWidget() {

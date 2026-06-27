@@ -99,8 +99,23 @@ class DesktopWidgetController extends ChangeNotifier {
   @override
   void dispose() {
     _timer?.cancel();
-    unawaited(flush());
+    unawaited(_flushBestEffort());
     super.dispose();
+  }
+
+  Future<void> _flushBestEffort() async {
+    try {
+      await flush();
+    } catch (error, stackTrace) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: 'spring_note',
+          context: ErrorDescription('flushing work stats during dispose'),
+        ),
+      );
+    }
   }
 
   void _tick() {
