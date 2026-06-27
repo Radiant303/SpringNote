@@ -863,17 +863,16 @@ class _FakeAiClientService extends AiClientService {
 }
 
 class _FakeClipboardImageService extends ClipboardImageService {
-  _FakeClipboardImageService(this.imageBytes, {this.imageFiles = const []});
+  _FakeClipboardImageService(this.imageBytes);
 
   final Uint8List? imageBytes;
-  final List<String> imageFiles;
   int calls = 0;
   int fileCalls = 0;
 
   @override
   Future<List<String>> readImageFiles() async {
     fileCalls++;
-    return imageFiles;
+    return const [];
   }
 
   @override
