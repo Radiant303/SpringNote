@@ -1,6 +1,7 @@
-use crate::ai::{AiChatRequest, AiModel, AiProvider, AiTextResult, extract_text, usage_from_value};
+use crate::ai::{
+    AiChatRequest, AiModel, AiProvider, AiTextResult, extract_text, http_client, usage_from_value,
+};
 use crate::ai_log::{ApiNetworkLog, write_api_network_log};
-use reqwest::Client;
 use serde_json::{Value, json};
 use std::time::Instant;
 
@@ -9,7 +10,7 @@ pub async fn chat(request: &AiChatRequest) -> Result<AiTextResult, String> {
     let body = build_generate_content_body(request);
     let request_body = body_to_string(&body);
     let started_at = Instant::now();
-    let response = Client::new()
+    let response = http_client()?
         .post(&url)
         .header("x-goog-api-key", &request.provider.api_key)
         .json(&body)
@@ -77,7 +78,7 @@ pub async fn fetch_models(
 ) -> Result<Vec<AiModel>, String> {
     let url = format!("{}/v1beta/models", provider.base_url.trim_end_matches('/'));
     let started_at = Instant::now();
-    let response = Client::new()
+    let response = http_client()?
         .get(&url)
         .header("x-goog-api-key", &provider.api_key)
         .send()

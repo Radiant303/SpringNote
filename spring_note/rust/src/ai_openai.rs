@@ -1,12 +1,11 @@
 use crate::ai::{
     AiChatMessage, AiChatRequest, AiModel, AiProvider, AiTextResult, AiToolCall,
     FimCompleteRequest, MemoryToolChatRequest, MemoryToolChatResult, MemoryToolChatStreamEvent,
-    extract_text, usage_from_value,
+    extract_text, http_client, http_stream_client, usage_from_value,
 };
 use crate::ai_log::{ApiNetworkLog, write_api_network_log};
 use crate::frb_generated::StreamSink;
 use crate::stats;
-use reqwest::Client;
 use serde_json::{Value, json};
 use std::time::Instant;
 
@@ -20,7 +19,7 @@ pub async fn chat(request: &AiChatRequest) -> Result<AiTextResult, String> {
     };
     let request_body = body_to_string(&body);
     let started_at = Instant::now();
-    let response = Client::new()
+    let response = http_client()?
         .post(&url)
         .bearer_auth(&request.provider.api_key)
         .json(&body)
@@ -92,7 +91,7 @@ pub async fn memory_tool_chat(
     let body = build_memory_tool_body(request, system_prompt);
     let request_body = body_to_string(&body);
     let started_at = Instant::now();
-    let response = Client::new()
+    let response = http_client()?
         .post(&url)
         .bearer_auth(&request.provider.api_key)
         .json(&body)
@@ -171,7 +170,7 @@ pub async fn memory_tool_responses(
     let body = build_memory_tool_responses_body(request, system_prompt);
     let request_body = body_to_string(&body);
     let started_at = Instant::now();
-    let response = Client::new()
+    let response = http_client()?
         .post(&url)
         .bearer_auth(&request.provider.api_key)
         .json(&body)
@@ -253,7 +252,7 @@ pub async fn memory_tool_chat_stream(
     let body = build_memory_tool_stream_body(&request, system_prompt);
     let request_body = body_to_string(&body);
     let started_at = Instant::now();
-    let response = Client::new()
+    let response = http_stream_client()?
         .post(&url)
         .bearer_auth(&request.provider.api_key)
         .json(&body)
@@ -400,7 +399,7 @@ pub async fn memory_tool_responses_stream(
     let body = build_memory_tool_responses_stream_body(&request, system_prompt);
     let request_body = body_to_string(&body);
     let started_at = Instant::now();
-    let response = Client::new()
+    let response = http_stream_client()?
         .post(&url)
         .bearer_auth(&request.provider.api_key)
         .json(&body)
@@ -533,7 +532,7 @@ pub async fn fetch_models(
 ) -> Result<Vec<AiModel>, String> {
     let url = models_url(provider);
     let started_at = Instant::now();
-    let response = Client::new()
+    let response = http_client()?
         .get(&url)
         .bearer_auth(&provider.api_key)
         .send()
@@ -608,7 +607,7 @@ pub async fn fim_complete(request: &FimCompleteRequest) -> Result<AiTextResult, 
     let body = build_fim_body(request);
     let request_body = body_to_string(&body);
     let started_at = Instant::now();
-    let response = Client::new()
+    let response = http_client()?
         .post(&url)
         .bearer_auth(&request.provider.api_key)
         .json(&body)

@@ -1,6 +1,50 @@
 use crate::frb_generated::StreamSink;
 use crate::{ai_claude, ai_gemini, ai_openai, stats};
+use reqwest::Client;
 use serde_json::Value;
+use std::time::Duration;
+
+/// TCP 连接超时（秒），适用于所有 AI HTTP 请求。
+const CONNECT_TIMEOUT_SECS: u64 = 15;
+/// 非流式请求总超时（秒），防止网络异常时无限期挂起。
+const REQUEST_TIMEOUT_SECS: u64 = 300;
+/// 流式请求每块读取超时（秒），避免切断长回答，同时检测连接僵死。
+const STREAM_READ_TIMEOUT_SECS: u64 = 120;
+
+/// 为非流式 AI HTTP 请求构建 `reqwest::Client`，已配置连接超时和总超时。
+pub(crate) fn http_client() -> Result<Client, String> {
+    build_http_client(
+        Duration::from_secs(CONNECT_TIMEOUT_SECS),
+        Duration::from_secs(REQUEST_TIMEOUT_SECS),
+    )
+}
+
+/// 为流式 AI HTTP 请求构建 `reqwest::Client`，已配置连接超时和每块读取超时，
+/// 不设总超时，避免长回答被过早切断。
+pub(crate) fn http_stream_client() -> Result<Client, String> {
+    build_http_stream_client(
+        Duration::from_secs(CONNECT_TIMEOUT_SECS),
+        Duration::from_secs(STREAM_READ_TIMEOUT_SECS),
+    )
+}
+
+/// 构建带连接超时与请求总超时的 `reqwest::Client`；供本模块测试注入短 Duration 验证超时行为。
+fn build_http_client(connect: Duration, request: Duration) -> Result<Client, String> {
+    Client::builder()
+        .connect_timeout(connect)
+        .timeout(request)
+        .build()
+        .map_err(|error| error.to_string())
+}
+
+/// 构建带连接超时与读取超时的 `reqwest::Client`（无总超时）；供本模块测试注入短 Duration 验证超时行为。
+fn build_http_stream_client(connect: Duration, read: Duration) -> Result<Client, String> {
+    Client::builder()
+        .connect_timeout(connect)
+        .read_timeout(read)
+        .build()
+        .map_err(|error| error.to_string())
+}
 
 #[derive(Clone, Debug)]
 pub struct AiProvider {
@@ -978,5 +1022,89 @@ mod tests {
         assert!(prompt.contains("当前对话历史"));
         assert!(prompt.contains("ReAct 工具执行轨迹"));
         assert!(prompt.contains("keyword_search"));
+    }
+
+    #[test]
+    fn http_client_builds_without_panic() {
+        // 非流式客户端必须成功构建，验证超时常量有效
+        let _client = http_client().unwrap();
+    }
+
+    #[test]
+    fn http_stream_client_builds_without_panic() {
+        // 流式客户端必须成功构建，验证超时常量有效
+        let _client = http_stream_client().unwrap();
+    }
+
+    #[tokio::test]
+    async fn non_streaming_client_hits_request_timeout() {
+        // 构造一个接受连接但永不响应的本地 mock server。
+        // 用短 Duration 构建 client，验证 request timeout 确实触发超时错误。
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        // 后台接受连接后持有 stream 超过 client 短超时时间，避免连接立即断开导致假阳性。
+        tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            tokio::time::sleep(Duration::from_millis(500)).await;
+            drop(stream);
+        });
+
+        let client = build_http_client(
+            Duration::from_secs(5),     // connect timeout
+            Duration::from_millis(200), // short request timeout
+        )
+        .unwrap();
+
+        let error = client
+            .get(format!("http://{addr}/"))
+            .send()
+            .await
+            .unwrap_err();
+
+        assert!(
+            error.is_timeout(),
+            "request should have timed out, got: {error}"
+        );
+    }
+
+    #[tokio::test]
+    async fn streaming_client_hits_read_timeout() {
+        // 构造本地 mock server：接受连接，写 HTTP 头让 stream 开始，
+        // 然后停止发送，等待 read timeout 触发。
+        use tokio::io::AsyncWriteExt;
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            // 写 HTTP 头，让 reqwest 判定连接成功并进入读取 body 阶段
+            stream
+                .write_all(
+                    b"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nTransfer-Encoding: chunked\r\n\r\n",
+                )
+                .await
+                .ok();
+            // 持有 stream 超过 client 短超时时间，不发送任何 chunk body，等待 client read timeout
+            tokio::time::sleep(Duration::from_millis(500)).await;
+            drop(stream);
+        });
+
+        let client = build_http_stream_client(
+            Duration::from_secs(5),     // connect timeout
+            Duration::from_millis(200), // short read timeout
+        )
+        .unwrap();
+
+        // send() 本身成功（已收到 HTTP 头），但后续读取 body 会触发 read timeout。
+        // 因此这里调用 text() 等待完整响应体。
+        let resp = client.get(format!("http://{addr}/")).send().await.unwrap();
+        let error = resp.text().await.unwrap_err();
+
+        assert!(
+            error.is_timeout(),
+            "streaming request body read should have timed out, got: {error}"
+        );
     }
 }
