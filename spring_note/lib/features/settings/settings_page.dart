@@ -3598,6 +3598,7 @@ class _HotkeysPanel extends StatelessWidget {
     final hotkeysSupported = PlatformFeatureSupport.supportsGlobalHotkeys;
     final toggleWindowEnabled =
         hotkeysSupported && toggleWindow.trim().isNotEmpty;
+    final submitShortcut = Platform.isMacOS ? 'Cmd+Enter' : 'Ctrl+Enter';
     return _SettingsScrollFrame(
       maxWidth: 1120,
       children: [
@@ -3610,6 +3611,7 @@ class _HotkeysPanel extends StatelessWidget {
               value: toggleWindow,
               enabled: hotkeysSupported,
               description: hotkeysSupported ? null : _platformFeatureMessage(),
+              validator: _validateGlobalHotkey,
               onChanged: hotkeysSupported
                   ? (value) {
                       final hotkeys = Map<String, String?>.from(config.hotkeys);
@@ -3667,9 +3669,111 @@ class _HotkeysPanel extends StatelessWidget {
             ),
           ],
         ),
+        _SettingsCard(
+          title: '输入快捷键',
+          children: [
+            _ShortcutSettingRow(label: '首页快速输入', shortcut: submitShortcut),
+            _ShortcutSettingRow(label: '回忆书对话输入', shortcut: submitShortcut),
+          ],
+        ),
       ],
     );
   }
+}
+
+String? _validateGlobalHotkey(String value) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty || _isValidGlobalHotkey(trimmed)) {
+    return null;
+  }
+  return '请输入类似 Ctrl+Shift+S 的组合键';
+}
+
+bool _isValidGlobalHotkey(String value) {
+  final tokens = value
+      .split('+')
+      .map((token) => token.trim().toUpperCase())
+      .where((token) => token.isNotEmpty)
+      .toList();
+  if (tokens.length < 2) {
+    return false;
+  }
+
+  var hasModifier = false;
+  var keyCount = 0;
+  for (final token in tokens) {
+    if (_isGlobalHotkeyModifier(token)) {
+      hasModifier = true;
+      continue;
+    }
+    if (!_isGlobalHotkeyKey(token)) {
+      return false;
+    }
+    keyCount += 1;
+    if (keyCount > 1) {
+      return false;
+    }
+  }
+
+  return hasModifier && keyCount == 1;
+}
+
+bool _isGlobalHotkeyModifier(String token) {
+  return switch (token) {
+    'CTRL' ||
+    'CONTROL' ||
+    'SHIFT' ||
+    'ALT' ||
+    'OPTION' ||
+    'WIN' ||
+    'WINDOWS' ||
+    'META' ||
+    'CMD' ||
+    'COMMAND' ||
+    'SUPER' => true,
+    _ => false,
+  };
+}
+
+bool _isGlobalHotkeyKey(String token) {
+  if (token.length == 1) {
+    final code = token.codeUnitAt(0);
+    return (code >= 65 && code <= 90) || (code >= 48 && code <= 57);
+  }
+
+  if (token.startsWith('F')) {
+    final number = int.tryParse(token.substring(1));
+    final maxFunctionKey = Platform.isMacOS ? 20 : 24;
+    if (number != null && number >= 1 && number <= maxFunctionKey) {
+      return true;
+    }
+  }
+
+  final commonKeys = {
+    'SPACE',
+    'TAB',
+    'ENTER',
+    'RETURN',
+    'ESC',
+    'ESCAPE',
+    'BACKSPACE',
+    'DELETE',
+    'DEL',
+    'HOME',
+    'END',
+    'PAGEUP',
+    'PGUP',
+    'PAGEDOWN',
+    'PGDN',
+    'UP',
+    'DOWN',
+    'LEFT',
+    'RIGHT',
+  };
+  if (!Platform.isMacOS) {
+    commonKeys.addAll({'INSERT', 'INS'});
+  }
+  return commonKeys.contains(token);
 }
 
 class _StatsPanel extends StatefulWidget {
@@ -5933,6 +6037,7 @@ class _TextSettingRow extends StatelessWidget {
     this.enabled = true,
     this.description,
     this.trailing,
+    this.validator,
   });
 
   final String label;
@@ -5941,6 +6046,7 @@ class _TextSettingRow extends StatelessWidget {
   final bool enabled;
   final String? description;
   final Widget? trailing;
+  final String? Function(String value)? validator;
 
   @override
   Widget build(BuildContext context) {
@@ -5957,6 +6063,7 @@ class _TextSettingRow extends StatelessWidget {
               value: value,
               enabled: enabled,
               onChanged: onChanged,
+              validator: validator,
             ),
           ),
           ?trailing,
@@ -6906,6 +7013,48 @@ class _SwitchSettingRow extends StatelessWidget {
   }
 }
 
+class _ShortcutSettingRow extends StatelessWidget {
+  const _ShortcutSettingRow({required this.label, required this.shortcut});
+
+  final String label;
+  final String shortcut;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SettingRowShell(
+      label: label,
+      child: SizedBox(width: 220, child: _ShortcutKeyField(shortcut)),
+    );
+  }
+}
+
+class _ShortcutKeyField extends StatelessWidget {
+  const _ShortcutKeyField(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF6F6F6),
+        border: Border.all(color: AppTheme.border),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      alignment: Alignment.centerLeft,
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: AppTheme.text,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
+      ),
+    );
+  }
+}
+
 class _SettingRowShell extends StatelessWidget {
   const _SettingRowShell({
     required this.label,
@@ -6969,6 +7118,7 @@ class _CommittedTextField extends StatefulWidget {
     this.enabled = true,
     this.obscureText = false,
     this.compact = false,
+    this.validator,
   });
 
   final String value;
@@ -6976,6 +7126,7 @@ class _CommittedTextField extends StatefulWidget {
   final bool enabled;
   final bool obscureText;
   final bool compact;
+  final String? Function(String value)? validator;
 
   @override
   State<_CommittedTextField> createState() => _CommittedTextFieldState();
@@ -6985,12 +7136,14 @@ class _CommittedTextFieldState extends State<_CommittedTextField> {
   late final TextEditingController _controller = TextEditingController(
     text: widget.value,
   );
+  String? _errorText;
 
   @override
   void didUpdateWidget(covariant _CommittedTextField oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.value != oldWidget.value && widget.value != _controller.text) {
       _controller.text = widget.value;
+      _errorText = null;
     }
   }
 
@@ -7007,19 +7160,33 @@ class _CommittedTextFieldState extends State<_CommittedTextField> {
       enabled: widget.enabled,
       textAlignVertical: widget.compact ? TextAlignVertical.center : null,
       obscureText: widget.obscureText,
-      onChanged: widget.enabled ? widget.onChanged : null,
-      onSubmitted: widget.enabled ? widget.onChanged : null,
+      onChanged: widget.enabled ? _handleChanged : null,
+      onSubmitted: widget.enabled ? _handleChanged : null,
       onEditingComplete: widget.enabled && widget.onChanged != null
-          ? () => widget.onChanged!(_controller.text)
+          ? () => _handleChanged(_controller.text)
           : null,
       decoration: widget.compact
-          ? const InputDecoration(
+          ? InputDecoration(
               isDense: true,
-              contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-              constraints: BoxConstraints.tightFor(height: 48),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 9,
+              ),
+              constraints: const BoxConstraints.tightFor(height: 48),
+              errorText: _errorText,
             )
-          : const InputDecoration(isDense: true),
+          : InputDecoration(isDense: true, errorText: _errorText),
     );
+  }
+
+  void _handleChanged(String value) {
+    final errorText = widget.validator?.call(value);
+    if (errorText != _errorText) {
+      setState(() => _errorText = errorText);
+    }
+    if (errorText == null) {
+      widget.onChanged?.call(value);
+    }
   }
 }
 

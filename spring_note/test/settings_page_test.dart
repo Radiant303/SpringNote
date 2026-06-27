@@ -104,6 +104,86 @@ void main() {
     );
   });
 
+  testWidgets('hotkeys page lists local submit shortcuts', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: SettingsPage(
+          localDataState: _state(AppConfig.defaults()),
+          localDataService: _MemoryLocalDataService(AppConfig.defaults()),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('快捷键').first);
+    await tester.pump();
+
+    expect(find.text('输入快捷键'), findsOneWidget);
+    expect(find.text('首页快速输入'), findsOneWidget);
+    expect(find.text('回忆书对话输入'), findsOneWidget);
+    expect(
+      find.text(Platform.isMacOS ? 'Cmd+Enter' : 'Ctrl+Enter'),
+      findsNWidgets(2),
+    );
+    expect(
+      find.text(Platform.isMacOS ? 'Ctrl+Enter' : 'Cmd+Enter'),
+      findsNothing,
+    );
+  });
+
+  testWidgets('hotkeys page rejects invalid global hotkey input', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final service = _MemoryLocalDataService(AppConfig.defaults());
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: SettingsPage(
+          localDataState: _state(AppConfig.defaults()),
+          localDataService: service,
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('快捷键').first);
+    await tester.pump();
+
+    final hotkeyField = find.byType(TextField);
+    expect(hotkeyField, findsOneWidget);
+
+    if (!PlatformFeatureSupport.supportsGlobalHotkeys) {
+      final textField = tester.widget<TextField>(hotkeyField);
+      expect(textField.enabled, isFalse);
+      expect(find.text('当前平台暂不支持'), findsOneWidget);
+      expect(service.savedConfig.hotkeys['toggleWindow'], 'Ctrl+Shift+S');
+      return;
+    }
+
+    await tester.enterText(hotkeyField, 'hello');
+    await tester.pump();
+
+    expect(service.savedConfig.hotkeys['toggleWindow'], 'Ctrl+Shift+S');
+    expect(find.text('请输入类似 Ctrl+Shift+S 的组合键'), findsOneWidget);
+
+    await tester.enterText(hotkeyField, 'Ctrl+Alt+H');
+    await tester.pump();
+
+    expect(service.savedConfig.hotkeys['toggleWindow'], 'Ctrl+Alt+H');
+    expect(find.text('请输入类似 Ctrl+Shift+S 的组合键'), findsNothing);
+  });
+
   testWidgets('settings page persists font size input', (
     WidgetTester tester,
   ) async {

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spring_note/core/models/app_config.dart';
 import 'package:spring_note/core/models/local_data_state.dart';
@@ -107,6 +108,59 @@ void main() {
       contains('完成首页输入流程'),
     );
   });
+
+  for (final shortcut in const [
+    (name: 'ctrl enter', key: LogicalKeyboardKey.controlLeft),
+    (name: 'meta enter', key: LogicalKeyboardKey.metaLeft),
+  ]) {
+    testWidgets('home input submits with ${shortcut.name}', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final fakeDailyNoteService = _FakeDailyNoteService();
+      final fakeHomeOverviewService = _FakeHomeOverviewService();
+      final localDataState = LocalDataState(
+        dataDirectory: 'D:\\Temp\\SpringNote',
+        configPath: 'D:\\Temp\\SpringNote\\config.json',
+        dailyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\daily',
+        weeklyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\weekly',
+        monthlyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\monthly',
+        config: AppConfig.defaults(),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: HomePage(
+            localDataState: localDataState,
+            dailyNoteService: fakeDailyNoteService,
+            homeOverviewService: fakeHomeOverviewService,
+          ),
+        ),
+      );
+
+      await tester.enterText(find.byType(TextField), '用快捷键整理首页内容');
+      await tester.sendKeyDownEvent(shortcut.key);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.sendKeyUpEvent(shortcut.key);
+      for (var index = 0; index < 20; index++) {
+        await tester.pump(const Duration(milliseconds: 100));
+        if (fakeDailyNoteService.savedNote != null) {
+          break;
+        }
+      }
+
+      expect(fakeDailyNoteService.savedNote?.rawInput, contains('用快捷键整理首页内容'));
+      expect(
+        fakeHomeOverviewService.savedOverview?.completed,
+        contains('用快捷键整理首页内容'),
+      );
+    });
+  }
 
   testWidgets('home attachment buttons add files to submitted note', (
     WidgetTester tester,

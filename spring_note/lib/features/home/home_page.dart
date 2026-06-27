@@ -1,5 +1,6 @@
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
 import '../../core/models/local_data_state.dart';
@@ -1322,35 +1323,44 @@ class _QuickCaptureCard extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
-                height: 96,
-                child: TextField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  enabled: !isSubmitting,
-                  expands: true,
-                  minLines: null,
-                  maxLines: null,
-                  textAlignVertical: TextAlignVertical.top,
-                  textInputAction: TextInputAction.newline,
-                  decoration: InputDecoration(
-                    hintText: '写下你的想法，AI 将自动整理并生成结构化内容...',
-                    hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: const Color(0xCC8A8A8A),
+              CallbackShortcuts(
+                bindings: {
+                  const SingleActivator(
+                    LogicalKeyboardKey.enter,
+                    control: true,
+                  ): onSubmit,
+                  const SingleActivator(LogicalKeyboardKey.enter, meta: true):
+                      onSubmit,
+                },
+                child: SizedBox(
+                  height: 96,
+                  child: TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    enabled: !isSubmitting,
+                    expands: true,
+                    minLines: null,
+                    maxLines: null,
+                    textAlignVertical: TextAlignVertical.top,
+                    textInputAction: TextInputAction.newline,
+                    decoration: InputDecoration(
+                      hintText: '写下你的想法，AI 将自动整理并生成结构化内容...',
+                      hintStyle: Theme.of(context).textTheme.bodyMedium
+                          ?.copyWith(color: const Color(0xCC8A8A8A)),
+                      hoverColor: Colors.transparent,
+                      focusColor: Colors.transparent,
+                      filled: false,
+                      fillColor: Colors.transparent,
+                      contentPadding: EdgeInsets.zero,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
                     ),
-                    hoverColor: Colors.transparent,
-                    focusColor: Colors.transparent,
-                    filled: false,
-                    fillColor: Colors.transparent,
-                    contentPadding: EdgeInsets.zero,
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                  ),
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFF262626),
-                    fontSize: 14,
-                    height: 1.625,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: const Color(0xFF262626),
+                      fontSize: 14,
+                      height: 1.625,
+                    ),
                   ),
                 ),
               ),

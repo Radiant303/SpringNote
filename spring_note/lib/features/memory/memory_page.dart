@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
 import '../../core/models/local_data_state.dart';
@@ -945,29 +946,37 @@ class _MemoryComposer extends StatelessWidget {
             disabledColor: AppTheme.text,
           ),
           Expanded(
-            child: TextField(
-              controller: controller,
-              focusNode: focusNode,
-              enabled: !answering,
-              minLines: 1,
-              maxLines: multiline ? 3 : 1,
-              textInputAction: multiline
-                  ? TextInputAction.newline
-                  : TextInputAction.send,
-              onSubmitted: multiline ? null : (_) => onSubmit(),
-              decoration: InputDecoration(
-                hintText: hintText,
-                hoverColor: Colors.transparent,
-                focusColor: Colors.transparent,
-                filled: false,
-                fillColor: Colors.transparent,
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                disabledBorder: InputBorder.none,
-                isDense: true,
+            child: CallbackShortcuts(
+              bindings: {
+                const SingleActivator(LogicalKeyboardKey.enter, control: true):
+                    onSubmit,
+                const SingleActivator(LogicalKeyboardKey.enter, meta: true):
+                    onSubmit,
+              },
+              child: TextField(
+                controller: controller,
+                focusNode: focusNode,
+                enabled: !answering,
+                minLines: 1,
+                maxLines: multiline ? 3 : 1,
+                textInputAction: multiline
+                    ? TextInputAction.newline
+                    : TextInputAction.send,
+                onSubmitted: multiline ? null : (_) => onSubmit(),
+                decoration: InputDecoration(
+                  hintText: hintText,
+                  hoverColor: Colors.transparent,
+                  focusColor: Colors.transparent,
+                  filled: false,
+                  fillColor: Colors.transparent,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                  isDense: true,
+                ),
+                style: Theme.of(context).textTheme.bodyLarge,
               ),
-              style: Theme.of(context).textTheme.bodyLarge,
             ),
           ),
           IconButton.filled(
