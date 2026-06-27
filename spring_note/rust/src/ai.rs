@@ -208,7 +208,7 @@ pub async fn chat(request: AiChatRequest) -> AiTextResult {
         Err(error) => AiTextResult::error(&request, "request_failed", &error, 0, 0, 0),
     };
 
-    let _ = stats::record_model_call(&request.app_data_dir, &request, &result);
+    stats::record_model_call_or_warn("chat", &request.app_data_dir, &request, &result);
     result
 }
 
@@ -278,7 +278,12 @@ pub async fn fetch_provider_models(
                 api_log_enabled,
             };
             let call_result = AiTextResult::success(&request, "", 0, 0, 0);
-            let _ = stats::record_model_call(&request.app_data_dir, &request, &call_result);
+            stats::record_model_call_or_warn(
+                "fetch_provider_models",
+                &request.app_data_dir,
+                &request,
+                &call_result,
+            );
             ModelListResult {
                 ok: true,
                 models,
@@ -441,7 +446,12 @@ pub async fn memory_tool_chat(request: MemoryToolChatRequest) -> MemoryToolChatR
         provider_name: result.provider_name.clone(),
         model_id: result.model_id.clone(),
     };
-    let _ = stats::record_model_call(&request.app_data_dir, &chat_request, &text_result);
+    stats::record_model_call_or_warn(
+        "memory_tool_chat",
+        &request.app_data_dir,
+        &chat_request,
+        &text_result,
+    );
     result
 }
 
@@ -487,7 +497,12 @@ pub async fn memory_tool_chat_stream(
     if let Err(error) = response {
         let _ = sink.add(MemoryToolChatStreamEvent::error("request_failed", &error));
         let result = AiTextResult::error(&chat_request, "request_failed", &error, 0, 0, 0);
-        let _ = stats::record_model_call(&request.app_data_dir, &chat_request, &result);
+        stats::record_model_call_or_warn(
+            "memory_tool_chat_stream",
+            &request.app_data_dir,
+            &chat_request,
+            &result,
+        );
     }
 }
 
@@ -529,7 +544,12 @@ pub async fn fim_complete(request: FimCompleteRequest) -> AiTextResult {
         Err(error) => AiTextResult::error(&chat_request, "request_failed", &error, 0, 0, 0),
     };
 
-    let _ = stats::record_model_call(&request.app_data_dir, &chat_request, &result);
+    stats::record_model_call_or_warn(
+        "fim_complete",
+        &request.app_data_dir,
+        &chat_request,
+        &result,
+    );
     result
 }
 

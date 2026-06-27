@@ -365,7 +365,12 @@ pub async fn memory_tool_chat_stream(
         output_tokens,
         cached_tokens,
     );
-    let _ = stats::record_model_call(&request.app_data_dir, &log_request, &result);
+    stats::record_model_call_or_warn(
+        "memory_tool_chat_stream",
+        &request.app_data_dir,
+        &log_request,
+        &result,
+    );
     let _ = sink.add(MemoryToolChatStreamEvent {
         event_type: "done".to_string(),
         content_delta: String::new(),
@@ -509,7 +514,12 @@ pub async fn memory_tool_responses_stream(
         output_tokens,
         cached_tokens,
     );
-    let _ = stats::record_model_call(&request.app_data_dir, &log_request, &result);
+    stats::record_model_call_or_warn(
+        "memory_tool_responses_stream",
+        &request.app_data_dir,
+        &log_request,
+        &result,
+    );
     let _ = sink.add(MemoryToolChatStreamEvent {
         event_type: "done".to_string(),
         content_delta: String::new(),
