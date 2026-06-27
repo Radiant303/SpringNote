@@ -5,8 +5,40 @@
 #include "flutter_window.h"
 #include "utils.h"
 
+namespace {
+
+constexpr wchar_t kSingleInstanceMutexName[] =
+    L"Local\\Radiant303.SpringNote.SingleInstance";
+constexpr wchar_t kMainWindowClassName[] = L"FLUTTER_RUNNER_WIN32_WINDOW";
+constexpr wchar_t kMainWindowTitle[] = L"SpringNote";
+
+void ShowExistingWindow() {
+  HWND window = FindWindowW(kMainWindowClassName, kMainWindowTitle);
+  if (!window) {
+    return;
+  }
+
+  if (IsIconic(window)) {
+    ShowWindow(window, SW_RESTORE);
+  } else {
+    ShowWindow(window, SW_SHOW);
+  }
+  SetForegroundWindow(window);
+}
+
+}  // namespace
+
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
+  HANDLE single_instance_mutex =
+      CreateMutexW(nullptr, TRUE, kSingleInstanceMutexName);
+  if (single_instance_mutex &&
+      GetLastError() == ERROR_ALREADY_EXISTS) {
+    ShowExistingWindow();
+    CloseHandle(single_instance_mutex);
+    return EXIT_SUCCESS;
+  }
+
   // Attach to console when present (e.g., 'flutter run') or create a
   // new console when running with a debugger.
   if (!::AttachConsole(ATTACH_PARENT_PROCESS) && ::IsDebuggerPresent()) {
@@ -39,5 +71,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   }
 
   ::CoUninitialize();
+  if (single_instance_mutex) {
+    CloseHandle(single_instance_mutex);
+  }
   return EXIT_SUCCESS;
 }
