@@ -1,7 +1,11 @@
 import 'package:file_selector/file_selector.dart';
+import 'package:path/path.dart' as p;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
+
+import '../../core/attachments/attachment_manager.dart';
+import '../../core/attachments/pending_image.dart';
 
 import '../../core/models/local_data_state.dart';
 import '../../core/models/structured_work_note.dart';
@@ -10,8 +14,11 @@ import '../../core/services/daily_note_service.dart';
 import '../../core/services/desktop_widget_controller.dart';
 import '../../core/services/external_link_service.dart';
 import '../../core/services/home_overview_service.dart';
+import '../../core/services/image_file_types.dart';
 import '../../core/services/level_progress_controller.dart';
 import '../../core/services/mock_ai_service.dart';
+import '../../core/services/pending_image_clipboard_service.dart';
+import '../../core/services/pending_image_service.dart';
 import '../../core/services/stats_service.dart';
 import '../../core/services/update_check_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -20,6 +27,7 @@ import '../../core/widgets/page_scaffold.dart';
 import '../../src/rust/stats.dart' as rust_stats;
 
 typedef HomeAttachmentPicker = Future<List<HomeAttachment>> Function();
+typedef HomeImagePicker = Future<List<PendingImage>> Function();
 
 enum HomeAttachmentKind { image, document }
 
@@ -55,6 +63,9 @@ class HomePage extends StatefulWidget {
     this.dailyNoteService = const DailyNoteService(),
     this.homeOverviewService = const HomeOverviewService(),
     this.aiClientService = const AiClientService(),
+    this.pendingImageClipboardService = const PendingImageClipboardService(),
+    this.pendingImageService = const PendingImageService(),
+    this.attachmentManager,
     this.statsService = const StatsService(),
     this.desktopWidgetController,
     this.levelProgressController,
@@ -69,11 +80,14 @@ class HomePage extends StatefulWidget {
   final DailyNoteService dailyNoteService;
   final HomeOverviewService homeOverviewService;
   final AiClientService aiClientService;
+  final PendingImageClipboardService pendingImageClipboardService;
+  final PendingImageService pendingImageService;
+  final AttachmentManager? attachmentManager;
   final StatsService statsService;
   final DesktopWidgetController? desktopWidgetController;
   final LevelProgressController? levelProgressController;
   final UpdateCheckResult updateCheckResult;
-  final HomeAttachmentPicker? imageAttachmentPicker;
+  final HomeImagePicker? imageAttachmentPicker;
   final HomeAttachmentPicker? documentAttachmentPicker;
   final ValueChanged<String>? onDailyNoteSaved;
 
@@ -84,6 +98,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  late final AttachmentManager _attachmentManager;
   DesktopWidgetController? _ownedDesktopWidgetController;
   LevelProgressController? _ownedLevelProgressController;
   List<HomeAttachment> _attachments = const [];
@@ -95,6 +110,7 @@ class _HomePageState extends State<HomePage> {
     plans: [],
   );
   bool _isSubmitting = false;
+  bool _isPastingImages = false;
   String? _lastSavedPath;
   String? _aiNotice;
   String? _attachmentError;
@@ -108,6 +124,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    _attachmentManager = widget.attachmentManager ?? AttachmentManager();
     _ensureDesktopWidgetController();
     _ensureLevelProgressController();
     _loadTodayOverview();
@@ -140,6 +157,7 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _ownedDesktopWidgetController?.dispose();
     _ownedLevelProgressController?.dispose();
+    _attachmentManager.clear();
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -195,15 +213,30 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _submit() async {
     final input = _controller.text.trim();
-    if ((input.isEmpty && _attachments.isEmpty) || _isSubmitting) {
+    if ((input.isEmpty &&
+            _attachments.isEmpty &&
+            !_attachmentManager.hasImages) ||
+        _isSubmitting) {
       return;
     }
 
-    final submissionInput = _inputWithAttachmentSummary(input);
     setState(() => _isSubmitting = true);
 
     try {
       final now = DateTime.now();
+      final notePath = widget.dailyNoteService.dailyNotePath(
+        widget.localDataState.dailyNotesDirectory,
+        now,
+      );
+      final savedPendingImages = await widget.pendingImageService
+          .saveForDailyNote(
+            notePath: notePath,
+            images: _attachmentManager.images,
+          );
+      final submissionInput = _inputWithAttachmentSummary(
+        input,
+        savedPendingImages,
+      );
       final configuredModel = widget
           .localDataState
           .config
@@ -277,6 +310,7 @@ class _HomePageState extends State<HomePage> {
             ? '未配置可用模型或 AI 返回不可用，本次已使用本地 mock / 简单合并。'
             : null;
         _controller.clear();
+        _attachmentManager.clear();
         _attachments = const [];
         _attachmentError = null;
       });
@@ -290,9 +324,12 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  String _inputWithAttachmentSummary(String input) {
+  String _inputWithAttachmentSummary(
+    String input,
+    List<SavedPendingImage> savedPendingImages,
+  ) {
     final trimmed = input.trim();
-    if (_attachments.isEmpty) {
+    if (_attachments.isEmpty && savedPendingImages.isEmpty) {
       return trimmed;
     }
 
@@ -302,21 +339,124 @@ class _HomePageState extends State<HomePage> {
         ..writeln(trimmed)
         ..writeln();
     }
-    buffer.writeln('附件：');
-    for (final attachment in _attachments) {
-      final type = switch (attachment.kind) {
-        HomeAttachmentKind.image => '图片',
-        HomeAttachmentKind.document => '文件',
-      };
-      buffer.writeln('- [$type] ${attachment.name}: ${attachment.path}');
+    if (savedPendingImages.isNotEmpty) {
+      buffer.writeln('图片：');
+      for (final image in savedPendingImages) {
+        buffer.writeln('![${image.name}](${image.markdownPath})');
+      }
+      if (_attachments.isNotEmpty) {
+        buffer.writeln();
+      }
+    }
+    if (_attachments.isNotEmpty) {
+      buffer.writeln('附件：');
+      for (final attachment in _attachments) {
+        final type = switch (attachment.kind) {
+          HomeAttachmentKind.image => '图片',
+          HomeAttachmentKind.document => '文件',
+        };
+        buffer.writeln('- [$type] ${attachment.name}: ${attachment.path}');
+      }
     }
     return buffer.toString().trimRight();
   }
 
-  Future<void> _pickImageAttachments() {
-    return _pickAttachments(
-      widget.imageAttachmentPicker ?? _defaultImageAttachmentPicker,
+  Future<void> _handlePasteShortcut() async {
+    if (_isSubmitting || _isPastingImages) {
+      return;
+    }
+
+    _isPastingImages = true;
+    try {
+      final images = await widget.pendingImageClipboardService
+          .readPendingImages();
+      if (!mounted) {
+        return;
+      }
+      if (images.isNotEmpty) {
+        setState(() {
+          for (final image in images) {
+            _attachmentManager.addImage(
+              bytes: image.bytes,
+              name: image.name,
+              extension: image.extension,
+            );
+          }
+          _attachmentError = null;
+        });
+        _focusNode.requestFocus();
+        return;
+      }
+      await _pasteClipboardText();
+    } catch (_) {
+      if (mounted) {
+        setState(() => _attachmentError = '无法读取剪贴板图片。');
+      }
+    } finally {
+      _isPastingImages = false;
+    }
+  }
+
+  Future<void> _pasteClipboardText() async {
+    final ClipboardData? data;
+    try {
+      data = await Clipboard.getData(Clipboard.kTextPlain);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _attachmentError = '无法读取剪贴板文字。');
+      }
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+    final text = data?.text;
+    if (text == null || text.isEmpty) {
+      return;
+    }
+    _insertText(text);
+    _focusNode.requestFocus();
+  }
+
+  void _insertText(String text) {
+    final value = _controller.value;
+    final selection = value.selection;
+    final start = selection.isValid ? selection.start : value.text.length;
+    final end = selection.isValid ? selection.end : value.text.length;
+    final nextText = value.text.replaceRange(start, end, text);
+    final offset = start + text.length;
+    _controller.value = TextEditingValue(
+      text: nextText,
+      selection: TextSelection.collapsed(offset: offset),
     );
+  }
+
+  Future<void> _pickImageAttachments() async {
+    if (_isSubmitting) {
+      return;
+    }
+
+    try {
+      final picked =
+          await (widget.imageAttachmentPicker ?? _defaultImagePicker)();
+      if (!mounted || picked.isEmpty) {
+        return;
+      }
+      setState(() {
+        for (final image in picked) {
+          _attachmentManager.addImage(
+            bytes: image.bytes,
+            name: image.name,
+            extension: image.extension,
+          );
+        }
+        _attachmentError = null;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() => _attachmentError = '无法添加图片，请重新选择文件。');
+      }
+    }
   }
 
   Future<void> _pickDocumentAttachments() {
@@ -356,12 +496,22 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<List<HomeAttachment>> _defaultImageAttachmentPicker() async {
+  Future<List<PendingImage>> _defaultImagePicker() async {
     final files = await openFiles(
       acceptedTypeGroups: const [
         XTypeGroup(
           label: 'Images',
-          extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'bmp'],
+          extensions: [
+            'png',
+            'jpg',
+            'jpeg',
+            'gif',
+            'webp',
+            'heic',
+            'bmp',
+            'svg',
+            'jfif',
+          ],
           mimeTypes: ['image/*'],
           uniformTypeIdentifiers: ['public.image'],
           webWildCards: ['image/*'],
@@ -369,15 +519,29 @@ class _HomePageState extends State<HomePage> {
       ],
       confirmButtonText: '选择图片',
     );
-    return files
-        .map(
-          (file) => HomeAttachment(
-            path: file.path,
-            name: _attachmentName(file),
-            kind: HomeAttachmentKind.image,
-          ),
-        )
-        .toList();
+
+    final images = <PendingImage>[];
+    for (final file in files) {
+      final name = _attachmentName(file);
+      final extension =
+          allowedImageExtension(name) ?? allowedImageExtension(file.path);
+      if (extension == null) {
+        continue;
+      }
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty) {
+        continue;
+      }
+      images.add(
+        PendingImage(
+          id: 'picked-image-${images.length}',
+          bytes: bytes,
+          name: name,
+          extension: extension.replaceFirst('.', ''),
+        ),
+      );
+    }
+    return images;
   }
 
   Future<List<HomeAttachment>> _defaultDocumentAttachmentPicker() async {
@@ -423,13 +587,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   String _fileName(String path) {
-    final segments = path.split(RegExp(r'[\\/]')).where((item) {
-      return item.trim().isNotEmpty;
-    }).toList();
-    if (segments.isEmpty) {
-      return path;
-    }
-    return segments.last;
+    final name = p.basename(path).trim();
+    return name.isEmpty ? path : name;
   }
 
   void _removeAttachment(HomeAttachment attachment) {
@@ -438,6 +597,10 @@ class _HomePageState extends State<HomePage> {
           .where((item) => item.path != attachment.path)
           .toList();
     });
+  }
+
+  void _removePendingImage(PendingImage image) {
+    setState(() => _attachmentManager.removeImage(image.id));
   }
 
   StructuredWorkNote _mergeOverview(
@@ -485,10 +648,15 @@ class _HomePageState extends State<HomePage> {
                 focusNode: _focusNode,
                 isSubmitting: _isSubmitting,
                 attachments: _attachments,
+                pendingImages: _attachmentManager.images,
                 attachmentError: _attachmentError,
+                onPasteShortcut: () {
+                  _handlePasteShortcut();
+                },
                 onPickImages: _pickImageAttachments,
                 onPickDocuments: _pickDocumentAttachments,
                 onRemoveAttachment: _removeAttachment,
+                onRemovePendingImage: _removePendingImage,
                 onSubmit: _submit,
               ),
               const SizedBox(height: 32),
@@ -1273,10 +1441,13 @@ class _QuickCaptureCard extends StatelessWidget {
     required this.focusNode,
     required this.isSubmitting,
     required this.attachments,
+    required this.pendingImages,
     required this.attachmentError,
+    required this.onPasteShortcut,
     required this.onPickImages,
     required this.onPickDocuments,
     required this.onRemoveAttachment,
+    required this.onRemovePendingImage,
     required this.onSubmit,
   });
 
@@ -1284,10 +1455,13 @@ class _QuickCaptureCard extends StatelessWidget {
   final FocusNode focusNode;
   final bool isSubmitting;
   final List<HomeAttachment> attachments;
+  final List<PendingImage> pendingImages;
   final String? attachmentError;
+  final VoidCallback onPasteShortcut;
   final VoidCallback onPickImages;
   final VoidCallback onPickDocuments;
   final ValueChanged<HomeAttachment> onRemoveAttachment;
+  final ValueChanged<PendingImage> onRemovePendingImage;
   final VoidCallback onSubmit;
 
   @override
@@ -1317,7 +1491,9 @@ class _QuickCaptureCard extends StatelessWidget {
         builder: (context, _) {
           final characterCount = controller.text.characters.length;
           final canSubmit =
-              (controller.text.trim().isNotEmpty || attachments.isNotEmpty) &&
+              (controller.text.trim().isNotEmpty ||
+                  attachments.isNotEmpty ||
+                  pendingImages.isNotEmpty) &&
               !isSubmitting;
 
           return Column(
@@ -1331,6 +1507,10 @@ class _QuickCaptureCard extends StatelessWidget {
                   ): onSubmit,
                   const SingleActivator(LogicalKeyboardKey.enter, meta: true):
                       onSubmit,
+                  const SingleActivator(LogicalKeyboardKey.keyV, control: true):
+                      onPasteShortcut,
+                  const SingleActivator(LogicalKeyboardKey.keyV, meta: true):
+                      onPasteShortcut,
                 },
                 child: SizedBox(
                   height: 96,
@@ -1364,6 +1544,14 @@ class _QuickCaptureCard extends StatelessWidget {
                   ),
                 ),
               ),
+              if (pendingImages.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                _PendingImageStrip(
+                  images: pendingImages,
+                  enabled: !isSubmitting,
+                  onRemove: onRemovePendingImage,
+                ),
+              ],
               if (attachments.isNotEmpty) ...[
                 const SizedBox(height: 10),
                 _AttachmentStrip(
@@ -1511,6 +1699,124 @@ class _SmartGenerateButtonState extends State<_SmartGenerateButton> {
                 const _LucideSparklesIcon(size: 12, color: Color(0xFF34D399)),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PendingImageStrip extends StatelessWidget {
+  const _PendingImageStrip({
+    required this.images,
+    required this.enabled,
+    required this.onRemove,
+  });
+
+  final List<PendingImage> images;
+  final bool enabled;
+  final ValueChanged<PendingImage> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final image in images)
+          _PendingImageChip(
+            image: image,
+            enabled: enabled,
+            onRemove: () => onRemove(image),
+          ),
+      ],
+    );
+  }
+}
+
+class _PendingImageChip extends StatelessWidget {
+  const _PendingImageChip({
+    required this.image,
+    required this.enabled,
+    required this.onRemove,
+  });
+
+  final PendingImage image;
+  final bool enabled;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: image.name,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 280),
+        height: 40,
+        padding: const EdgeInsets.only(left: 6, right: 4),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: const Color(0xFFE5E5E5)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(5),
+              child: SizedBox(
+                width: 28,
+                height: 28,
+                child: image.isSvg
+                    ? const DecoratedBox(
+                        decoration: BoxDecoration(color: Color(0xFFF5F5F5)),
+                        child: Icon(
+                          Icons.image_outlined,
+                          size: 16,
+                          color: Color(0xFF525252),
+                        ),
+                      )
+                    : Image.memory(
+                        image.bytes,
+                        fit: BoxFit.cover,
+                        gaplessPlayback: true,
+                        errorBuilder: (_, _, _) => const DecoratedBox(
+                          decoration: BoxDecoration(color: Color(0xFFF5F5F5)),
+                          child: Icon(
+                            Icons.image_outlined,
+                            size: 16,
+                            color: Color(0xFF525252),
+                          ),
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                '图片 · ${image.name}',
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: const Color(0xFF404040),
+                  fontSize: 12,
+                  height: 1.2,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: enabled ? onRemove : null,
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(
+                  Icons.close,
+                  size: 13,
+                  color: enabled
+                      ? const Color(0xFF737373)
+                      : const Color(0xFFBDBDBD),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -73,7 +73,15 @@ File? _candidateFile(String value, String baseDirectoryPath) {
   if (_isRootedPath(value)) {
     return File(value);
   }
-  return File(_joinPath(baseDirectoryPath, Uri.decodeComponent(value)));
+  return File(_joinPath(baseDirectoryPath, _decodeMarkdownImagePath(value)));
+}
+
+String _decodeMarkdownImagePath(String value) {
+  try {
+    return Uri.decodeFull(value);
+  } catch (_) {
+    return value;
+  }
 }
 
 bool _isSvgFile(String path) {

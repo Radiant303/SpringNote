@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'image_file_types.dart';
+
 class SavedPastedImage {
   const SavedPastedImage({required this.path, required this.name});
 
@@ -43,14 +45,49 @@ class PastedImageService {
       sourceName.trim().isNotEmpty ? sourceName : _fileName(sourcePath),
       sourcePath,
     );
-    final imageDirectory = await _ensureImageDirectory(notePath);
-    final available = await _availableImageFile(
-      imageDirectory: imageDirectory,
+    final available = await _availableImageFileForNote(
+      notePath: notePath,
       preferredName: preferredName,
     );
 
     await File(sourcePath).copy(available.file.path);
     return SavedPastedImage(path: available.file.path, name: available.name);
+  }
+
+  Future<SavedPastedImage> saveImageBytesForNote({
+    required String notePath,
+    required Uint8List bytes,
+    required String preferredName,
+    required String extension,
+  }) async {
+    if (bytes.isEmpty) {
+      throw ArgumentError.value(bytes, 'bytes', 'must not be empty');
+    }
+    final safeExtension = normalizedImageExtension(extension);
+    final safeName = _safeImageFileName(
+      preferredName.trim().isEmpty
+          ? 'pasted-image.$safeExtension'
+          : preferredName,
+      'image.$safeExtension',
+    );
+    final available = await _availableImageFileForNote(
+      notePath: notePath,
+      preferredName: safeName,
+    );
+
+    await available.file.writeAsBytes(bytes, flush: true);
+    return SavedPastedImage(path: available.file.path, name: available.name);
+  }
+
+  Future<({File file, String name})> _availableImageFileForNote({
+    required String notePath,
+    required String preferredName,
+  }) async {
+    final imageDirectory = await _ensureImageDirectory(notePath);
+    return _availableImageFile(
+      imageDirectory: imageDirectory,
+      preferredName: preferredName,
+    );
   }
 
   Future<Directory> _ensureImageDirectory(String notePath) async {
@@ -84,11 +121,11 @@ class PastedImageService {
     final name = sanitized.isEmpty
         ? (fallback.isEmpty ? 'image.png' : fallback)
         : sanitized;
-    if (_hasAllowedImageExtension(name)) {
+    if (hasAllowedImageExtension(name)) {
       return name;
     }
 
-    final sourceExtension = _allowedExtension(sourcePath);
+    final sourceExtension = allowedImageExtension(sourcePath);
     if (sourceExtension == null) {
       throw ArgumentError.value(sourcePath, 'sourcePath', 'unsupported image');
     }
@@ -119,35 +156,11 @@ class PastedImageService {
   }
 
   String _stripAllowedImageExtension(String name) {
-    final extension = _allowedExtension(name);
+    final extension = allowedImageExtension(name);
     if (extension == null) {
       return name;
     }
     return name.substring(0, name.length - extension.length);
-  }
-
-  bool _hasAllowedImageExtension(String path) {
-    return _allowedExtension(path) != null;
-  }
-
-  String? _allowedExtension(String path) {
-    final lower = path.toLowerCase();
-    for (final extension in const [
-      '.png',
-      '.jpg',
-      '.jpeg',
-      '.gif',
-      '.webp',
-      '.heic',
-      '.svg',
-      '.jfif',
-      '.bmp',
-    ]) {
-      if (lower.endsWith(extension)) {
-        return extension;
-      }
-    }
-    return null;
   }
 
   String _join(String left, String right) {

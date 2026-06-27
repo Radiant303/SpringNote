@@ -39,7 +39,7 @@ class MarkdownPreview extends StatelessWidget {
             height: 1.55,
           ),
           child: GptMarkdown(
-            markdown,
+            _markdownWithRenderableImageUris(markdown),
             followLinkColor: true,
             useDollarSignsForLatex: true,
             codeBuilder: (context, name, code, closed) =>
@@ -62,6 +62,67 @@ class MarkdownPreview extends StatelessWidget {
       ),
     );
   }
+}
+
+String _markdownWithRenderableImageUris(String markdown) {
+  final buffer = StringBuffer();
+  var index = 0;
+
+  while (index < markdown.length) {
+    final imageStart = markdown.indexOf('![', index);
+    if (imageStart < 0) {
+      buffer.write(markdown.substring(index));
+      break;
+    }
+
+    buffer.write(markdown.substring(index, imageStart));
+    final altEnd = markdown.indexOf('](', imageStart + 2);
+    if (altEnd < 0) {
+      buffer.write(markdown.substring(imageStart));
+      break;
+    }
+    final destinationStart = altEnd + 2;
+    final destinationEnd = markdown.indexOf(')', destinationStart);
+    if (destinationEnd < 0) {
+      buffer.write(markdown.substring(imageStart));
+      break;
+    }
+
+    final destination = markdown.substring(destinationStart, destinationEnd);
+    buffer
+      ..write(markdown.substring(imageStart, destinationStart))
+      ..write(_renderableImageDestination(destination))
+      ..write(')');
+    index = destinationEnd + 1;
+  }
+
+  return buffer.toString();
+}
+
+String _renderableImageDestination(String destination) {
+  final trimmed = destination.trim();
+  if (trimmed.isEmpty || !_isLocalImageDestination(trimmed)) {
+    return destination;
+  }
+
+  final decoded = _decodeImageDestination(trimmed);
+  return Uri(path: decoded).toString();
+}
+
+String _decodeImageDestination(String value) {
+  try {
+    return Uri.decodeFull(value);
+  } catch (_) {
+    return value;
+  }
+}
+
+bool _isLocalImageDestination(String value) {
+  if (RegExp(r'^[a-zA-Z]:[\\/]').hasMatch(value)) {
+    return true;
+  }
+  final uri = Uri.tryParse(value);
+  return uri != null && !uri.hasScheme;
 }
 
 class _MarkdownPreviewImage extends StatelessWidget {

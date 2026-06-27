@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:spring_note/core/attachments/pending_image.dart';
 import 'package:spring_note/core/models/app_config.dart';
 import 'package:spring_note/core/models/local_data_state.dart';
 import 'package:spring_note/core/models/structured_work_note.dart';
@@ -10,6 +11,8 @@ import 'package:spring_note/core/router/app_shell.dart';
 import 'package:spring_note/core/services/daily_note_service.dart';
 import 'package:spring_note/core/services/desktop_widget_controller.dart';
 import 'package:spring_note/core/services/home_overview_service.dart';
+import 'package:spring_note/core/services/pending_image_clipboard_service.dart';
+import 'package:spring_note/core/services/pending_image_service.dart';
 import 'package:spring_note/core/services/local_data_service.dart';
 import 'package:spring_note/core/services/stats_service.dart';
 import 'package:spring_note/core/theme/app_theme.dart';
@@ -170,8 +173,10 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
+    final imageBytes = Uint8List.fromList(_transparentPngBytes);
     final fakeDailyNoteService = _FakeDailyNoteService();
     final fakeHomeOverviewService = _FakeHomeOverviewService();
+    final fakePendingImageService = _FakePendingImageService();
     final localDataState = LocalDataState(
       dataDirectory: 'D:\\Temp\\SpringNote',
       configPath: 'D:\\Temp\\SpringNote\\config.json',
@@ -188,11 +193,13 @@ void main() {
           localDataState: localDataState,
           dailyNoteService: fakeDailyNoteService,
           homeOverviewService: fakeHomeOverviewService,
-          imageAttachmentPicker: () async => const [
-            HomeAttachment(
-              path: '/Users/demo/Desktop/screenshot.png',
+          pendingImageService: fakePendingImageService,
+          imageAttachmentPicker: () async => [
+            PendingImage(
+              id: 'picked-image',
+              bytes: imageBytes,
               name: 'screenshot.png',
-              kind: HomeAttachmentKind.image,
+              extension: 'png',
             ),
           ],
           documentAttachmentPicker: () async => const [
@@ -224,13 +231,136 @@ void main() {
       }
     }
 
+    expect(fakePendingImageService.savedBytes.single, imageBytes);
     final rawInput = fakeDailyNoteService.savedNote?.rawInput ?? '';
     expect(rawInput, contains('整理附件内容'));
+    expect(rawInput, contains('图片：'));
+    expect(rawInput, contains('![screenshot.png](images/screenshot.png)'));
     expect(rawInput, contains('附件：'));
-    expect(rawInput, contains('[图片] screenshot.png'));
-    expect(rawInput, contains('/Users/demo/Desktop/screenshot.png'));
     expect(rawInput, contains('[文件] spec.pdf'));
     expect(rawInput, contains('/Users/demo/Documents/spec.pdf'));
+  });
+
+  testWidgets('home paste image saves markdown path on submit', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final imageBytes = Uint8List.fromList(_transparentPngBytes);
+    final fakeDailyNoteService = _FakeDailyNoteService();
+    final fakeHomeOverviewService = _FakeHomeOverviewService();
+    final fakePendingImageService = _FakePendingImageService();
+    final localDataState = LocalDataState(
+      dataDirectory: 'D:\\Temp\\SpringNote',
+      configPath: 'D:\\Temp\\SpringNote\\config.json',
+      dailyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\daily',
+      weeklyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\weekly',
+      monthlyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\monthly',
+      config: AppConfig.defaults(),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: HomePage(
+          localDataState: localDataState,
+          dailyNoteService: fakeDailyNoteService,
+          homeOverviewService: fakeHomeOverviewService,
+          pendingImageClipboardService: _FakePendingImageClipboardService(
+            imageBytes,
+          ),
+          pendingImageService: fakePendingImageService,
+        ),
+      ),
+    );
+
+    await tester.tap(find.byType(TextField));
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pump();
+
+    expect(find.text('图片 · clipboard.png'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), '整理带图日报');
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('home-smart-generate-button')));
+    for (var index = 0; index < 20; index++) {
+      await tester.pump(const Duration(milliseconds: 100));
+      if (fakeDailyNoteService.savedNote != null) {
+        break;
+      }
+    }
+
+    expect(fakePendingImageService.notePath, contains('notes\\daily'));
+    expect(fakePendingImageService.notePath, endsWith('.md'));
+    expect(fakePendingImageService.savedBytes.single, imageBytes);
+    final rawInput = fakeDailyNoteService.savedNote?.rawInput ?? '';
+    expect(rawInput, contains('整理带图日报'));
+    expect(rawInput, contains('![clipboard.png](images/clipboard.png)'));
+    expect(find.text('图片 · clipboard.png'), findsNothing);
+  });
+
+  testWidgets('home image markdown keeps readable non-ascii relative path', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final imageBytes = Uint8List.fromList(_transparentPngBytes);
+    final fakeDailyNoteService = _FakeDailyNoteService();
+    final fakeHomeOverviewService = _FakeHomeOverviewService();
+    final fakePendingImageService = _FakePendingImageService();
+    final localDataState = LocalDataState(
+      dataDirectory: 'D:\\Temp\\SpringNote',
+      configPath: 'D:\\Temp\\SpringNote\\config.json',
+      dailyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\daily',
+      weeklyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\weekly',
+      monthlyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\monthly',
+      config: AppConfig.defaults(),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: HomePage(
+          localDataState: localDataState,
+          dailyNoteService: fakeDailyNoteService,
+          homeOverviewService: fakeHomeOverviewService,
+          pendingImageClipboardService: _FakePendingImageClipboardService(
+            imageBytes,
+            name: '【哲风壁纸】庭院雨景-树木-清新.png',
+          ),
+          pendingImageService: fakePendingImageService,
+        ),
+      ),
+    );
+
+    await tester.tap(find.byType(TextField));
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('home-smart-generate-button')));
+    for (var index = 0; index < 20; index++) {
+      await tester.pump(const Duration(milliseconds: 100));
+      if (fakeDailyNoteService.savedNote != null) {
+        break;
+      }
+    }
+
+    final rawInput = fakeDailyNoteService.savedNote?.rawInput ?? '';
+    expect(
+      rawInput,
+      contains('![【哲风壁纸】庭院雨景-树木-清新.png](images/【哲风壁纸】庭院雨景-树木-清新.png)'),
+    );
   });
 
   testWidgets('home income stays in sync with desktop widget controller', (
@@ -335,6 +465,51 @@ class _FakeHomeOverviewService extends HomeOverviewService {
   }
 }
 
+class _FakePendingImageClipboardService extends PendingImageClipboardService {
+  const _FakePendingImageClipboardService(
+    this.bytes, {
+    this.name = 'clipboard.png',
+  });
+
+  final Uint8List bytes;
+  final String name;
+
+  @override
+  Future<List<PendingImage>> readPendingImages() async {
+    return [
+      PendingImage(
+        id: 'test-image',
+        bytes: bytes,
+        name: name,
+        extension: 'png',
+      ),
+    ];
+  }
+}
+
+class _FakePendingImageService extends PendingImageService {
+  String? notePath;
+  final List<Uint8List> savedBytes = [];
+
+  @override
+  Future<List<SavedPendingImage>> saveForDailyNote({
+    required String notePath,
+    required List<PendingImage> images,
+  }) async {
+    this.notePath = notePath;
+    savedBytes.addAll(images.map((image) => image.bytes));
+    return images
+        .map(
+          (image) => SavedPendingImage(
+            path: '$notePath.images\\${image.name}',
+            name: image.name,
+            markdownPath: 'images/${image.name}',
+          ),
+        )
+        .toList();
+  }
+}
+
 class _FakeStatsService extends StatsService {
   const _FakeStatsService();
 
@@ -372,3 +547,74 @@ class _FakeStatsService extends StatsService {
     required double coins,
   }) async {}
 }
+
+const _transparentPngBytes = [
+  137,
+  80,
+  78,
+  71,
+  13,
+  10,
+  26,
+  10,
+  0,
+  0,
+  0,
+  13,
+  73,
+  72,
+  68,
+  82,
+  0,
+  0,
+  0,
+  1,
+  0,
+  0,
+  0,
+  1,
+  8,
+  6,
+  0,
+  0,
+  0,
+  31,
+  21,
+  196,
+  137,
+  0,
+  0,
+  0,
+  13,
+  73,
+  68,
+  65,
+  84,
+  120,
+  156,
+  99,
+  248,
+  15,
+  4,
+  0,
+  9,
+  251,
+  3,
+  253,
+  167,
+  132,
+  129,
+  130,
+  0,
+  0,
+  0,
+  0,
+  73,
+  69,
+  78,
+  68,
+  174,
+  66,
+  96,
+  130,
+];

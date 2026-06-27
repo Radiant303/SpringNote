@@ -83,6 +83,31 @@ void main() {
     },
   );
 
+  test(
+    'markdown local image accepts readable non-ascii relative image paths',
+    () async {
+      final imageFile = File(
+        _joinPath(noteDirectory.path, 'images/【哲风壁纸】庭院雨景.png'),
+      );
+      await imageFile.parent.create(recursive: true);
+      await imageFile.writeAsBytes(_pngBytes);
+
+      final image = buildMarkdownLocalImage(
+        url: 'images/【哲风壁纸】庭院雨景.png',
+        baseDirectoryPath: noteDirectory.path,
+        width: null,
+        height: null,
+        fit: BoxFit.contain,
+        errorBuilder: _imageErrorBuilder,
+      );
+
+      expect(image, isA<Image>());
+      final provider = (image as Image).image;
+      expect(provider, isA<FileImage>());
+      expect((provider as FileImage).file.path, imageFile.path);
+    },
+  );
+
   test('markdown local image decodes escaped relative image paths', () async {
     final imageFile = File(
       _joinPath(noteDirectory.path, 'images/screenshot #1.png'),
