@@ -4,15 +4,63 @@
 #include <windowsx.h>
 
 #include <algorithm>
+#include <cerrno>
 #include <cmath>
+#include <cstdlib>
 #include <iomanip>
 #include <limits>
 #include <sstream>
 #include <string>
+#include <vector>
 
 namespace {
 
 constexpr wchar_t kWidgetWindowClassName[] = L"SPRING_NOTE_DESKTOP_WIDGET";
+constexpr wchar_t kRegistryPath[] = L"Software\\SpringNote\\DesktopWidget";
+constexpr wchar_t kRegistryScreenId[] = L"screen_id";
+constexpr wchar_t kRegistryX[] = L"x";
+constexpr wchar_t kRegistryY[] = L"y";
+
+// RAII wrapper that guarantees RegCloseKey on destruction or early return.
+class RegKey {
+ public:
+  RegKey() = default;
+  ~RegKey() { Close(); }
+  RegKey(const RegKey&) = delete;
+  RegKey& operator=(const RegKey&) = delete;
+
+  HKEY get() const { return key_; }
+  bool valid() const { return key_ != nullptr; }
+
+  LSTATUS Create(HKEY root, const wchar_t* sub_key, REGSAM access) {
+    Close();
+    return RegCreateKeyExW(root, sub_key, 0, nullptr, 0, access, nullptr,
+                           &key_, nullptr);
+  }
+
+  LSTATUS Open(HKEY root, const wchar_t* sub_key, REGSAM access) {
+    Close();
+    return RegOpenKeyExW(root, sub_key, 0, access, &key_);
+  }
+
+  void Close() {
+    if (key_) {
+      RegCloseKey(key_);
+      key_ = nullptr;
+    }
+  }
+
+ private:
+  HKEY key_ = nullptr;
+};
+
+void LogRegistryError(const wchar_t* operation, LSTATUS status) {
+  std::wstringstream stream;
+  stream << L"SpringNote: desktop widget registry " << operation
+         << L" failed with status " << status << L".\n";
+  OutputDebugStringW(stream.str().c_str());
+}
+
 constexpr int kExpandedWindowWidth = 260;
 constexpr int kExpandedWindowHeight = 140;
 constexpr int kExpandedCornerRadius = 16;
@@ -236,7 +284,16 @@ void DesktopWidgetWindow::ShowOrUpdate(const flutter::EncodableMap& arguments) {
   } else if (!was_orb_mode || window_ == nullptr) {
     expanded_ = false;
   }
-  UpdateSavedPosition(arguments);
+  // Position priority: 1) Dart arguments  2) Registry  3) Default.
+  // Only call UpdateSavedPosition when Dart explicitly passes a position;
+  // otherwise try the registry so stale in-memory state doesn't block
+  // cross-session persistence.
+  const auto* dart_position = ReadMap(arguments, "position");
+  if (dart_position) {
+    UpdateSavedPosition(arguments);
+  } else if (!saved_position_.has_value()) {
+    saved_position_ = LoadPositionFromRegistry();
+  }
 
   if (!EnsureWindow()) {
     return;
@@ -310,6 +367,7 @@ void DesktopWidgetWindow::MoveToSavedOrDefaultPosition() {
     SetWindowPos(window_, HWND_TOPMOST, next.left, next.top, CurrentWidth(),
                  CurrentHeight(), SWP_NOACTIVATE);
     NotifyPositionChanged();
+    SavePositionToRegistry();
     return;
   }
 
@@ -505,6 +563,7 @@ void DesktopWidgetWindow::ClampWindowToVisibleMonitor(bool notify) {
   }
   if (notify) {
     NotifyPositionChanged();
+    SavePositionToRegistry();
   }
 }
 
@@ -654,28 +713,42 @@ void DesktopWidgetWindow::InvokeFlutterMethod(const std::string& method) {
   channel_->InvokeMethod(method, std::make_unique<flutter::EncodableValue>());
 }
 
+DesktopWidgetWindow::WidgetPosition
+DesktopWidgetWindow::CaptureCurrentPosition() const {
+  WidgetPosition pos;
+  if (!window_) {
+    return pos;
+  }
+
+  RECT rect{};
+  GetWindowRect(window_, &rect);
+  pos.x = rect.left;
+  pos.y = rect.top;
+
+  const HMONITOR monitor = MonitorFromRect(&rect, MONITOR_DEFAULTTONEAREST);
+  MONITORINFOEX monitor_info{};
+  monitor_info.cbSize = sizeof(MONITORINFOEX);
+  if (monitor && GetMonitorInfo(monitor, &monitor_info)) {
+    pos.screen_id = WideToUtf8(monitor_info.szDevice);
+  }
+
+  return pos;
+}
+
 void DesktopWidgetWindow::NotifyPositionChanged() {
   if (!channel_ || !window_) {
     return;
   }
 
-  RECT rect{};
-  GetWindowRect(window_, &rect);
-  const HMONITOR monitor = MonitorFromRect(&rect, MONITOR_DEFAULTTONEAREST);
-  MONITORINFOEX monitor_info{};
-  monitor_info.cbSize = sizeof(MONITORINFOEX);
-  std::string screen_id;
-  if (monitor && GetMonitorInfo(monitor, &monitor_info)) {
-    screen_id = WideToUtf8(monitor_info.szDevice);
-  }
+  const WidgetPosition pos = CaptureCurrentPosition();
 
   flutter::EncodableMap arguments;
   arguments[flutter::EncodableValue("screenId")] =
-      flutter::EncodableValue(screen_id);
+      flutter::EncodableValue(pos.screen_id);
   arguments[flutter::EncodableValue("x")] =
-      flutter::EncodableValue(static_cast<double>(rect.left));
+      flutter::EncodableValue(static_cast<double>(pos.x));
   arguments[flutter::EncodableValue("y")] =
-      flutter::EncodableValue(static_cast<double>(rect.top));
+      flutter::EncodableValue(static_cast<double>(pos.y));
   channel_->InvokeMethod(
       "positionChanged",
       std::make_unique<flutter::EncodableValue>(std::move(arguments)));
@@ -701,6 +774,167 @@ void DesktopWidgetWindow::UpdateSavedPosition(
       static_cast<int>(std::round(x)),
       static_cast<int>(std::round(y)),
   };
+}
+
+void DesktopWidgetWindow::SavePositionToRegistry() {
+  if (!window_) {
+    return;
+  }
+
+  const WidgetPosition pos = CaptureCurrentPosition();
+
+  RegKey key;
+  const LSTATUS status = key.Create(HKEY_CURRENT_USER, kRegistryPath,
+                                    KEY_SET_VALUE);
+  if (status != ERROR_SUCCESS || !key.valid()) {
+    LogRegistryError(L"create", status);
+    return;
+  }
+
+  const std::wstring wide_screen_id = Utf8ToWide(pos.screen_id);
+  const LSTATUS screen_status =
+      RegSetValueExW(key.get(), kRegistryScreenId, 0, REG_SZ,
+                     reinterpret_cast<const BYTE*>(wide_screen_id.c_str()),
+                     static_cast<DWORD>((wide_screen_id.size() + 1) *
+                                        sizeof(wchar_t)));
+  if (screen_status != ERROR_SUCCESS) {
+    LogRegistryError(L"write screen_id", screen_status);
+    return;
+  }
+
+  // Store x and y as REG_SZ strings so negative coordinates survive.
+  const auto write_int_str = [&](const wchar_t* name, int value,
+                                 const wchar_t* label) -> bool {
+    const std::wstring str = std::to_wstring(value);
+    const LSTATUS value_status =
+        RegSetValueExW(key.get(), name, 0, REG_SZ,
+                       reinterpret_cast<const BYTE*>(str.c_str()),
+                       static_cast<DWORD>((str.size() + 1) * sizeof(wchar_t)));
+    if (value_status != ERROR_SUCCESS) {
+      LogRegistryError(label, value_status);
+      return false;
+    }
+    return true;
+  };
+  if (!write_int_str(kRegistryX, pos.x, L"write x") ||
+      !write_int_str(kRegistryY, pos.y, L"write y")) {
+    return;
+  }
+
+  // Keep the in-memory saved position in sync so same-process hide/show
+  // or subsequent showOrUpdate calls see the latest clamped position.
+  saved_position_ = pos;
+}
+
+std::optional<DesktopWidgetWindow::WidgetPosition>
+DesktopWidgetWindow::LoadPositionFromRegistry() {
+  RegKey key;
+  const LSTATUS status = key.Open(HKEY_CURRENT_USER, kRegistryPath, KEY_READ);
+  if (status != ERROR_SUCCESS || !key.valid()) {
+    if (status != ERROR_FILE_NOT_FOUND) {
+      LogRegistryError(L"open", status);
+    }
+    return std::nullopt;
+  }
+
+  // Helper: read a REG_SZ value into a std::wstring. Returns false on failure.
+  const auto read_string = [&](const wchar_t* name,
+                               std::wstring& out) -> bool {
+    // First query the type and size.
+    DWORD type = 0;
+    DWORD byte_size = 0;
+    const LSTATUS query_status =
+        RegQueryValueExW(key.get(), name, nullptr, &type, nullptr,
+                         &byte_size);
+    if (query_status != ERROR_SUCCESS) {
+      if (query_status != ERROR_FILE_NOT_FOUND) {
+        LogRegistryError(L"query value", query_status);
+      }
+      return false;
+    }
+    if (type != REG_SZ) {
+      OutputDebugStringW(
+          L"SpringNote: desktop widget registry value has unexpected type.\n");
+      return false;
+    }
+    // Guard against empty or unreasonably large values (no valid position
+    // string should exceed 256 bytes).
+    if (byte_size == 0 || byte_size > 256) {
+      OutputDebugStringW(
+          L"SpringNote: desktop widget registry value has invalid size.\n");
+      return false;
+    }
+    // byte_size includes the null terminator. Add one extra wchar so tampered
+    // odd byte sizes still have room for a terminator without arithmetic wrap.
+    const DWORD wchar_count = byte_size / sizeof(wchar_t) + 1;
+    std::vector<wchar_t> buffer(wchar_count, L'\0');
+    DWORD read_bytes = byte_size;
+    const LSTATUS read_status =
+        RegQueryValueExW(key.get(), name, nullptr, nullptr,
+                         reinterpret_cast<BYTE*>(buffer.data()),
+                         &read_bytes);
+    if (read_status != ERROR_SUCCESS) {
+      LogRegistryError(L"read value", read_status);
+      return false;
+    }
+    // Ensure null-termination regardless of what the registry holds.
+    buffer.back() = L'\0';
+    out = buffer.data();
+    return true;
+  };
+
+  // Helper: read a REG_SZ containing a decimal integer. Returns false on
+  // failure or overflow.
+  const auto read_int_from_str = [&](const wchar_t* name,
+                                     int& out) -> bool {
+    std::wstring str;
+    if (!read_string(name, str)) {
+      return false;
+    }
+    if (str.empty()) {
+      return false;
+    }
+    wchar_t* end = nullptr;
+    errno = 0;
+    const long value = wcstol(str.c_str(), &end, 10);
+    if (errno == ERANGE || end == str.c_str() || *end != L'\0') {
+      return false;
+    }
+    if (value < std::numeric_limits<int>::min() ||
+        value > std::numeric_limits<int>::max()) {
+      return false;
+    }
+    out = static_cast<int>(value);
+    return true;
+  };
+
+  WidgetPosition position;
+  bool has_x = false;
+  bool has_y = false;
+
+  // screen_id is optional — we fall back to MonitorFromPoint if missing.
+  {
+    std::wstring str;
+    if (read_string(kRegistryScreenId, str)) {
+      position.screen_id = WideToUtf8(str.c_str());
+      MonitorSearchContext context{&position.screen_id, nullptr};
+      EnumDisplayMonitors(nullptr, nullptr, FindMonitorById,
+                          reinterpret_cast<LPARAM>(&context));
+      if (!context.monitor) {
+        position.screen_id.clear();
+      }
+    }
+  }
+
+  has_x = read_int_from_str(kRegistryX, position.x);
+  has_y = read_int_from_str(kRegistryY, position.y);
+
+  // Both x and y are required; otherwise the saved position is incomplete.
+  if (!has_x || !has_y) {
+    return std::nullopt;
+  }
+
+  return position;
 }
 
 void DesktopWidgetWindow::OpenMainWindow() {

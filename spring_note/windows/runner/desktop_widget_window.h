@@ -62,7 +62,10 @@ class DesktopWidgetWindow {
   RECT ClampedRectForOrigin(int x, int y, HMONITOR preferred_monitor) const;
   void SetBoundedWindowOrigin(int x, int y);
   void ClampWindowToVisibleMonitor(bool notify);
+  WidgetPosition CaptureCurrentPosition() const;
   void NotifyPositionChanged();
+  void SavePositionToRegistry();
+  std::optional<WidgetPosition> LoadPositionFromRegistry();
   void UpdateSavedPosition(const flutter::EncodableMap& arguments);
   void InvokeFlutterMethod(const std::string& method);
   void OpenMainWindow();
