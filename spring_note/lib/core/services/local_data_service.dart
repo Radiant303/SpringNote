@@ -15,6 +15,28 @@ class LocalDataService {
 
   static const String _configFileName = 'config.json';
   static const String _directoryPointerFileName = 'data-directory.json';
+  static const String _notesDirectoryName = 'notes';
+  static const String _dailyDirectoryName = 'daily';
+  static const String _weeklyDirectoryName = 'weekly';
+  static const String _monthlyDirectoryName = 'monthly';
+  static const String _appDataDirectoryName = 'SpringNote';
+  static const String _windowsAppDataEnv = 'APPDATA';
+  static const String _homeEnv = 'HOME';
+  static const String _userProfileEnv = 'USERPROFILE';
+  static const String _xdgDataHomeEnv = 'XDG_DATA_HOME';
+  static const String _macApplicationSupportDirectory = 'Application Support';
+  static const String _macLibraryDirectory = 'Library';
+  static const String _linuxLocalDirectory = '.local';
+  static const String _linuxShareDirectory = 'share';
+  static const String _jsonIndent = '  ';
+  static const String _writeTestFileName = '.spring_note_write_test';
+  static const String _writeTestContent = 'ok';
+  static const int _backslash = 92;
+  static const int _quote = 34;
+  static const int _openingBrace = 123;
+  static const int _closingBrace = 125;
+  static const int _jsonObjectEndOffset = 1;
+  static const int _backupTimestampLength = 17;
 
   final String? appDataPath;
   final String? executableDirectoryPath;
@@ -93,10 +115,10 @@ class LocalDataService {
     Directory root, {
     AppConfig? config,
   }) async {
-    final notes = Directory(_join(root.path, 'notes'));
-    final daily = Directory(_join(notes.path, 'daily'));
-    final weekly = Directory(_join(notes.path, 'weekly'));
-    final monthly = Directory(_join(notes.path, 'monthly'));
+    final notes = Directory(_join(root.path, _notesDirectoryName));
+    final daily = Directory(_join(notes.path, _dailyDirectoryName));
+    final weekly = Directory(_join(notes.path, _weeklyDirectoryName));
+    final monthly = Directory(_join(notes.path, _monthlyDirectoryName));
 
     await Future.wait([
       root.create(recursive: true),
@@ -163,7 +185,7 @@ class LocalDataService {
   }
 
   Future<void> _writeConfig(File file, AppConfig config) async {
-    const encoder = JsonEncoder.withIndent('  ');
+    const encoder = JsonEncoder.withIndent(_jsonIndent);
     await file.parent.create(recursive: true);
     await file.writeAsString('${encoder.convert(config.toJson())}\n');
   }
@@ -201,34 +223,37 @@ class LocalDataService {
         'No user data directory is available; cannot initialize SpringNote data.',
       );
     }
-    return Directory(_join(basePath, 'SpringNote'));
+    return Directory(_join(basePath, _appDataDirectoryName));
   }
 
   String? _platformDataDirectoryPath() {
     if (Platform.isWindows) {
-      return Platform.environment['APPDATA'];
+      return Platform.environment[_windowsAppDataEnv];
     }
     if (Platform.isMacOS) {
-      final home = Platform.environment['HOME'];
+      final home = Platform.environment[_homeEnv];
       if (home == null || home.trim().isEmpty) {
         return null;
       }
-      return _join(_join(home, 'Library'), 'Application Support');
+      return _join(
+        _join(home, _macLibraryDirectory),
+        _macApplicationSupportDirectory,
+      );
     }
     if (Platform.isLinux) {
-      final xdgDataHome = Platform.environment['XDG_DATA_HOME'];
+      final xdgDataHome = Platform.environment[_xdgDataHomeEnv];
       if (xdgDataHome != null && xdgDataHome.trim().isNotEmpty) {
         return xdgDataHome;
       }
-      final home = Platform.environment['HOME'];
+      final home = Platform.environment[_homeEnv];
       if (home == null || home.trim().isEmpty) {
         return null;
       }
-      return _join(_join(home, '.local'), 'share');
+      return _join(_join(home, _linuxLocalDirectory), _linuxShareDirectory);
     }
     final home =
-        Platform.environment['HOME'] ??
-        Platform.environment['USERPROFILE'] ??
+        Platform.environment[_homeEnv] ??
+        Platform.environment[_userProfileEnv] ??
         Directory.systemTemp.path;
     return home;
   }
@@ -317,7 +342,7 @@ class LocalDataService {
   }
 
   Future<void> _writeJson(File file, Map<String, Object?> json) async {
-    const encoder = JsonEncoder.withIndent('  ');
+    const encoder = JsonEncoder.withIndent(_jsonIndent);
     await file.writeAsString('${encoder.convert(json)}\n');
   }
 
@@ -352,30 +377,30 @@ class LocalDataService {
       if (inString) {
         if (escaped) {
           escaped = false;
-        } else if (codeUnit == 92) {
+        } else if (codeUnit == _backslash) {
           escaped = true;
-        } else if (codeUnit == 34) {
+        } else if (codeUnit == _quote) {
           inString = false;
         }
         continue;
       }
 
-      if (codeUnit == 34) {
+      if (codeUnit == _quote) {
         inString = true;
         continue;
       }
-      if (codeUnit == 123) {
+      if (codeUnit == _openingBrace) {
         depth++;
         started = true;
         continue;
       }
-      if (codeUnit == 125) {
+      if (codeUnit == _closingBrace) {
         if (!started) {
           return null;
         }
         depth--;
         if (depth == 0) {
-          return index + 1;
+          return index + _jsonObjectEndOffset;
         }
         if (depth < 0) {
           return null;
@@ -393,8 +418,8 @@ class LocalDataService {
     final stamp = DateTime.now()
         .toIso8601String()
         .replaceAll(RegExp(r'[^0-9]'), '')
-        .padRight(17, '0')
-        .substring(0, 17);
+        .padRight(_backupTimestampLength, '0')
+        .substring(0, _backupTimestampLength);
     await file.copy('${file.path}.invalid-$stamp');
   }
 
@@ -426,8 +451,8 @@ class LocalDataService {
         await file.writeAsString(content);
         return true;
       }
-      final probe = File(_join(file.parent.path, '.spring_note_write_test'));
-      await probe.writeAsString('ok');
+      final probe = File(_join(file.parent.path, _writeTestFileName));
+      await probe.writeAsString(_writeTestContent);
       await probe.delete();
       return true;
     } catch (_) {

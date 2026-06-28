@@ -912,7 +912,7 @@ DesktopWidgetWindow::LoadPositionFromRegistry() {
   bool has_x = false;
   bool has_y = false;
 
-  // screen_id is optional — we fall back to MonitorFromPoint if missing.
+  // screen_id is optional - we fall back to MonitorFromPoint if missing.
   {
     std::wstring str;
     if (read_string(kRegistryScreenId, str)) {
