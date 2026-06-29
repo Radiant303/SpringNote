@@ -151,6 +151,9 @@ class _CloudSyncPanelState extends State<_CloudSyncPanel> {
         });
         return;
       }
+      if (_testing || _syncing) {
+        return;
+      }
       setState(() {
         _syncing = true;
         _message = null;
@@ -182,45 +185,56 @@ class _CloudSyncPanelState extends State<_CloudSyncPanel> {
   Future<bool> _confirmDeletePlan(CloudSyncResult result) async {
     final deleteLocal = result.pendingDeleteLocal;
     final deleteRemote = result.pendingDeleteRemote;
+    var submitting = false;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        key: const ValueKey('cloud-sync-delete-confirm-dialog'),
-        title: const Text('确认删除同步'),
-        content: SizedBox(
-          width: 480,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('检测到文件删除。确认后才会删除对应文件。'),
-                if (deleteLocal.isNotEmpty) ...[
-                  const SizedBox(height: 14),
-                  const Text('将从本地删除'),
-                  const SizedBox(height: 6),
-                  _CloudSyncDeleteList(paths: deleteLocal),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          key: const ValueKey('cloud-sync-delete-confirm-dialog'),
+          title: const Text('确认删除同步'),
+          content: SizedBox(
+            width: 480,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('检测到文件删除。确认后才会删除对应文件。'),
+                  if (deleteLocal.isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    const Text('将从本地删除'),
+                    const SizedBox(height: 6),
+                    _CloudSyncDeleteList(paths: deleteLocal),
+                  ],
+                  if (deleteRemote.isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    const Text('将从远端删除'),
+                    const SizedBox(height: 6),
+                    _CloudSyncDeleteList(paths: deleteRemote),
+                  ],
                 ],
-                if (deleteRemote.isNotEmpty) ...[
-                  const SizedBox(height: 14),
-                  const Text('将从远端删除'),
-                  const SizedBox(height: 6),
-                  _CloudSyncDeleteList(paths: deleteRemote),
-                ],
-              ],
+              ),
             ),
           ),
+          actions: [
+            TextButton(
+              onPressed: submitting
+                  ? null
+                  : () => Navigator.of(context).pop(false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: submitting
+                  ? null
+                  : () {
+                      submitting = true;
+                      setDialogState(() {});
+                      Navigator.of(context).pop(true);
+                    },
+              child: const Text('确认删除并同步'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('确认删除并同步'),
-          ),
-        ],
       ),
     );
     return confirmed ?? false;

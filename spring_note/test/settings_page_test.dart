@@ -312,7 +312,9 @@ void main() {
     expect(find.text('daily/old.md'), findsOneWidget);
     expect(find.text('daily/images/old.png'), findsOneWidget);
 
-    await tester.tap(find.text('确认删除并同步'));
+    final confirmButtonCenter = tester.getCenter(find.text('确认删除并同步'));
+    await tester.tapAt(confirmButtonCenter);
+    await tester.tapAt(confirmButtonCenter);
     await tester.pumpAndSettle();
 
     expect(cloudSyncService.syncCallCount, 2);
