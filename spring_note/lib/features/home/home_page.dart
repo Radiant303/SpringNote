@@ -1054,7 +1054,7 @@ class _ActivityPreview extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _ActivityMetric(label: '本周新增', value: '$weekCount 篇'),
+                _ActivityMetric(label: '本周总结', value: '$weekCount 次'),
                 const SizedBox(width: 24),
                 _ActivityMetric(label: '连续记录', value: '$streak 天'),
                 const SizedBox(width: 24),
