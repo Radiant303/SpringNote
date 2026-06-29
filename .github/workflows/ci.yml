@@ -30,6 +30,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Release script tests
+        working-directory: ${{ github.workspace }}
+        run: python3 -m unittest discover .github/scripts/tests
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
