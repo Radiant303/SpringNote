@@ -19,6 +19,7 @@ def run_script(*args: str) -> subprocess.CompletedProcess[str]:
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        timeout=30,
         check=False,
     )
 
@@ -103,6 +104,54 @@ class ReleaseScriptTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("does not match pubspec version", result.stderr)
 
+    def test_prepare_release_keeps_non_version_h2_in_notes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            pubspec = tmp_path / "pubspec.yaml"
+            changelog = tmp_path / "CHANGELOG.md"
+            notes = tmp_path / "release-notes.md"
+            outputs = tmp_path / "outputs.txt"
+            pubspec.write_text("version: 1.2.3\n", encoding="utf-8")
+            changelog.write_text(
+                "\n".join(
+                    [
+                        "## v1.2.3：稳定发布",
+                        "",
+                        "### 功能新增",
+                        "",
+                        "* 自动发布 Release。",
+                        "",
+                        "## 迁移说明",
+                        "",
+                        "* 这个二级标题仍属于 v1.2.3。",
+                        "",
+                        "## v1.2.2：旧版本",
+                        "",
+                        "* 旧版本。",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            result = run_script(
+                str(PREPARE_RELEASE),
+                "--tag",
+                "1.2.3",
+                "--pubspec",
+                str(pubspec),
+                "--changelog",
+                str(changelog),
+                "--notes-output",
+                str(notes),
+                "--outputs-file",
+                str(outputs),
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            note_text = notes.read_text(encoding="utf-8")
+            self.assertIn("## 迁移说明", note_text)
+            self.assertNotIn("旧版本。", note_text)
+
     def test_update_metadata_round_trip(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
@@ -152,6 +201,53 @@ class ReleaseScriptTests(unittest.TestCase):
                 .read_text(encoding="utf-8")
                 .startswith("## ✨ 更新日志")
             )
+
+    def test_verify_update_metadata_rejects_wrong_version(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            metadata_dir = tmp_path / "update"
+            metadata_dir.mkdir()
+            metadata_dir.joinpath("mac.json").write_text(
+                json.dumps(
+                    {
+                        "version": "9.9.9",
+                        "change_time": "2026年6月29日 13:30:00",
+                        "download_url": "https://github.com/Radiant303/SpringNote/releases/download/1.2.3/SpringNote-1.2.3-macos-arm64.dmg",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            metadata_dir.joinpath("windows.json").write_text(
+                json.dumps(
+                    {
+                        "version": "1.2.3",
+                        "change_time": "2026年6月29日 13:30:00",
+                        "download_url": "https://github.com/Radiant303/SpringNote/releases/download/1.2.3/SpringNote-1.2.3-windows-x64-setup.exe",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            metadata_dir.joinpath("LATESTCHANGELOG.md").write_text(
+                "## ✨ 更新日志\n\n* 内容。\n",
+                encoding="utf-8",
+            )
+
+            result = run_script(
+                str(VERIFY_UPDATE_METADATA),
+                "--version",
+                "1.2.3",
+                "--repo",
+                "Radiant303/SpringNote",
+                "--macos-asset",
+                "SpringNote-1.2.3-macos-arm64.dmg",
+                "--windows-asset",
+                "SpringNote-1.2.3-windows-x64-setup.exe",
+                "--metadata-dir",
+                str(metadata_dir),
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("does not match", result.stderr)
 
 
 if __name__ == "__main__":

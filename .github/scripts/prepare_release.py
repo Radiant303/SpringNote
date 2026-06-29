@@ -9,6 +9,11 @@ from pathlib import Path
 
 
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
+CHANGELOG_VERSION_HEADING_RE = re.compile(
+    r"^##\s+v?(?P<version>\d+\.\d+\.\d+)"
+    r"(?:\s*\([^)]+\))?"
+    r"(?:\s*[:：-]\s*(?P<title>\S.*))?\s*$"
+)
 
 
 def read_pubspec_version(path: Path) -> str:
@@ -21,17 +26,12 @@ def read_pubspec_version(path: Path) -> str:
 
 def extract_release_notes(changelog: Path, version: str) -> tuple[str, str | None]:
     lines = changelog.read_text(encoding="utf-8").splitlines()
-    heading_re = re.compile(
-        rf"^##\s+v?{re.escape(version)}"
-        r"(?:\s*\([^)]+\))?"
-        r"(?:\s*(?:[:：-]\s*)\s*(?P<title>.+?))?\s*$"
-    )
 
     start = None
     title = None
     for index, line in enumerate(lines):
-        match = heading_re.match(line.strip())
-        if match:
+        match = CHANGELOG_VERSION_HEADING_RE.match(line.strip())
+        if match and match.group("version") == version:
             start = index + 1
             title = match.group("title")
             break
@@ -41,7 +41,7 @@ def extract_release_notes(changelog: Path, version: str) -> tuple[str, str | Non
 
     end = len(lines)
     for index in range(start, len(lines)):
-        if lines[index].startswith("## "):
+        if CHANGELOG_VERSION_HEADING_RE.match(lines[index].strip()):
             end = index
             break
 

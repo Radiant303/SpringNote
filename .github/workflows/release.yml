@@ -140,9 +140,14 @@ jobs:
           SPRINGNOTE_BUILD_OUTPUT_DIR: ${{ github.workspace }}\spring_note\build\windows\x64\runner\Release
           SPRINGNOTE_SETUP_OUTPUT_DIR: ${{ github.workspace }}\spring_note\build\windows\x64\runner\Release
         run: |
-          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          $isccCommand = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+          if ($null -ne $isccCommand) {
+            $iscc = $isccCommand.Source
+          } else {
+            $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          }
           if (-not (Test-Path $iscc)) {
-            throw "Inno Setup compiler not found at $iscc"
+            throw "Inno Setup compiler not found."
           }
           & $iscc "installer\springnote.iss"
 
