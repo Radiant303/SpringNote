@@ -927,6 +927,9 @@ impl SseDecode for crate::cloud_sync::CloudSyncRequest {
         let mut var_trigger = <String>::sse_decode(deserializer);
         let mut var_confirmedDeleteLocal = <Vec<String>>::sse_decode(deserializer);
         let mut var_confirmedDeleteRemote = <Vec<String>>::sse_decode(deserializer);
+        let mut var_confirmedOverwriteLocal = <Vec<String>>::sse_decode(deserializer);
+        let mut var_confirmedOverwriteRemote = <Vec<String>>::sse_decode(deserializer);
+        let mut var_skippedDeleteModifyConflicts = <Vec<String>>::sse_decode(deserializer);
         return crate::cloud_sync::CloudSyncRequest {
             config: var_config,
             data_directory: var_dataDirectory,
@@ -936,6 +939,9 @@ impl SseDecode for crate::cloud_sync::CloudSyncRequest {
             trigger: var_trigger,
             confirmed_delete_local: var_confirmedDeleteLocal,
             confirmed_delete_remote: var_confirmedDeleteRemote,
+            confirmed_overwrite_local: var_confirmedOverwriteLocal,
+            confirmed_overwrite_remote: var_confirmedOverwriteRemote,
+            skipped_delete_modify_conflicts: var_skippedDeleteModifyConflicts,
         };
     }
 }
@@ -953,6 +959,9 @@ impl SseDecode for crate::cloud_sync::CloudSyncResult {
         let mut var_needsDeleteConfirmation = <bool>::sse_decode(deserializer);
         let mut var_pendingDeleteLocal = <Vec<String>>::sse_decode(deserializer);
         let mut var_pendingDeleteRemote = <Vec<String>>::sse_decode(deserializer);
+        let mut var_needsDeleteModifyConfirmation = <bool>::sse_decode(deserializer);
+        let mut var_pendingDeleteModifyConflicts =
+            <Vec<crate::cloud_sync::DeleteModifyConflict>>::sse_decode(deserializer);
         return crate::cloud_sync::CloudSyncResult {
             ok: var_ok,
             message: var_message,
@@ -964,6 +973,20 @@ impl SseDecode for crate::cloud_sync::CloudSyncResult {
             needs_delete_confirmation: var_needsDeleteConfirmation,
             pending_delete_local: var_pendingDeleteLocal,
             pending_delete_remote: var_pendingDeleteRemote,
+            needs_delete_modify_confirmation: var_needsDeleteModifyConfirmation,
+            pending_delete_modify_conflicts: var_pendingDeleteModifyConflicts,
+        };
+    }
+}
+
+impl SseDecode for crate::cloud_sync::DeleteModifyConflict {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_relativePath = <String>::sse_decode(deserializer);
+        let mut var_direction = <String>::sse_decode(deserializer);
+        return crate::cloud_sync::DeleteModifyConflict {
+            relative_path: var_relativePath,
+            direction: var_direction,
         };
     }
 }
@@ -1071,6 +1094,20 @@ impl SseDecode for Vec<String> {
         let mut ans_ = Vec::with_capacity(len_ as usize);
         for idx_ in 0..len_ {
             ans_.push(<String>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::cloud_sync::DeleteModifyConflict> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::cloud_sync::DeleteModifyConflict>::sse_decode(
+                deserializer,
+            ));
         }
         return ans_;
     }
@@ -1687,6 +1724,11 @@ impl flutter_rust_bridge::IntoDart for crate::cloud_sync::CloudSyncRequest {
             self.trigger.into_into_dart().into_dart(),
             self.confirmed_delete_local.into_into_dart().into_dart(),
             self.confirmed_delete_remote.into_into_dart().into_dart(),
+            self.confirmed_overwrite_local.into_into_dart().into_dart(),
+            self.confirmed_overwrite_remote.into_into_dart().into_dart(),
+            self.skipped_delete_modify_conflicts
+                .into_into_dart()
+                .into_dart(),
         ]
         .into_dart()
     }
@@ -1716,6 +1758,12 @@ impl flutter_rust_bridge::IntoDart for crate::cloud_sync::CloudSyncResult {
             self.needs_delete_confirmation.into_into_dart().into_dart(),
             self.pending_delete_local.into_into_dart().into_dart(),
             self.pending_delete_remote.into_into_dart().into_dart(),
+            self.needs_delete_modify_confirmation
+                .into_into_dart()
+                .into_dart(),
+            self.pending_delete_modify_conflicts
+                .into_into_dart()
+                .into_dart(),
         ]
         .into_dart()
     }
@@ -1728,6 +1776,27 @@ impl flutter_rust_bridge::IntoIntoDart<crate::cloud_sync::CloudSyncResult>
     for crate::cloud_sync::CloudSyncResult
 {
     fn into_into_dart(self) -> crate::cloud_sync::CloudSyncResult {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::cloud_sync::DeleteModifyConflict {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.relative_path.into_into_dart().into_dart(),
+            self.direction.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::cloud_sync::DeleteModifyConflict
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::cloud_sync::DeleteModifyConflict>
+    for crate::cloud_sync::DeleteModifyConflict
+{
+    fn into_into_dart(self) -> crate::cloud_sync::DeleteModifyConflict {
         self
     }
 }
@@ -2231,6 +2300,9 @@ impl SseEncode for crate::cloud_sync::CloudSyncRequest {
         <String>::sse_encode(self.trigger, serializer);
         <Vec<String>>::sse_encode(self.confirmed_delete_local, serializer);
         <Vec<String>>::sse_encode(self.confirmed_delete_remote, serializer);
+        <Vec<String>>::sse_encode(self.confirmed_overwrite_local, serializer);
+        <Vec<String>>::sse_encode(self.confirmed_overwrite_remote, serializer);
+        <Vec<String>>::sse_encode(self.skipped_delete_modify_conflicts, serializer);
     }
 }
 
@@ -2247,6 +2319,19 @@ impl SseEncode for crate::cloud_sync::CloudSyncResult {
         <bool>::sse_encode(self.needs_delete_confirmation, serializer);
         <Vec<String>>::sse_encode(self.pending_delete_local, serializer);
         <Vec<String>>::sse_encode(self.pending_delete_remote, serializer);
+        <bool>::sse_encode(self.needs_delete_modify_confirmation, serializer);
+        <Vec<crate::cloud_sync::DeleteModifyConflict>>::sse_encode(
+            self.pending_delete_modify_conflicts,
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::cloud_sync::DeleteModifyConflict {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.relative_path, serializer);
+        <String>::sse_encode(self.direction, serializer);
     }
 }
 
@@ -2319,6 +2404,16 @@ impl SseEncode for Vec<String> {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
             <String>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::cloud_sync::DeleteModifyConflict> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::cloud_sync::DeleteModifyConflict>::sse_encode(item, serializer);
         }
     }
 }

@@ -25,6 +25,8 @@ class _CloudSyncPanelState extends State<_CloudSyncPanel> {
   String? _message;
   bool _messageIsError = false;
 
+  static const int _maxSyncConfirmationRounds = 5;
+
   CloudSyncConfig get _sync => widget.config.cloudSync;
 
   @override
@@ -131,43 +133,99 @@ class _CloudSyncPanelState extends State<_CloudSyncPanel> {
       _message = null;
     });
     final state = widget.localDataState.copyWith(config: widget.config);
-    var result = await widget.cloudSyncService.sync(
-      localDataState: state,
-      trigger: CloudSyncTrigger.manual,
-    );
-    if (!mounted) {
-      return;
-    }
-    if (result.needsDeleteConfirmation) {
-      setState(() => _syncing = false);
-      final confirmed = await _confirmDeletePlan(result);
-      if (!mounted) {
-        return;
-      }
-      if (!confirmed) {
-        setState(() {
-          _message = '已取消删除，未执行删除项';
-          _messageIsError = false;
-        });
-        return;
-      }
-      if (_testing || _syncing) {
-        return;
-      }
-      setState(() {
-        _syncing = true;
-        _message = null;
-      });
-      result = await widget.cloudSyncService.sync(
+    var confirmedDeleteLocal = <String>[];
+    var confirmedDeleteRemote = <String>[];
+    var confirmedOverwriteLocal = <String>[];
+    var confirmedOverwriteRemote = <String>[];
+    var skippedDeleteModifyConflicts = <String>[];
+
+    for (var round = 0; round < _maxSyncConfirmationRounds; round++) {
+      final result = await widget.cloudSyncService.sync(
         localDataState: state,
         trigger: CloudSyncTrigger.manual,
-        confirmedDeleteLocal: result.pendingDeleteLocal,
-        confirmedDeleteRemote: result.pendingDeleteRemote,
+        confirmedDeleteLocal: confirmedDeleteLocal,
+        confirmedDeleteRemote: confirmedDeleteRemote,
+        confirmedOverwriteLocal: confirmedOverwriteLocal,
+        confirmedOverwriteRemote: confirmedOverwriteRemote,
+        skippedDeleteModifyConflicts: skippedDeleteModifyConflicts,
       );
       if (!mounted) {
         return;
       }
+
+      confirmedDeleteLocal = [];
+      confirmedDeleteRemote = [];
+      confirmedOverwriteLocal = [];
+      confirmedOverwriteRemote = [];
+      skippedDeleteModifyConflicts = [];
+
+      var shouldContinue = false;
+      if (result.needsDeleteConfirmation) {
+        setState(() => _syncing = false);
+        final confirmed = await _confirmDeletePlan(result);
+        if (!mounted) {
+          return;
+        }
+        if (!confirmed) {
+          setState(() {
+            _message = '已取消删除，未执行删除项';
+            _messageIsError = false;
+          });
+          return;
+        }
+        confirmedDeleteLocal = result.pendingDeleteLocal;
+        confirmedDeleteRemote = result.pendingDeleteRemote;
+        shouldContinue = true;
+      }
+
+      if (result.needsDeleteModifyConfirmation) {
+        if (_syncing) {
+          setState(() => _syncing = false);
+        }
+        final decision = await _confirmDeleteModifyConflicts(
+          result.pendingDeleteModifyConflicts,
+        );
+        if (!mounted) {
+          return;
+        }
+        confirmedOverwriteLocal = decision.overwriteLocal;
+        confirmedOverwriteRemote = decision.overwriteRemote;
+        skippedDeleteModifyConflicts = decision.skipped;
+        if (decision.allSkipped &&
+            confirmedDeleteLocal.isEmpty &&
+            confirmedDeleteRemote.isEmpty) {
+          setState(() {
+            _message = '已跳过删除修改冲突，未处理冲突项';
+            _messageIsError = false;
+          });
+          return;
+        }
+        shouldContinue = true;
+      }
+
+      if (shouldContinue) {
+        if (_testing || _syncing) {
+          return;
+        }
+        setState(() {
+          _syncing = true;
+          _message = null;
+        });
+        continue;
+      }
+
+      _finishManualSync(result);
+      return;
     }
+
+    setState(() {
+      _syncing = false;
+      _message = '仍有待确认项，请重新同步。';
+      _messageIsError = true;
+    });
+  }
+
+  void _finishManualSync(CloudSyncResult result) {
     setState(() {
       _syncing = false;
       _message = result.message;
@@ -238,6 +296,86 @@ class _CloudSyncPanelState extends State<_CloudSyncPanel> {
       ),
     );
     return confirmed ?? false;
+  }
+
+  Future<_DeleteModifyConflictDecision> _confirmDeleteModifyConflicts(
+    List<CloudSyncDeleteModifyConflict> conflicts,
+  ) async {
+    final selections = {
+      for (final conflict in conflicts)
+        conflict.relativePath: _DeleteModifyResolution.skip,
+    };
+    var submitting = false;
+    final confirmed = await showDialog<_DeleteModifyConflictDecision>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          key: const ValueKey('cloud-sync-delete-modify-confirm-dialog'),
+          title: const Text('处理删除修改冲突'),
+          content: SizedBox(
+            width: 560,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('检测到一端删除、另一端修改的文件，请选择处理方式。'),
+                  const SizedBox(height: 14),
+                  for (final conflict in conflicts) ...[
+                    _DeleteModifyConflictTile(
+                      conflict: conflict,
+                      value:
+                          selections[conflict.relativePath] ??
+                          _DeleteModifyResolution.skip,
+                      enabled: !submitting,
+                      onChanged: (value) {
+                        setDialogState(() {
+                          selections[conflict.relativePath] = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: submitting
+                  ? null
+                  : () => Navigator.of(context).pop(
+                      _DeleteModifyConflictDecision.fromSelections(conflicts, {
+                        for (final conflict in conflicts)
+                          conflict.relativePath: _DeleteModifyResolution.skip,
+                      }),
+                    ),
+              child: const Text('全部跳过'),
+            ),
+            FilledButton(
+              onPressed: submitting
+                  ? null
+                  : () {
+                      submitting = true;
+                      setDialogState(() {});
+                      Navigator.of(context).pop(
+                        _DeleteModifyConflictDecision.fromSelections(
+                          conflicts,
+                          selections,
+                        ),
+                      );
+                    },
+              child: const Text('按选择继续'),
+            ),
+          ],
+        ),
+      ),
+    );
+    return confirmed ??
+        _DeleteModifyConflictDecision.fromSelections(conflicts, {
+          for (final conflict in conflicts)
+            conflict.relativePath: _DeleteModifyResolution.skip,
+        });
   }
 
   String? _validateServerUrl(String value) {
@@ -330,6 +468,133 @@ class _CloudSyncDeleteList extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+enum _DeleteModifyResolution { overwriteRemote, overwriteLocal, skip }
+
+class _DeleteModifyConflictDecision {
+  const _DeleteModifyConflictDecision({
+    required this.overwriteLocal,
+    required this.overwriteRemote,
+    required this.skipped,
+  });
+
+  final List<String> overwriteLocal;
+  final List<String> overwriteRemote;
+  final List<String> skipped;
+
+  bool get allSkipped =>
+      overwriteLocal.isEmpty && overwriteRemote.isEmpty && skipped.isNotEmpty;
+
+  factory _DeleteModifyConflictDecision.fromSelections(
+    List<CloudSyncDeleteModifyConflict> conflicts,
+    Map<String, _DeleteModifyResolution> selections,
+  ) {
+    final overwriteLocal = <String>[];
+    final overwriteRemote = <String>[];
+    final skipped = <String>[];
+    for (final conflict in conflicts) {
+      final path = conflict.relativePath;
+      switch (selections[path] ?? _DeleteModifyResolution.skip) {
+        case _DeleteModifyResolution.overwriteLocal:
+          overwriteLocal.add(path);
+        case _DeleteModifyResolution.overwriteRemote:
+          overwriteRemote.add(path);
+        case _DeleteModifyResolution.skip:
+          skipped.add(path);
+      }
+    }
+    return _DeleteModifyConflictDecision(
+      overwriteLocal: overwriteLocal,
+      overwriteRemote: overwriteRemote,
+      skipped: skipped,
+    );
+  }
+}
+
+class _DeleteModifyConflictTile extends StatelessWidget {
+  const _DeleteModifyConflictTile({
+    required this.conflict,
+    required this.value,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final CloudSyncDeleteModifyConflict conflict;
+  final _DeleteModifyResolution value;
+  final bool enabled;
+  final ValueChanged<_DeleteModifyResolution> onChanged;
+
+  bool get _localModifiedRemoteDeleted {
+    return conflict.direction == 'local_modified_remote_deleted';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        border: Border.all(color: AppTheme.border),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _formatDeletePath(conflict.relativePath),
+              style: textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 4),
+            Text(_description, style: textTheme.bodySmall),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ChoiceChip(
+                  label: Text(_overwriteRemoteLabel),
+                  selected: value == _DeleteModifyResolution.overwriteRemote,
+                  onSelected: enabled
+                      ? (_) =>
+                            onChanged(_DeleteModifyResolution.overwriteRemote)
+                      : null,
+                ),
+                ChoiceChip(
+                  label: Text(_overwriteLocalLabel),
+                  selected: value == _DeleteModifyResolution.overwriteLocal,
+                  onSelected: enabled
+                      ? (_) => onChanged(_DeleteModifyResolution.overwriteLocal)
+                      : null,
+                ),
+                ChoiceChip(
+                  label: const Text('跳过'),
+                  selected: value == _DeleteModifyResolution.skip,
+                  onSelected: enabled
+                      ? (_) => onChanged(_DeleteModifyResolution.skip)
+                      : null,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String get _description {
+    return _localModifiedRemoteDeleted ? '本地已修改，远端已删除' : '本地已删除，远端已修改';
+  }
+
+  String get _overwriteRemoteLabel {
+    return _localModifiedRemoteDeleted ? '覆盖远端（上传本地）' : '覆盖远端（删除云端）';
+  }
+
+  String get _overwriteLocalLabel {
+    return _localModifiedRemoteDeleted ? '覆盖本地（删除本地）' : '覆盖本地（下载云端）';
   }
 }
 

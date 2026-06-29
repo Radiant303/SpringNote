@@ -33,6 +33,9 @@ pub struct CloudSyncRequest {
     pub trigger: String,
     pub confirmed_delete_local: Vec<String>,
     pub confirmed_delete_remote: Vec<String>,
+    pub confirmed_overwrite_local: Vec<String>,
+    pub confirmed_overwrite_remote: Vec<String>,
+    pub skipped_delete_modify_conflicts: Vec<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -57,6 +60,14 @@ pub struct CloudSyncResult {
     pub needs_delete_confirmation: bool,
     pub pending_delete_local: Vec<String>,
     pub pending_delete_remote: Vec<String>,
+    pub needs_delete_modify_confirmation: bool,
+    pub pending_delete_modify_conflicts: Vec<DeleteModifyConflict>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DeleteModifyConflict {
+    pub relative_path: String,
+    pub direction: String,
 }
 
 #[derive(Clone, Debug)]
@@ -228,8 +239,24 @@ async fn sync_with_client<C: WebDavClient + Sync>(
         .iter()
         .cloned()
         .collect::<BTreeSet<_>>();
+    let confirmed_overwrite_local = request
+        .confirmed_overwrite_local
+        .iter()
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    let confirmed_overwrite_remote = request
+        .confirmed_overwrite_remote
+        .iter()
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    let skipped_delete_modify_conflicts = request
+        .skipped_delete_modify_conflicts
+        .iter()
+        .cloned()
+        .collect::<BTreeSet<_>>();
     let mut next_entries = remote_manifest.entries;
     let synced_at = Local::now().to_rfc3339();
+    let mut pending_delete_modify_conflicts = Vec::new();
 
     for relative_path in all_paths {
         let previous = previous_entries
@@ -277,17 +304,29 @@ async fn sync_with_client<C: WebDavClient + Sync>(
                 }
 
                 if previous.is_some() && local_changed {
-                    let conflict =
-                        upload_local_conflict_copy(client, &context, &request.config, local_file)
-                            .await?;
-                    conflicts += 1;
-                    uploaded += 1;
-                    next_entries.insert(
-                        conflict.relative_path.clone(),
-                        SyncManifestEntry::from_local(&conflict, &synced_at),
-                    );
-                    if let Some(entry) = previous {
+                    if confirmed_overwrite_remote.contains(&relative_path) {
+                        upload_local_file(client, &context, &request.config, local_file).await?;
+                        uploaded += 1;
+                        next_entries.insert(
+                            relative_path,
+                            SyncManifestEntry::from_uploaded(local_file, &synced_at),
+                        );
+                    } else if confirmed_overwrite_local.contains(&relative_path) {
+                        delete_local_file(&request, local_file)?;
+                        deleted += 1;
+                        next_entries.insert(
+                            relative_path,
+                            SyncManifestEntry::deleted(local_file, &synced_at),
+                        );
+                    } else if let Some(entry) = previous {
+                        let pending_path = relative_path.clone();
                         next_entries.insert(relative_path, entry.clone());
+                        if !skipped_delete_modify_conflicts.contains(&pending_path) {
+                            pending_delete_modify_conflicts.push(DeleteModifyConflict {
+                                relative_path: pending_path,
+                                direction: "local_modified_remote_deleted".to_string(),
+                            });
+                        }
                     }
                     continue;
                 }
@@ -319,23 +358,33 @@ async fn sync_with_client<C: WebDavClient + Sync>(
                 }
 
                 if previous.is_some() && remote_changed {
-                    let conflict = write_conflict_copy(
-                        client,
-                        &request,
-                        &context,
-                        &request.config,
-                        remote_file,
-                    )
-                    .await?;
-                    conflicts += 1;
-                    uploaded += 1;
-                    downloaded += 1;
-                    next_entries.insert(
-                        conflict.relative_path.clone(),
-                        SyncManifestEntry::from_local(&conflict, &synced_at),
-                    );
-                    if let Some(entry) = previous {
+                    if confirmed_overwrite_local.contains(&relative_path) {
+                        let downloaded_file = download_remote_file(&request, remote_file)?;
+                        downloaded += 1;
+                        next_entries.insert(
+                            relative_path,
+                            SyncManifestEntry::from_synced(
+                                &downloaded_file,
+                                remote_file,
+                                &synced_at,
+                            ),
+                        );
+                    } else if confirmed_overwrite_remote.contains(&relative_path) {
+                        delete_remote_file(client, &request.config, remote_file).await?;
+                        deleted += 1;
+                        next_entries.insert(
+                            relative_path,
+                            SyncManifestEntry::deleted_remote(remote_file, &synced_at),
+                        );
+                    } else if let Some(entry) = previous {
+                        let pending_path = relative_path.clone();
                         next_entries.insert(relative_path, entry.clone());
+                        if !skipped_delete_modify_conflicts.contains(&pending_path) {
+                            pending_delete_modify_conflicts.push(DeleteModifyConflict {
+                                relative_path: pending_path,
+                                direction: "local_deleted_remote_modified".to_string(),
+                            });
+                        }
                     }
                     continue;
                 }
@@ -390,24 +439,39 @@ async fn sync_with_client<C: WebDavClient + Sync>(
         }
     }
 
-    if !pending_delete_local.is_empty() || !pending_delete_remote.is_empty() {
+    if !pending_delete_local.is_empty()
+        || !pending_delete_remote.is_empty()
+        || !pending_delete_modify_conflicts.is_empty()
+    {
         let next_manifest = SyncManifest {
             version: MANIFEST_VERSION.to_string(),
             entries: next_entries,
         };
         write_local_manifest(&request, &next_manifest)?;
         write_remote_manifest(client, &context, &request.config, &next_manifest).await?;
+        let message = if !pending_delete_modify_conflicts.is_empty()
+            && (pending_delete_local.is_empty() && pending_delete_remote.is_empty())
+        {
+            "检测到删除修改冲突，请选择处理方式"
+        } else if !pending_delete_modify_conflicts.is_empty() {
+            "检测到删除项和删除修改冲突，请确认后继续同步"
+        } else {
+            "检测到删除项，请确认后继续同步"
+        };
         return Ok(CloudSyncResult {
             ok: true,
-            message: "检测到删除项，请确认后继续同步".to_string(),
+            message: message.to_string(),
             uploaded,
             downloaded,
             conflicts,
             synced_at: String::new(),
             error_code: String::new(),
-            needs_delete_confirmation: true,
+            needs_delete_confirmation: !pending_delete_local.is_empty()
+                || !pending_delete_remote.is_empty(),
             pending_delete_local,
             pending_delete_remote,
+            needs_delete_modify_confirmation: !pending_delete_modify_conflicts.is_empty(),
+            pending_delete_modify_conflicts,
         });
     }
 
@@ -429,6 +493,8 @@ async fn sync_with_client<C: WebDavClient + Sync>(
         needs_delete_confirmation: false,
         pending_delete_local: Vec::new(),
         pending_delete_remote: Vec::new(),
+        needs_delete_modify_confirmation: false,
+        pending_delete_modify_conflicts: Vec::new(),
     })
 }
 
@@ -496,6 +562,8 @@ async fn upload_note_with_client<C: WebDavClient + Sync>(
         needs_delete_confirmation: false,
         pending_delete_local: Vec::new(),
         pending_delete_remote: Vec::new(),
+        needs_delete_modify_confirmation: false,
+        pending_delete_modify_conflicts: Vec::new(),
     })
 }
 
@@ -949,26 +1017,6 @@ async fn write_conflict_copy<C: WebDavClient + Sync>(
     Ok(conflict)
 }
 
-async fn upload_local_conflict_copy<C: WebDavClient + Sync>(
-    client: &C,
-    context: &CloudSyncContext,
-    config: &CloudSyncConfig,
-    local: &LocalSyncFile,
-) -> Result<LocalSyncFile, CloudSyncError> {
-    let conflict_name = conflict_name(&local.name);
-    let conflict = LocalSyncFile {
-        kind: local.kind,
-        name: conflict_name.clone(),
-        relative_path: relative_note_path(local.kind, &conflict_name),
-        size: local.size,
-        modified_ms: local.modified_ms,
-        bytes: Some(local_bytes(local)?.to_vec()),
-        sha256: local.sha256.clone(),
-    };
-    upload_local_file(client, context, config, &conflict).await?;
-    Ok(conflict)
-}
-
 async fn ensure_remote_parent_directories<C: WebDavClient + Sync>(
     client: &C,
     context: &CloudSyncContext,
@@ -1101,6 +1149,9 @@ fn sync_request_from_note_upload_request(request: &CloudSyncNoteUploadRequest) -
         trigger: "auto_note_upload".to_string(),
         confirmed_delete_local: Vec::new(),
         confirmed_delete_remote: Vec::new(),
+        confirmed_overwrite_local: Vec::new(),
+        confirmed_overwrite_remote: Vec::new(),
+        skipped_delete_modify_conflicts: Vec::new(),
     }
 }
 
@@ -1690,6 +1741,8 @@ impl CloudSyncResult {
             needs_delete_confirmation: false,
             pending_delete_local: Vec::new(),
             pending_delete_remote: Vec::new(),
+            needs_delete_modify_confirmation: false,
+            pending_delete_modify_conflicts: Vec::new(),
         }
     }
 
@@ -1705,6 +1758,8 @@ impl CloudSyncResult {
             needs_delete_confirmation: false,
             pending_delete_local: Vec::new(),
             pending_delete_remote: Vec::new(),
+            needs_delete_modify_confirmation: false,
+            pending_delete_modify_conflicts: Vec::new(),
         }
     }
 
@@ -2310,6 +2365,198 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn local_modified_remote_deleted_can_overwrite_remote_without_conflict_loop() {
+        let dir = TestDir::new("spring_note_local_modified_remote_deleted_remote_wins");
+        let mut request = request(&dir.path);
+        let note_path = Path::new(&request.daily_notes_directory).join("2026-06-29.md");
+        fs::write(&note_path, "# 初始\n").unwrap();
+        let client = MemoryWebDavClient::default();
+        sync_with_client(&client, request.clone()).await.unwrap();
+
+        client
+            .delete_file(
+                "https://example.com/dav/SpringNote/notes/daily/2026-06-29.md",
+                &request.config,
+            )
+            .await
+            .unwrap();
+        fs::write(&note_path, "# 本地修改\n").unwrap();
+
+        let pending = sync_with_client(&client, request.clone()).await.unwrap();
+
+        assert!(pending.ok);
+        assert!(pending.needs_delete_modify_confirmation);
+        assert_eq!(
+            pending.pending_delete_modify_conflicts,
+            vec![DeleteModifyConflict {
+                relative_path: "notes/daily/2026-06-29.md".to_string(),
+                direction: "local_modified_remote_deleted".to_string(),
+            }]
+        );
+        assert_eq!(pending.conflicts, 0);
+
+        request.confirmed_overwrite_remote = vec!["notes/daily/2026-06-29.md".to_string()];
+        let confirmed = sync_with_client(&client, request.clone()).await.unwrap();
+
+        assert!(confirmed.ok);
+        assert!(!confirmed.needs_delete_modify_confirmation);
+        assert_eq!(confirmed.uploaded, 1);
+        assert_eq!(
+            client.text("/dav/SpringNote/notes/daily/2026-06-29.md"),
+            Some("# 本地修改\n".to_string())
+        );
+        assert_eq!(fs::read_to_string(&note_path).unwrap(), "# 本地修改\n");
+
+        request.confirmed_overwrite_remote.clear();
+        let next = sync_with_client(&client, request).await.unwrap();
+        assert!(next.ok);
+        assert!(!next.needs_delete_modify_confirmation);
+        assert_eq!(next.uploaded, 0);
+    }
+
+    #[tokio::test]
+    async fn local_modified_remote_deleted_can_overwrite_local() {
+        let dir = TestDir::new("spring_note_local_modified_remote_deleted_local_wins");
+        let mut request = request(&dir.path);
+        let note_path = Path::new(&request.daily_notes_directory).join("2026-06-29.md");
+        fs::write(&note_path, "# 初始\n").unwrap();
+        let client = MemoryWebDavClient::default();
+        sync_with_client(&client, request.clone()).await.unwrap();
+
+        client
+            .delete_file(
+                "https://example.com/dav/SpringNote/notes/daily/2026-06-29.md",
+                &request.config,
+            )
+            .await
+            .unwrap();
+        fs::write(&note_path, "# 本地修改\n").unwrap();
+
+        let pending = sync_with_client(&client, request.clone()).await.unwrap();
+        assert!(pending.needs_delete_modify_confirmation);
+
+        request.confirmed_overwrite_local = vec!["notes/daily/2026-06-29.md".to_string()];
+        let confirmed = sync_with_client(&client, request).await.unwrap();
+
+        assert!(confirmed.ok);
+        assert!(!confirmed.needs_delete_modify_confirmation);
+        assert_eq!(confirmed.uploaded, 0);
+        assert_eq!(
+            client.text("/dav/SpringNote/notes/daily/2026-06-29.md"),
+            None
+        );
+        assert!(!note_path.exists());
+    }
+
+    #[tokio::test]
+    async fn local_modified_remote_deleted_can_be_skipped_without_conflict_copy() {
+        let dir = TestDir::new("spring_note_local_modified_remote_deleted_skip");
+        let mut request = request(&dir.path);
+        let note_path = Path::new(&request.daily_notes_directory).join("2026-06-29.md");
+        fs::write(&note_path, "# 初始\n").unwrap();
+        let client = MemoryWebDavClient::default();
+        sync_with_client(&client, request.clone()).await.unwrap();
+
+        client
+            .delete_file(
+                "https://example.com/dav/SpringNote/notes/daily/2026-06-29.md",
+                &request.config,
+            )
+            .await
+            .unwrap();
+        fs::write(&note_path, "# 本地修改\n").unwrap();
+
+        let pending = sync_with_client(&client, request.clone()).await.unwrap();
+        assert!(pending.needs_delete_modify_confirmation);
+
+        request.skipped_delete_modify_conflicts = vec!["notes/daily/2026-06-29.md".to_string()];
+        let skipped = sync_with_client(&client, request.clone()).await.unwrap();
+
+        assert!(skipped.ok);
+        assert!(!skipped.needs_delete_modify_confirmation);
+        assert_eq!(skipped.uploaded, 0);
+        assert_eq!(skipped.conflicts, 0);
+        assert_eq!(
+            client.text("/dav/SpringNote/notes/daily/2026-06-29.md"),
+            None
+        );
+        assert_eq!(fs::read_to_string(&note_path).unwrap(), "# 本地修改\n");
+
+        request.skipped_delete_modify_conflicts.clear();
+        let next = sync_with_client(&client, request).await.unwrap();
+        assert!(next.needs_delete_modify_confirmation);
+        assert_eq!(next.conflicts, 0);
+    }
+
+    #[tokio::test]
+    async fn local_deleted_remote_modified_can_overwrite_local() {
+        let dir = TestDir::new("spring_note_local_deleted_remote_modified_local");
+        let mut request = request(&dir.path);
+        let note_path = Path::new(&request.daily_notes_directory).join("2026-06-29.md");
+        fs::write(&note_path, "# 初始\n").unwrap();
+        let client = MemoryWebDavClient::default();
+        sync_with_client(&client, request.clone()).await.unwrap();
+
+        fs::remove_file(&note_path).unwrap();
+        client.put_text("/dav/SpringNote/notes/daily/2026-06-29.md", "# 远端修改\n");
+
+        let pending = sync_with_client(&client, request.clone()).await.unwrap();
+
+        assert!(pending.ok);
+        assert!(pending.needs_delete_modify_confirmation);
+        assert_eq!(
+            pending.pending_delete_modify_conflicts,
+            vec![DeleteModifyConflict {
+                relative_path: "notes/daily/2026-06-29.md".to_string(),
+                direction: "local_deleted_remote_modified".to_string(),
+            }]
+        );
+        assert_eq!(pending.conflicts, 0);
+
+        request.confirmed_overwrite_local = vec!["notes/daily/2026-06-29.md".to_string()];
+        let confirmed = sync_with_client(&client, request.clone()).await.unwrap();
+
+        assert!(confirmed.ok);
+        assert!(!confirmed.needs_delete_modify_confirmation);
+        assert_eq!(confirmed.downloaded, 1);
+        assert_eq!(fs::read_to_string(&note_path).unwrap(), "# 远端修改\n");
+
+        request.confirmed_overwrite_local.clear();
+        let next = sync_with_client(&client, request).await.unwrap();
+        assert!(next.ok);
+        assert!(!next.needs_delete_modify_confirmation);
+        assert_eq!(next.downloaded, 0);
+    }
+
+    #[tokio::test]
+    async fn local_deleted_remote_modified_can_overwrite_remote() {
+        let dir = TestDir::new("spring_note_local_deleted_remote_modified_remote");
+        let mut request = request(&dir.path);
+        let note_path = Path::new(&request.daily_notes_directory).join("2026-06-29.md");
+        fs::write(&note_path, "# 初始\n").unwrap();
+        let client = MemoryWebDavClient::default();
+        sync_with_client(&client, request.clone()).await.unwrap();
+
+        fs::remove_file(&note_path).unwrap();
+        client.put_text("/dav/SpringNote/notes/daily/2026-06-29.md", "# 远端修改\n");
+
+        let pending = sync_with_client(&client, request.clone()).await.unwrap();
+        assert!(pending.needs_delete_modify_confirmation);
+
+        request.confirmed_overwrite_remote = vec!["notes/daily/2026-06-29.md".to_string()];
+        let confirmed = sync_with_client(&client, request).await.unwrap();
+
+        assert!(confirmed.ok);
+        assert!(!confirmed.needs_delete_modify_confirmation);
+        assert_eq!(confirmed.downloaded, 0);
+        assert_eq!(
+            client.text("/dav/SpringNote/notes/daily/2026-06-29.md"),
+            None
+        );
+        assert!(!note_path.exists());
+    }
+
+    #[tokio::test]
     async fn keeps_both_sides_when_same_note_conflicts() {
         let dir = TestDir::new("spring_note_conflict");
         let request = request(&dir.path);
@@ -2405,6 +2652,9 @@ mod tests {
             trigger: "manual".to_string(),
             confirmed_delete_local: Vec::new(),
             confirmed_delete_remote: Vec::new(),
+            confirmed_overwrite_local: Vec::new(),
+            confirmed_overwrite_remote: Vec::new(),
+            skipped_delete_modify_conflicts: Vec::new(),
         }
     }
 

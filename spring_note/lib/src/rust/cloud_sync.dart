@@ -37,6 +37,27 @@ class CloudSyncConfig {
           password == other.password;
 }
 
+class DeleteModifyConflict {
+  final String relativePath;
+  final String direction;
+
+  const DeleteModifyConflict({
+    required this.relativePath,
+    required this.direction,
+  });
+
+  @override
+  int get hashCode => relativePath.hashCode ^ direction.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DeleteModifyConflict &&
+          runtimeType == other.runtimeType &&
+          relativePath == other.relativePath &&
+          direction == other.direction;
+}
+
 class CloudSyncNoteUploadRequest {
   final CloudSyncConfig config;
   final String dataDirectory;
@@ -85,6 +106,9 @@ class CloudSyncRequest {
   final String trigger;
   final List<String> confirmedDeleteLocal;
   final List<String> confirmedDeleteRemote;
+  final List<String> confirmedOverwriteLocal;
+  final List<String> confirmedOverwriteRemote;
+  final List<String> skippedDeleteModifyConflicts;
 
   const CloudSyncRequest({
     required this.config,
@@ -95,6 +119,9 @@ class CloudSyncRequest {
     required this.trigger,
     required this.confirmedDeleteLocal,
     required this.confirmedDeleteRemote,
+    required this.confirmedOverwriteLocal,
+    required this.confirmedOverwriteRemote,
+    required this.skippedDeleteModifyConflicts,
   });
 
   @override
@@ -106,7 +133,10 @@ class CloudSyncRequest {
       monthlyNotesDirectory.hashCode ^
       trigger.hashCode ^
       confirmedDeleteLocal.hashCode ^
-      confirmedDeleteRemote.hashCode;
+      confirmedDeleteRemote.hashCode ^
+      confirmedOverwriteLocal.hashCode ^
+      confirmedOverwriteRemote.hashCode ^
+      skippedDeleteModifyConflicts.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -120,7 +150,10 @@ class CloudSyncRequest {
           monthlyNotesDirectory == other.monthlyNotesDirectory &&
           trigger == other.trigger &&
           confirmedDeleteLocal == other.confirmedDeleteLocal &&
-          confirmedDeleteRemote == other.confirmedDeleteRemote;
+          confirmedDeleteRemote == other.confirmedDeleteRemote &&
+          confirmedOverwriteLocal == other.confirmedOverwriteLocal &&
+          confirmedOverwriteRemote == other.confirmedOverwriteRemote &&
+          skippedDeleteModifyConflicts == other.skippedDeleteModifyConflicts;
 }
 
 class CloudSyncResult {
@@ -134,6 +167,8 @@ class CloudSyncResult {
   final bool needsDeleteConfirmation;
   final List<String> pendingDeleteLocal;
   final List<String> pendingDeleteRemote;
+  final bool needsDeleteModifyConfirmation;
+  final List<DeleteModifyConflict> pendingDeleteModifyConflicts;
 
   const CloudSyncResult({
     required this.ok,
@@ -146,6 +181,8 @@ class CloudSyncResult {
     required this.needsDeleteConfirmation,
     required this.pendingDeleteLocal,
     required this.pendingDeleteRemote,
+    required this.needsDeleteModifyConfirmation,
+    required this.pendingDeleteModifyConflicts,
   });
 
   @override
@@ -159,7 +196,9 @@ class CloudSyncResult {
       errorCode.hashCode ^
       needsDeleteConfirmation.hashCode ^
       pendingDeleteLocal.hashCode ^
-      pendingDeleteRemote.hashCode;
+      pendingDeleteRemote.hashCode ^
+      needsDeleteModifyConfirmation.hashCode ^
+      pendingDeleteModifyConflicts.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -175,5 +214,8 @@ class CloudSyncResult {
           errorCode == other.errorCode &&
           needsDeleteConfirmation == other.needsDeleteConfirmation &&
           pendingDeleteLocal == other.pendingDeleteLocal &&
-          pendingDeleteRemote == other.pendingDeleteRemote;
+          pendingDeleteRemote == other.pendingDeleteRemote &&
+          needsDeleteModifyConfirmation ==
+              other.needsDeleteModifyConfirmation &&
+          pendingDeleteModifyConflicts == other.pendingDeleteModifyConflicts;
 }

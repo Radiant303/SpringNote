@@ -5,6 +5,25 @@ import '../models/local_data_state.dart';
 
 enum CloudSyncTrigger { manual, startup }
 
+class CloudSyncDeleteModifyConflict {
+  const CloudSyncDeleteModifyConflict({
+    required this.relativePath,
+    required this.direction,
+  });
+
+  final String relativePath;
+  final String direction;
+
+  factory CloudSyncDeleteModifyConflict.fromRust(
+    rust_model.DeleteModifyConflict conflict,
+  ) {
+    return CloudSyncDeleteModifyConflict(
+      relativePath: conflict.relativePath,
+      direction: conflict.direction,
+    );
+  }
+}
+
 class CloudSyncResult {
   const CloudSyncResult({
     required this.ok,
@@ -17,6 +36,8 @@ class CloudSyncResult {
     this.needsDeleteConfirmation = false,
     this.pendingDeleteLocal = const [],
     this.pendingDeleteRemote = const [],
+    this.needsDeleteModifyConfirmation = false,
+    this.pendingDeleteModifyConflicts = const [],
   });
 
   final bool ok;
@@ -29,6 +50,8 @@ class CloudSyncResult {
   final bool needsDeleteConfirmation;
   final List<String> pendingDeleteLocal;
   final List<String> pendingDeleteRemote;
+  final bool needsDeleteModifyConfirmation;
+  final List<CloudSyncDeleteModifyConflict> pendingDeleteModifyConflicts;
 
   factory CloudSyncResult.fromRust(rust_model.CloudSyncResult result) {
     return CloudSyncResult(
@@ -44,6 +67,12 @@ class CloudSyncResult {
       needsDeleteConfirmation: result.needsDeleteConfirmation,
       pendingDeleteLocal: List.unmodifiable(result.pendingDeleteLocal),
       pendingDeleteRemote: List.unmodifiable(result.pendingDeleteRemote),
+      needsDeleteModifyConfirmation: result.needsDeleteModifyConfirmation,
+      pendingDeleteModifyConflicts: List.unmodifiable(
+        result.pendingDeleteModifyConflicts.map(
+          CloudSyncDeleteModifyConflict.fromRust,
+        ),
+      ),
     );
   }
 
@@ -67,6 +96,9 @@ class CloudSyncService {
     required CloudSyncTrigger trigger,
     List<String> confirmedDeleteLocal = const [],
     List<String> confirmedDeleteRemote = const [],
+    List<String> confirmedOverwriteLocal = const [],
+    List<String> confirmedOverwriteRemote = const [],
+    List<String> skippedDeleteModifyConflicts = const [],
   }) async {
     final config = localDataState.config.cloudSync;
     final result = await api.sync(
@@ -79,6 +111,9 @@ class CloudSyncService {
         trigger: trigger.name,
         confirmedDeleteLocal: confirmedDeleteLocal,
         confirmedDeleteRemote: confirmedDeleteRemote,
+        confirmedOverwriteLocal: confirmedOverwriteLocal,
+        confirmedOverwriteRemote: confirmedOverwriteRemote,
+        skippedDeleteModifyConflicts: skippedDeleteModifyConflicts,
       ),
     );
     return CloudSyncResult.fromRust(result);

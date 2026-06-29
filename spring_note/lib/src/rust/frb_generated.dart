@@ -1005,8 +1005,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   CloudSyncRequest dco_decode_cloud_sync_request(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 8)
-      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
+    if (arr.length != 11)
+      throw Exception('unexpected arr length: expect 11 but see ${arr.length}');
     return CloudSyncRequest(
       config: dco_decode_cloud_sync_config(arr[0]),
       dataDirectory: dco_decode_String(arr[1]),
@@ -1016,6 +1016,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       trigger: dco_decode_String(arr[5]),
       confirmedDeleteLocal: dco_decode_list_String(arr[6]),
       confirmedDeleteRemote: dco_decode_list_String(arr[7]),
+      confirmedOverwriteLocal: dco_decode_list_String(arr[8]),
+      confirmedOverwriteRemote: dco_decode_list_String(arr[9]),
+      skippedDeleteModifyConflicts: dco_decode_list_String(arr[10]),
     );
   }
 
@@ -1023,8 +1026,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   CloudSyncResult dco_decode_cloud_sync_result(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 10)
-      throw Exception('unexpected arr length: expect 10 but see ${arr.length}');
+    if (arr.length != 12)
+      throw Exception('unexpected arr length: expect 12 but see ${arr.length}');
     return CloudSyncResult(
       ok: dco_decode_bool(arr[0]),
       message: dco_decode_String(arr[1]),
@@ -1036,6 +1039,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       needsDeleteConfirmation: dco_decode_bool(arr[7]),
       pendingDeleteLocal: dco_decode_list_String(arr[8]),
       pendingDeleteRemote: dco_decode_list_String(arr[9]),
+      needsDeleteModifyConfirmation: dco_decode_bool(arr[10]),
+      pendingDeleteModifyConflicts: dco_decode_list_delete_modify_conflict(
+        arr[11],
+      ),
+    );
+  }
+
+  @protected
+  DeleteModifyConflict dco_decode_delete_modify_conflict(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return DeleteModifyConflict(
+      relativePath: dco_decode_String(arr[0]),
+      direction: dco_decode_String(arr[1]),
     );
   }
 
@@ -1150,6 +1169,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   List<DailyTokenUsage> dco_decode_list_daily_token_usage(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_daily_token_usage).toList();
+  }
+
+  @protected
+  List<DeleteModifyConflict> dco_decode_list_delete_modify_conflict(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_delete_modify_conflict)
+        .toList();
   }
 
   @protected
@@ -1622,6 +1651,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_trigger = sse_decode_String(deserializer);
     var var_confirmedDeleteLocal = sse_decode_list_String(deserializer);
     var var_confirmedDeleteRemote = sse_decode_list_String(deserializer);
+    var var_confirmedOverwriteLocal = sse_decode_list_String(deserializer);
+    var var_confirmedOverwriteRemote = sse_decode_list_String(deserializer);
+    var var_skippedDeleteModifyConflicts = sse_decode_list_String(deserializer);
     return CloudSyncRequest(
       config: var_config,
       dataDirectory: var_dataDirectory,
@@ -1631,6 +1663,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       trigger: var_trigger,
       confirmedDeleteLocal: var_confirmedDeleteLocal,
       confirmedDeleteRemote: var_confirmedDeleteRemote,
+      confirmedOverwriteLocal: var_confirmedOverwriteLocal,
+      confirmedOverwriteRemote: var_confirmedOverwriteRemote,
+      skippedDeleteModifyConflicts: var_skippedDeleteModifyConflicts,
     );
   }
 
@@ -1647,6 +1682,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_needsDeleteConfirmation = sse_decode_bool(deserializer);
     var var_pendingDeleteLocal = sse_decode_list_String(deserializer);
     var var_pendingDeleteRemote = sse_decode_list_String(deserializer);
+    var var_needsDeleteModifyConfirmation = sse_decode_bool(deserializer);
+    var var_pendingDeleteModifyConflicts =
+        sse_decode_list_delete_modify_conflict(deserializer);
     return CloudSyncResult(
       ok: var_ok,
       message: var_message,
@@ -1658,6 +1696,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       needsDeleteConfirmation: var_needsDeleteConfirmation,
       pendingDeleteLocal: var_pendingDeleteLocal,
       pendingDeleteRemote: var_pendingDeleteRemote,
+      needsDeleteModifyConfirmation: var_needsDeleteModifyConfirmation,
+      pendingDeleteModifyConflicts: var_pendingDeleteModifyConflicts,
+    );
+  }
+
+  @protected
+  DeleteModifyConflict sse_decode_delete_modify_conflict(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_relativePath = sse_decode_String(deserializer);
+    var var_direction = sse_decode_String(deserializer);
+    return DeleteModifyConflict(
+      relativePath: var_relativePath,
+      direction: var_direction,
     );
   }
 
@@ -1826,6 +1879,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <DailyTokenUsage>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_daily_token_usage(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<DeleteModifyConflict> sse_decode_list_delete_modify_conflict(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <DeleteModifyConflict>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_delete_modify_conflict(deserializer));
     }
     return ans_;
   }
@@ -2359,6 +2426,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.trigger, serializer);
     sse_encode_list_String(self.confirmedDeleteLocal, serializer);
     sse_encode_list_String(self.confirmedDeleteRemote, serializer);
+    sse_encode_list_String(self.confirmedOverwriteLocal, serializer);
+    sse_encode_list_String(self.confirmedOverwriteRemote, serializer);
+    sse_encode_list_String(self.skippedDeleteModifyConflicts, serializer);
   }
 
   @protected
@@ -2377,6 +2447,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self.needsDeleteConfirmation, serializer);
     sse_encode_list_String(self.pendingDeleteLocal, serializer);
     sse_encode_list_String(self.pendingDeleteRemote, serializer);
+    sse_encode_bool(self.needsDeleteModifyConfirmation, serializer);
+    sse_encode_list_delete_modify_conflict(
+      self.pendingDeleteModifyConflicts,
+      serializer,
+    );
+  }
+
+  @protected
+  void sse_encode_delete_modify_conflict(
+    DeleteModifyConflict self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.relativePath, serializer);
+    sse_encode_String(self.direction, serializer);
   }
 
   @protected
@@ -2451,6 +2536,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_String(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_delete_modify_conflict(
+    List<DeleteModifyConflict> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_delete_modify_conflict(item, serializer);
     }
   }
 

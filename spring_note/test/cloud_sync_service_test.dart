@@ -41,6 +41,13 @@ void main() {
         needsDeleteConfirmation: true,
         pendingDeleteLocal: ['notes/daily/old.md'],
         pendingDeleteRemote: ['notes/daily/remote.md'],
+        needsDeleteModifyConfirmation: true,
+        pendingDeleteModifyConflicts: [
+          rust_cloud.DeleteModifyConflict(
+            relativePath: 'notes/daily/conflict.md',
+            direction: 'local_modified_remote_deleted',
+          ),
+        ],
       ),
     );
     final service = CloudSyncService(api: api);
@@ -50,6 +57,9 @@ void main() {
       trigger: CloudSyncTrigger.manual,
       confirmedDeleteLocal: const ['notes/daily/local.md'],
       confirmedDeleteRemote: const ['notes/daily/remote.md'],
+      confirmedOverwriteLocal: const ['notes/daily/cloud.md'],
+      confirmedOverwriteRemote: const ['notes/daily/device.md'],
+      skippedDeleteModifyConflicts: const ['notes/daily/skipped.md'],
     );
 
     expect(result.ok, isTrue);
@@ -60,12 +70,28 @@ void main() {
     expect(result.needsDeleteConfirmation, isTrue);
     expect(result.pendingDeleteLocal, ['notes/daily/old.md']);
     expect(result.pendingDeleteRemote, ['notes/daily/remote.md']);
+    expect(result.needsDeleteModifyConfirmation, isTrue);
+    expect(
+      result.pendingDeleteModifyConflicts.single.relativePath,
+      'notes/daily/conflict.md',
+    );
+    expect(
+      result.pendingDeleteModifyConflicts.single.direction,
+      'local_modified_remote_deleted',
+    );
     expect(api.syncRequest?.trigger, 'manual');
     expect(api.syncRequest?.dataDirectory, temp.path);
     expect(api.syncRequest?.dailyNotesDirectory, state.dailyNotesDirectory);
     expect(api.syncRequest?.config.enabled, isTrue);
     expect(api.syncRequest?.confirmedDeleteLocal, ['notes/daily/local.md']);
     expect(api.syncRequest?.confirmedDeleteRemote, ['notes/daily/remote.md']);
+    expect(api.syncRequest?.confirmedOverwriteLocal, ['notes/daily/cloud.md']);
+    expect(api.syncRequest?.confirmedOverwriteRemote, [
+      'notes/daily/device.md',
+    ]);
+    expect(api.syncRequest?.skippedDeleteModifyConflicts, [
+      'notes/daily/skipped.md',
+    ]);
   });
 
   test('cloud sync builds rust single note upload request', () async {
@@ -88,6 +114,8 @@ void main() {
         needsDeleteConfirmation: false,
         pendingDeleteLocal: [],
         pendingDeleteRemote: [],
+        needsDeleteModifyConfirmation: false,
+        pendingDeleteModifyConflicts: [],
       ),
     );
     final service = CloudSyncService(api: api);
@@ -151,6 +179,8 @@ class _FakeCloudSyncRustApi extends CloudSyncRustApi {
       needsDeleteConfirmation: false,
       pendingDeleteLocal: [],
       pendingDeleteRemote: [],
+      needsDeleteModifyConfirmation: false,
+      pendingDeleteModifyConflicts: [],
     ),
     this.noteUploadResult = const rust_cloud.CloudSyncResult(
       ok: true,
@@ -163,6 +193,8 @@ class _FakeCloudSyncRustApi extends CloudSyncRustApi {
       needsDeleteConfirmation: false,
       pendingDeleteLocal: [],
       pendingDeleteRemote: [],
+      needsDeleteModifyConfirmation: false,
+      pendingDeleteModifyConflicts: [],
     ),
   });
 
@@ -188,6 +220,8 @@ class _FakeCloudSyncRustApi extends CloudSyncRustApi {
       needsDeleteConfirmation: false,
       pendingDeleteLocal: [],
       pendingDeleteRemote: [],
+      needsDeleteModifyConfirmation: false,
+      pendingDeleteModifyConflicts: [],
     );
   }
 

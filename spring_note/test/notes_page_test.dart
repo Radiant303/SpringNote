@@ -1014,6 +1014,8 @@ class _FakeCloudSyncRustApi extends CloudSyncRustApi {
       needsDeleteConfirmation: false,
       pendingDeleteLocal: [],
       pendingDeleteRemote: [],
+      needsDeleteModifyConfirmation: false,
+      pendingDeleteModifyConflicts: [],
     );
   }
 }

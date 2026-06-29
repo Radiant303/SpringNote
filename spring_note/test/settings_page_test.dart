@@ -326,6 +326,77 @@ void main() {
     expect(find.textContaining('手动同步完成'), findsOneWidget);
   });
 
+  testWidgets('settings page resolves delete modify conflict', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final initialConfig = AppConfig.defaults().copyWith(
+      cloudSync: CloudSyncConfig.defaults().copyWith(enabled: true),
+    );
+    final service = _MemoryLocalDataService(initialConfig);
+    final cloudSyncService = _FakeCloudSyncService(
+      syncResults: [
+        const CloudSyncResult(
+          ok: true,
+          message: '检测到删除修改冲突，请选择处理方式',
+          needsDeleteModifyConfirmation: true,
+          pendingDeleteModifyConflicts: [
+            CloudSyncDeleteModifyConflict(
+              relativePath: 'notes/daily/2026-06-29.md',
+              direction: 'local_modified_remote_deleted',
+            ),
+          ],
+        ),
+        CloudSyncResult(
+          ok: true,
+          message: '手动同步完成：上传 1，下载 0，冲突 0',
+          uploaded: 1,
+          syncedAt: DateTime(2026, 6, 29, 2, 0),
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: SettingsPage(
+          localDataState: _state(initialConfig),
+          localDataService: service,
+          cloudSyncService: cloudSyncService,
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('云同步').first);
+    await tester.pump();
+    await tester.tap(find.text('手动同步'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('cloud-sync-delete-modify-confirm-dialog')),
+      findsOneWidget,
+    );
+    expect(find.text('daily/2026-06-29.md'), findsOneWidget);
+    expect(find.text('本地已修改，远端已删除'), findsOneWidget);
+
+    await tester.tap(find.text('覆盖远端（上传本地）'));
+    await tester.pump();
+    await tester.tap(find.text('按选择继续'));
+    await tester.pumpAndSettle();
+
+    expect(cloudSyncService.syncCallCount, 2);
+    expect(cloudSyncService.lastConfirmedOverwriteRemote, [
+      'notes/daily/2026-06-29.md',
+    ]);
+    expect(cloudSyncService.lastConfirmedOverwriteLocal, isEmpty);
+    expect(cloudSyncService.lastSkippedDeleteModifyConflicts, isEmpty);
+    expect(service.savedConfig.cloudSync.lastSyncedAt, isNotNull);
+    expect(find.textContaining('手动同步完成'), findsOneWidget);
+  });
+
   testWidgets('settings page persists font size input', (
     WidgetTester tester,
   ) async {
@@ -955,6 +1026,9 @@ class _FakeCloudSyncService extends CloudSyncService {
   final List<CloudSyncResult> syncResults;
   List<String> lastConfirmedDeleteLocal = const [];
   List<String> lastConfirmedDeleteRemote = const [];
+  List<String> lastConfirmedOverwriteLocal = const [];
+  List<String> lastConfirmedOverwriteRemote = const [];
+  List<String> lastSkippedDeleteModifyConflicts = const [];
 
   @override
   Future<CloudSyncResult> testConnection(CloudSyncConfig config) async {
@@ -968,10 +1042,16 @@ class _FakeCloudSyncService extends CloudSyncService {
     required CloudSyncTrigger trigger,
     List<String> confirmedDeleteLocal = const [],
     List<String> confirmedDeleteRemote = const [],
+    List<String> confirmedOverwriteLocal = const [],
+    List<String> confirmedOverwriteRemote = const [],
+    List<String> skippedDeleteModifyConflicts = const [],
   }) async {
     synced = true;
     lastConfirmedDeleteLocal = confirmedDeleteLocal;
     lastConfirmedDeleteRemote = confirmedDeleteRemote;
+    lastConfirmedOverwriteLocal = confirmedOverwriteLocal;
+    lastConfirmedOverwriteRemote = confirmedOverwriteRemote;
+    lastSkippedDeleteModifyConflicts = skippedDeleteModifyConflicts;
     final index = syncCallCount < syncResults.length
         ? syncCallCount
         : syncResults.length - 1;

@@ -106,6 +106,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   CloudSyncResult dco_decode_cloud_sync_result(dynamic raw);
 
   @protected
+  DeleteModifyConflict dco_decode_delete_modify_conflict(dynamic raw);
+
+  @protected
   DailyActivity dco_decode_daily_activity(dynamic raw);
 
   @protected
@@ -140,6 +143,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<DailyTokenUsage> dco_decode_list_daily_token_usage(dynamic raw);
+
+  @protected
+  List<DeleteModifyConflict> dco_decode_list_delete_modify_conflict(
+    dynamic raw,
+  );
 
   @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
@@ -288,6 +296,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   CloudSyncResult sse_decode_cloud_sync_result(SseDeserializer deserializer);
 
   @protected
+  DeleteModifyConflict sse_decode_delete_modify_conflict(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   DailyActivity sse_decode_daily_activity(SseDeserializer deserializer);
 
   @protected
@@ -330,6 +343,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<DailyTokenUsage> sse_decode_list_daily_token_usage(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<DeleteModifyConflict> sse_decode_list_delete_modify_conflict(
     SseDeserializer deserializer,
   );
 
@@ -520,6 +538,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_delete_modify_conflict(
+    DeleteModifyConflict self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_daily_activity(DailyActivity self, SseSerializer serializer);
 
   @protected
@@ -548,6 +572,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_delete_modify_conflict(
+    List<DeleteModifyConflict> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_ai_chat_message(
