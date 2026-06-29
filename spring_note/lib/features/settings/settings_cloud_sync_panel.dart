@@ -243,56 +243,12 @@ class _CloudSyncPanelState extends State<_CloudSyncPanel> {
   Future<bool> _confirmDeletePlan(CloudSyncResult result) async {
     final deleteLocal = result.pendingDeleteLocal;
     final deleteRemote = result.pendingDeleteRemote;
-    var submitting = false;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          key: const ValueKey('cloud-sync-delete-confirm-dialog'),
-          title: const Text('确认删除同步'),
-          content: SizedBox(
-            width: 480,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('检测到文件删除。确认后才会删除对应文件。'),
-                  if (deleteLocal.isNotEmpty) ...[
-                    const SizedBox(height: 14),
-                    const Text('将从本地删除'),
-                    const SizedBox(height: 6),
-                    _CloudSyncDeleteList(paths: deleteLocal),
-                  ],
-                  if (deleteRemote.isNotEmpty) ...[
-                    const SizedBox(height: 14),
-                    const Text('将从远端删除'),
-                    const SizedBox(height: 6),
-                    _CloudSyncDeleteList(paths: deleteRemote),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: submitting
-                  ? null
-                  : () => Navigator.of(context).pop(false),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: submitting
-                  ? null
-                  : () {
-                      submitting = true;
-                      setDialogState(() {});
-                      Navigator.of(context).pop(true);
-                    },
-              child: const Text('确认删除并同步'),
-            ),
-          ],
-        ),
+      builder: (context) => _CloudSyncDeleteConfirmDialog(
+        key: const ValueKey('cloud-sync-delete-confirm-dialog'),
+        deleteLocal: deleteLocal,
+        deleteRemote: deleteRemote,
       ),
     );
     return confirmed ?? false;
@@ -370,38 +326,411 @@ class _CloudSyncPasswordRow extends StatelessWidget {
   }
 }
 
-class _CloudSyncDeleteList extends StatelessWidget {
-  const _CloudSyncDeleteList({required this.paths});
+enum _CloudSyncDeleteTarget { local, remote }
 
-  final List<String> paths;
+class _CloudSyncDeleteConfirmDialog extends StatefulWidget {
+  const _CloudSyncDeleteConfirmDialog({
+    super.key,
+    required this.deleteLocal,
+    required this.deleteRemote,
+  });
+
+  final List<String> deleteLocal;
+  final List<String> deleteRemote;
+
+  @override
+  State<_CloudSyncDeleteConfirmDialog> createState() =>
+      _CloudSyncDeleteConfirmDialogState();
+}
+
+class _CloudSyncDeleteConfirmDialogState
+    extends State<_CloudSyncDeleteConfirmDialog> {
+  final Set<_CloudSyncDeleteTarget> _expandedTargets = {};
+  bool _submitting = false;
+
+  void _toggleGroup(_CloudSyncDeleteTarget target) {
+    setState(() {
+      if (_expandedTargets.contains(target)) {
+        _expandedTargets.remove(target);
+      } else {
+        _expandedTargets.add(target);
+      }
+    });
+  }
+
+  void _cancel() {
+    if (_submitting) {
+      return;
+    }
+    Navigator.of(context).pop(false);
+  }
+
+  void _confirm() {
+    if (_submitting) {
+      return;
+    }
+    setState(() => _submitting = true);
+    Navigator.of(context).pop(true);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        border: Border.all(color: AppTheme.border),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final path in paths.take(12))
+    return Dialog(
+      backgroundColor: Colors.white,
+      clipBehavior: Clip.antiAlias,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: SizedBox(
+        width: 720,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 560),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Text(
-                  _formatDeletePath(path),
-                  style: Theme.of(context).textTheme.bodySmall,
+                padding: const EdgeInsets.fromLTRB(28, 24, 28, 18),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '确认删除同步',
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: AppTheme.text,
+                          fontSize: 18,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '检测到删除操作，确认后将同步删除对应文件。',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.textSubtle,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            if (paths.length > 12)
-              Text(
-                '还有 ${paths.length - 12} 个文件...',
-                style: Theme.of(context).textTheme.bodySmall,
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.fromLTRB(28, 0, 28, 18),
+                  children: [
+                    if (widget.deleteLocal.isNotEmpty)
+                      _CloudSyncDeleteGroupSection(
+                        title: '将删除本地文件',
+                        icon: Icons.desktop_windows_outlined,
+                        paths: widget.deleteLocal,
+                        expanded: _expandedTargets.contains(
+                          _CloudSyncDeleteTarget.local,
+                        ),
+                        onTap: () => _toggleGroup(_CloudSyncDeleteTarget.local),
+                      ),
+                    if (widget.deleteLocal.isNotEmpty &&
+                        widget.deleteRemote.isNotEmpty)
+                      const SizedBox(height: 8),
+                    if (widget.deleteRemote.isNotEmpty)
+                      _CloudSyncDeleteGroupSection(
+                        title: '将删除远端文件',
+                        icon: Icons.cloud_outlined,
+                        paths: widget.deleteRemote,
+                        expanded: _expandedTargets.contains(
+                          _CloudSyncDeleteTarget.remote,
+                        ),
+                        onTap: () =>
+                            _toggleGroup(_CloudSyncDeleteTarget.remote),
+                      ),
+                  ],
+                ),
               ),
+              Container(
+                padding: const EdgeInsets.fromLTRB(28, 16, 28, 20),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  border: Border(top: BorderSide(color: Color(0xFFEDEDED))),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    _DeleteModifyFooterButton(
+                      label: '取消',
+                      filled: false,
+                      enabled: !_submitting,
+                      onTap: _cancel,
+                    ),
+                    const SizedBox(width: 12),
+                    _DeleteModifyFooterButton(
+                      label: '确认删除并同步',
+                      filled: true,
+                      enabled: !_submitting,
+                      onTap: _confirm,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CloudSyncDeleteGroupSection extends StatelessWidget {
+  const _CloudSyncDeleteGroupSection({
+    required this.title,
+    required this.icon,
+    required this.paths,
+    required this.expanded,
+    required this.onTap,
+  });
+
+  final String title;
+  final IconData icon;
+  final List<String> paths;
+  final bool expanded;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _CloudSyncDeleteGroupHeader(
+          title: title,
+          icon: icon,
+          count: paths.length,
+          expanded: expanded,
+          onTap: onTap,
+        ),
+        ClipRect(
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 280),
+            reverseDuration: const Duration(milliseconds: 190),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: expanded
+                ? Column(
+                    children: [
+                      const SizedBox(height: 6),
+                      for (final path in paths.take(12))
+                        _CloudSyncDeleteFileTile(path: _formatDeletePath(path)),
+                      if (paths.length > 12)
+                        _CloudSyncDeleteOverflowTile(count: paths.length - 12),
+                    ],
+                  )
+                : const SizedBox(width: double.infinity),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CloudSyncDeleteGroupHeader extends StatefulWidget {
+  const _CloudSyncDeleteGroupHeader({
+    required this.title,
+    required this.icon,
+    required this.count,
+    required this.expanded,
+    required this.onTap,
+  });
+
+  final String title;
+  final IconData icon;
+  final int count;
+  final bool expanded;
+  final VoidCallback onTap;
+
+  @override
+  State<_CloudSyncDeleteGroupHeader> createState() =>
+      _CloudSyncDeleteGroupHeaderState();
+}
+
+class _CloudSyncDeleteGroupHeaderState
+    extends State<_CloudSyncDeleteGroupHeader> {
+  bool _hovered = false;
+  bool _pressed = false;
+
+  void _setPressed(bool pressed) {
+    if (_pressed == pressed) {
+      return;
+    }
+    setState(() => _pressed = pressed);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final backgroundColor = widget.expanded
+        ? const Color(0xFFE8E8E8)
+        : _hovered
+        ? const Color(0xFFEDEDED)
+        : const Color(0xFFF5F5F5);
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) {
+        setState(() {
+          _hovered = false;
+          _pressed = false;
+        });
+      },
+      child: Listener(
+        behavior: HitTestBehavior.opaque,
+        onPointerDown: (_) => _setPressed(true),
+        onPointerCancel: (_) => _setPressed(false),
+        onPointerUp: (_) {
+          _setPressed(false);
+          widget.onTap();
+        },
+        child: AnimatedScale(
+          scale: _pressed ? 0.985 : 1,
+          duration: _pressed
+              ? const Duration(milliseconds: 80)
+              : const Duration(milliseconds: 240),
+          curve: _pressed ? Curves.easeOutCubic : Curves.easeOutBack,
+          child: SizedBox(
+            height: 50,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 130),
+              curve: Curves.easeOutCubic,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  AnimatedRotation(
+                    turns: widget.expanded ? 0.25 : 0,
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    child: const Icon(
+                      Icons.chevron_right_rounded,
+                      size: 19,
+                      color: AppTheme.textMuted,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(widget.icon, size: 17, color: AppTheme.textMuted),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppTheme.text,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.75),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      widget.count.toString(),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppTheme.textSubtle,
+                        fontWeight: FontWeight.w400,
+                        height: 1.1,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CloudSyncDeleteFileTile extends StatefulWidget {
+  const _CloudSyncDeleteFileTile({required this.path});
+
+  final String path;
+
+  @override
+  State<_CloudSyncDeleteFileTile> createState() =>
+      _CloudSyncDeleteFileTileState();
+}
+
+class _CloudSyncDeleteFileTileState extends State<_CloudSyncDeleteFileTile> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOutCubic,
+        height: 46,
+        margin: const EdgeInsets.only(left: 28),
+        padding: const EdgeInsets.only(left: 14, right: 10),
+        decoration: BoxDecoration(
+          color: _hovered ? const Color(0xFFFAFAFA) : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            const _DeleteModifyFileIcon(size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                widget.path,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppTheme.text,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                  height: 1.2,
+                ),
+              ),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CloudSyncDeleteOverflowTile extends StatelessWidget {
+  const _CloudSyncDeleteOverflowTile({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 36,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 42),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            '还有 $count 个文件...',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.textSubtle,
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
         ),
       ),
     );

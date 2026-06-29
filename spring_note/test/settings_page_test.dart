@@ -309,6 +309,16 @@ void main() {
       find.byKey(const ValueKey('cloud-sync-delete-confirm-dialog')),
       findsOneWidget,
     );
+    expect(find.text('将删除本地文件'), findsOneWidget);
+    expect(find.text('将删除远端文件'), findsOneWidget);
+    expect(find.text('daily/old.md'), findsNothing);
+    expect(find.text('daily/images/old.png'), findsNothing);
+
+    await tester.tap(find.text('将删除本地文件'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('将删除远端文件'));
+    await tester.pumpAndSettle();
+
     expect(find.text('daily/old.md'), findsOneWidget);
     expect(find.text('daily/images/old.png'), findsOneWidget);
 
