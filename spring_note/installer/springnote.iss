@@ -3,10 +3,27 @@
 ; Non-commercial use only
 
 #define MyAppName "SpringNote"
-#define MyAppVersion "1.0.1"
+#define EnvAppVersion GetEnv("SPRINGNOTE_APP_VERSION")
+#if EnvAppVersion != ""
+  #define MyAppVersion EnvAppVersion
+#else
+  #define MyAppVersion "1.0.1"
+#endif
 #define MyAppPublisher "Radiant303"
 #define MyAppURL "https://github.com/Radiant303/SpringNote"
 #define MyAppExeName "SpringNote.exe"
+#define EnvBuildOutputDir GetEnv("SPRINGNOTE_BUILD_OUTPUT_DIR")
+#if EnvBuildOutputDir != ""
+  #define BuildOutputDir EnvBuildOutputDir
+#else
+  #define BuildOutputDir "..\build\windows\x64\runner\Release"
+#endif
+#define EnvSetupOutputDir GetEnv("SPRINGNOTE_SETUP_OUTPUT_DIR")
+#if EnvSetupOutputDir != ""
+  #define SetupOutputDir EnvSetupOutputDir
+#else
+  #define SetupOutputDir BuildOutputDir
+#endif
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
@@ -32,8 +49,8 @@ ArchitecturesInstallIn64BitMode=x64compatible
 DisableProgramGroupPage=yes
 ; Uncomment the following line to run in non administrative install mode (install for current user only).
 ;PrivilegesRequired=lowest
-OutputDir=D:\GitHub\happywork\spring_note\build\windows\x64\runner\Release
-OutputBaseFilename=SpringNote-1.0.1-windows-x64-setup
+OutputDir={#SetupOutputDir}
+OutputBaseFilename=SpringNote-{#MyAppVersion}-windows-x64-setup
 SolidCompression=yes
 WizardStyle=modern
 
@@ -44,8 +61,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Files]
-Source: "D:\GitHub\happywork\spring_note\build\windows\x64\runner\Release\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\GitHub\happywork\spring_note\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#BuildOutputDir}\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BuildOutputDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]

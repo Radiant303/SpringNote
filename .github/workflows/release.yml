@@ -1,0 +1,322 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  prepare-release:
+    name: Prepare Release Metadata
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.prepare.outputs.version }}
+      tag: ${{ steps.prepare.outputs.tag }}
+      release_name: ${{ steps.prepare.outputs.release_name }}
+      macos_asset: ${{ steps.prepare.outputs.macos_asset }}
+      windows_asset: ${{ steps.prepare.outputs.windows_asset }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Verify tag belongs to default branch
+        run: |
+          set -euo pipefail
+          git fetch origin "${{ github.event.repository.default_branch }}:refs/remotes/origin/${{ github.event.repository.default_branch }}"
+          if ! git merge-base --is-ancestor "${{ github.sha }}" "origin/${{ github.event.repository.default_branch }}"; then
+            echo "Tag commit ${{ github.sha }} is not reachable from ${{ github.event.repository.default_branch }}."
+            exit 1
+          fi
+
+      - name: Prepare release metadata
+        id: prepare
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python3 .github/scripts/prepare_release.py \
+            --tag "$RELEASE_TAG" \
+            --pubspec spring_note/pubspec.yaml \
+            --changelog CHANGELOG.md \
+            --notes-output release-notes.md \
+            --outputs-file "$GITHUB_OUTPUT"
+
+      - name: Upload release notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes.md
+          if-no-files-found: error
+
+  release-checks:
+    name: Release Checks
+    runs-on: ubuntu-latest
+    needs: prepare-release
+    defaults:
+      run:
+        working-directory: spring_note
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Flutter analyze
+        run: flutter analyze
+
+      - name: Flutter test
+        run: flutter test
+
+      - name: Rust test
+        working-directory: spring_note/rust
+        run: cargo test
+
+  windows-build:
+    name: Windows Release Build
+    runs-on: windows-latest
+    needs:
+      - prepare-release
+      - release-checks
+    defaults:
+      run:
+        working-directory: spring_note
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build Windows release
+        run: flutter build windows --release
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+
+      - name: Package Windows installer
+        shell: pwsh
+        env:
+          SPRINGNOTE_APP_VERSION: ${{ needs.prepare-release.outputs.version }}
+          SPRINGNOTE_BUILD_OUTPUT_DIR: ${{ github.workspace }}\spring_note\build\windows\x64\runner\Release
+          SPRINGNOTE_SETUP_OUTPUT_DIR: ${{ github.workspace }}\spring_note\build\windows\x64\runner\Release
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            throw "Inno Setup compiler not found at $iscc"
+          }
+          & $iscc "installer\springnote.iss"
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpringNote-${{ needs.prepare-release.outputs.version }}-windows-x64-setup
+          path: spring_note/build/windows/x64/runner/Release/${{ needs.prepare-release.outputs.windows_asset }}
+          if-no-files-found: error
+
+  macos-build:
+    name: macOS Release Build
+    runs-on: macos-26
+    needs:
+      - prepare-release
+      - release-checks
+    defaults:
+      run:
+        working-directory: spring_note
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Verify macOS runner architecture
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$(uname -m)" != "arm64" ]; then
+            echo "The current release format expects a macos-arm64 DMG."
+            exit 1
+          fi
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build macOS release
+        run: flutter build macos --release
+
+      - name: Package macOS DMG
+        shell: bash
+        env:
+          VERSION: ${{ needs.prepare-release.outputs.version }}
+          MACOS_ASSET: ${{ needs.prepare-release.outputs.macos_asset }}
+        run: |
+          set -euo pipefail
+
+          app_name="SpringNote"
+          artifact_name="${MACOS_ASSET%.dmg}"
+          release_dir="build/macos/Build/Products/Release"
+          stage_dir="${release_dir}/${artifact_name}"
+          dmg_path="${release_dir}/${MACOS_ASSET}"
+
+          rm -rf "$stage_dir" "$dmg_path"
+          mkdir -p "$stage_dir"
+          ditto "${release_dir}/spring_note.app" "${stage_dir}/${app_name}.app"
+          ln -s /Applications "${stage_dir}/Applications"
+
+          hdiutil create \
+            -volname "$app_name" \
+            -srcfolder "$stage_dir" \
+            -ov \
+            -format UDZO \
+            "$dmg_path"
+
+          hdiutil verify "$dmg_path"
+
+      - name: Upload macOS DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpringNote-${{ needs.prepare-release.outputs.version }}-macos-arm64
+          path: spring_note/build/macos/Build/Products/Release/${{ needs.prepare-release.outputs.macos_asset }}
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs:
+      - prepare-release
+      - windows-build
+      - macos-build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Write update metadata
+        run: |
+          python3 .github/scripts/write_update_metadata.py \
+            --version "${{ needs.prepare-release.outputs.version }}" \
+            --repo "${{ github.repository }}" \
+            --macos-asset "${{ needs.prepare-release.outputs.macos_asset }}" \
+            --windows-asset "${{ needs.prepare-release.outputs.windows_asset }}" \
+            --notes release-assets/release-notes.md \
+            --output-dir release-assets/update
+
+      - name: Generate SHA256 checksums
+        working-directory: release-assets
+        run: |
+          set -euo pipefail
+          sha256sum \
+            "${{ needs.prepare-release.outputs.macos_asset }}" \
+            "${{ needs.prepare-release.outputs.windows_asset }}" \
+            update/mac.json \
+            update/windows.json \
+            update/LATESTCHANGELOG.md \
+            > SHA256SUMS.txt
+
+      - name: Verify release assets
+        run: |
+          set -euo pipefail
+          test -s "release-assets/${{ needs.prepare-release.outputs.macos_asset }}"
+          test -s "release-assets/${{ needs.prepare-release.outputs.windows_asset }}"
+          test -s "release-assets/update/mac.json"
+          test -s "release-assets/update/windows.json"
+          test -s "release-assets/update/LATESTCHANGELOG.md"
+          test -s "release-assets/SHA256SUMS.txt"
+          python3 .github/scripts/verify_update_metadata.py \
+            --version "${{ needs.prepare-release.outputs.version }}" \
+            --repo "${{ github.repository }}" \
+            --macos-asset "${{ needs.prepare-release.outputs.macos_asset }}" \
+            --windows-asset "${{ needs.prepare-release.outputs.windows_asset }}" \
+            --metadata-dir release-assets/update
+          cd release-assets
+          sha256sum --check SHA256SUMS.txt
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare-release.outputs.tag }}
+          name: ${{ needs.prepare-release.outputs.release_name }}
+          body_path: release-assets/release-notes.md
+          draft: false
+          prerelease: false
+          make_latest: true
+          overwrite_files: true
+          fail_on_unmatched_files: true
+          files: |
+            release-assets/${{ needs.prepare-release.outputs.macos_asset }}
+            release-assets/${{ needs.prepare-release.outputs.windows_asset }}
+            release-assets/update/mac.json
+            release-assets/update/windows.json
+            release-assets/update/LATESTCHANGELOG.md
+            release-assets/SHA256SUMS.txt
+
+      - name: Commit update metadata
+        run: |
+          set -euo pipefail
+          git fetch origin "${{ github.event.repository.default_branch }}:refs/remotes/origin/${{ github.event.repository.default_branch }}" --depth=1
+          git switch -C release-metadata "origin/${{ github.event.repository.default_branch }}"
+          cp release-assets/update/mac.json update/mac.json
+          cp release-assets/update/windows.json update/windows.json
+          cp release-assets/update/LATESTCHANGELOG.md update/LATESTCHANGELOG.md
+          if git diff --quiet -- update/mac.json update/windows.json update/LATESTCHANGELOG.md; then
+            echo "Update metadata is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add update/mac.json update/windows.json update/LATESTCHANGELOG.md
+          git commit -m "chore: update release metadata for ${{ needs.prepare-release.outputs.version }}"
+          git push origin HEAD:${{ github.event.repository.default_branch }}
