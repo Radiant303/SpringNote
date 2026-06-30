@@ -907,9 +907,9 @@ class _NotesPageState extends State<NotesPage> {
     NoteImageAttachment image, {
     required String notePath,
   }) {
-    final imagePath = _portableImagePath(
-      imagePath: image.path,
+    final imagePath = widget.pastedImageService.markdownPathForNote(
       notePath: notePath,
+      imagePath: image.path,
     );
     return '![${_escapeImageAltText(image.name)}]($imagePath)';
   }
@@ -923,69 +923,6 @@ class _NotesPageState extends State<NotesPage> {
         .replaceAll('(', r'\(')
         .replaceAll(')', r'\)')
         .trim();
-  }
-
-  String _imageUri(String path) {
-    if (_isWindowsPath(path)) {
-      return Uri.file(path, windows: true).toString();
-    }
-    final uri = Uri.tryParse(path);
-    if (uri != null && uri.hasScheme) {
-      return uri.toString();
-    }
-    return Uri.file(path).toString();
-  }
-
-  bool _isWindowsPath(String path) {
-    return RegExp(r'^[a-zA-Z]:[\\/]').hasMatch(path) || path.startsWith(r'\\');
-  }
-
-  String _portableImagePath({
-    required String imagePath,
-    required String notePath,
-  }) {
-    final noteDirectory = _parentDirectoryPath(notePath);
-    final relative = _relativePathIfInside(
-      path: imagePath,
-      baseDirectory: noteDirectory,
-    );
-    if (relative != null) {
-      return Uri(path: relative).toString();
-    }
-    return _imageUri(imagePath);
-  }
-
-  String? _relativePathIfInside({
-    required String path,
-    required String baseDirectory,
-  }) {
-    final normalizedPath = path.replaceAll('\\', '/');
-    final normalizedBase = _trimTrailingSlashes(
-      baseDirectory.replaceAll('\\', '/'),
-    );
-    final compareCaseInsensitive =
-        RegExp(r'^[a-zA-Z]:/').hasMatch(normalizedPath) ||
-        RegExp(r'^[a-zA-Z]:/').hasMatch(normalizedBase);
-    final comparablePath = compareCaseInsensitive
-        ? normalizedPath.toLowerCase()
-        : normalizedPath;
-    final comparableBase = compareCaseInsensitive
-        ? normalizedBase.toLowerCase()
-        : normalizedBase;
-    final prefix = '$comparableBase/';
-    if (!comparablePath.startsWith(prefix)) {
-      return null;
-    }
-    final relative = normalizedPath.substring(normalizedBase.length + 1);
-    return relative.isEmpty ? null : relative;
-  }
-
-  String _trimTrailingSlashes(String value) {
-    var end = value.length;
-    while (end > 0 && value.codeUnitAt(end - 1) == 47) {
-      end--;
-    }
-    return value.substring(0, end);
   }
 
   String _parentDirectoryPath(String path) {

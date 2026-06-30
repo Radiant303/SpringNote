@@ -14,6 +14,7 @@ class PastedImageService {
   const PastedImageService();
 
   static const int _maxImageFileNameAttempts = 100;
+  static const _noteDirectoryNames = {'daily', 'weekly', 'monthly'};
 
   Future<SavedPastedImage> savePngForNote({
     required String notePath,
@@ -91,12 +92,48 @@ class PastedImageService {
   }
 
   Future<Directory> _ensureImageDirectory(String notePath) async {
-    final noteDirectory = File(notePath).parent;
-    final imageDirectory = Directory(_join(noteDirectory.path, 'images'));
+    final imageDirectory = imageDirectoryForNote(notePath);
     if (!await imageDirectory.exists()) {
       await imageDirectory.create(recursive: true);
     }
     return imageDirectory;
+  }
+
+  Directory imageDirectoryForNote(String notePath) {
+    final noteDirectory = File(notePath).parent;
+    if (_isManagedNoteDirectory(noteDirectory.path)) {
+      return Directory(_join(noteDirectory.parent.path, 'images'));
+    }
+    return Directory(_join(noteDirectory.path, 'images'));
+  }
+
+  String markdownPathForNote({
+    required String notePath,
+    required String imagePath,
+  }) {
+    final noteDirectory = _parentDirectoryPath(notePath);
+    if (_isManagedNoteDirectory(noteDirectory)) {
+      final notesDirectory = _parentDirectoryPath(noteDirectory);
+      final sharedRelative = _relativePathIfInside(
+        path: imagePath,
+        baseDirectory: notesDirectory,
+      );
+      if (sharedRelative != null &&
+          sharedRelative.toLowerCase().startsWith('images/')) {
+        return _encodeMarkdownPath('../$sharedRelative');
+      }
+      return _imageUri(imagePath);
+    }
+
+    final noteRelative = _relativePathIfInside(
+      path: imagePath,
+      baseDirectory: noteDirectory,
+    );
+    if (noteRelative != null) {
+      return _encodeMarkdownPath(noteRelative);
+    }
+
+    return _imageUri(imagePath);
   }
 
   Future<({File file, String name})> _availableImageFile({
@@ -153,6 +190,90 @@ class PastedImageService {
       return item.trim().isNotEmpty;
     }).toList();
     return segments.isEmpty ? 'image.png' : segments.last;
+  }
+
+  bool _isManagedNoteDirectory(String path) {
+    final name = _fileName(path).toLowerCase();
+    return _noteDirectoryNames.contains(name);
+  }
+
+  String? _relativePathIfInside({
+    required String path,
+    required String baseDirectory,
+  }) {
+    final normalizedPath = path.replaceAll('\\', '/');
+    final normalizedBase = _trimTrailingSlashes(
+      baseDirectory.replaceAll('\\', '/'),
+    );
+    final compareCaseInsensitive =
+        RegExp(r'^[a-zA-Z]:/').hasMatch(normalizedPath) ||
+        RegExp(r'^[a-zA-Z]:/').hasMatch(normalizedBase);
+    final comparablePath = compareCaseInsensitive
+        ? normalizedPath.toLowerCase()
+        : normalizedPath;
+    final comparableBase = compareCaseInsensitive
+        ? normalizedBase.toLowerCase()
+        : normalizedBase;
+    final prefix = '$comparableBase/';
+    if (!comparablePath.startsWith(prefix)) {
+      return null;
+    }
+    final relative = normalizedPath.substring(normalizedBase.length + 1);
+    return relative.isEmpty ? null : relative;
+  }
+
+  String _trimTrailingSlashes(String value) {
+    var end = value.length;
+    while (end > 0 && value.codeUnitAt(end - 1) == 47) {
+      end--;
+    }
+    return value.substring(0, end);
+  }
+
+  String _parentDirectoryPath(String path) {
+    final slash = path.lastIndexOf('/');
+    final backslash = path.lastIndexOf('\\');
+    final index = slash > backslash ? slash : backslash;
+    if (index <= 0) {
+      return path;
+    }
+    return path.substring(0, index);
+  }
+
+  String _encodeMarkdownPath(String path) {
+    final buffer = StringBuffer();
+    for (final rune in path.runes) {
+      final character = String.fromCharCode(rune);
+      buffer.write(switch (character) {
+        ' ' => '%20',
+        '#' => '%23',
+        '%' => '%25',
+        '?' => '%3F',
+        '(' => '%28',
+        ')' => '%29',
+        '[' => '%5B',
+        ']' => '%5D',
+        '<' => '%3C',
+        '>' => '%3E',
+        _ => character,
+      });
+    }
+    return buffer.toString();
+  }
+
+  String _imageUri(String path) {
+    if (_isWindowsPath(path)) {
+      return Uri.file(path, windows: true).toString();
+    }
+    final uri = Uri.tryParse(path);
+    if (uri != null && uri.hasScheme) {
+      return uri.toString();
+    }
+    return Uri.file(path).toString();
+  }
+
+  bool _isWindowsPath(String path) {
+    return RegExp(r'^[a-zA-Z]:[\\/]').hasMatch(path) || path.startsWith(r'\\');
   }
 
   String _stripAllowedImageExtension(String name) {

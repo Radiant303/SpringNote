@@ -84,6 +84,39 @@ void main() {
   );
 
   test(
+    'markdown local image allows shared notes image directory references',
+    () async {
+      final notesRoot = Directory(_joinPath(noteDirectory.path, 'notes'));
+      final dailyDirectory = Directory(_joinPath(notesRoot.path, 'daily'));
+      final imageFile = File(
+        _joinPath(notesRoot.path, 'images/shared screenshot.png'),
+      );
+      await dailyDirectory.create(recursive: true);
+      await imageFile.parent.create(recursive: true);
+      await imageFile.writeAsBytes(_pngBytes);
+
+      final image = buildMarkdownLocalImage(
+        url: '../images/shared%20screenshot.png',
+        baseDirectoryPath: dailyDirectory.path,
+        width: null,
+        height: null,
+        fit: BoxFit.contain,
+        errorBuilder: _imageErrorBuilder,
+      );
+
+      expect(image, isA<Image>());
+      final provider = (image as Image).image;
+      expect(provider, isA<FileImage>());
+      expect(
+        (provider as FileImage).file.path,
+        File(
+          _joinPath(dailyDirectory.path, '../images/shared screenshot.png'),
+        ).path,
+      );
+    },
+  );
+
+  test(
     'markdown local image accepts readable non-ascii relative image paths',
     () async {
       final imageFile = File(

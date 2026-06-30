@@ -1,5 +1,3 @@
-import 'package:path/path.dart' as p;
-
 import '../attachments/pending_image.dart';
 import 'pasted_image_service.dart';
 
@@ -45,7 +43,10 @@ class PendingImageService {
         SavedPendingImage(
           path: copied.path,
           name: copied.name,
-          markdownPath: p.posix.join('images', copied.name),
+          markdownPath: pastedImageService.markdownPathForNote(
+            notePath: notePath,
+            imagePath: copied.path,
+          ),
         ),
       );
     }

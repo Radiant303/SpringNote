@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+const _noteDirectoryNames = {'daily', 'weekly', 'monthly'};
+
 Widget? buildMarkdownLocalImage({
   required String url,
   required String? baseDirectoryPath,
@@ -49,8 +51,10 @@ File? _localImageFile(String value, String? baseDirectoryPath) {
     return null;
   }
 
-  if (_isSameOrInsideDirectory(path: resolvedFile.path, base: base)) {
-    return resolvedFile.file;
+  for (final allowedBase in _allowedImageBasePaths(baseDirectoryPath, base)) {
+    if (_isSameOrInsideDirectory(path: resolvedFile.path, base: allowedBase)) {
+      return resolvedFile.file;
+    }
   }
   return null;
 }
@@ -222,6 +226,21 @@ String _pathBasename(String path) {
       : normalized;
   final separator = trimmed.lastIndexOf('/');
   return separator < 0 ? trimmed : trimmed.substring(separator + 1);
+}
+
+List<String> _allowedImageBasePaths(String baseDirectoryPath, String base) {
+  if (!_isManagedNoteDirectory(baseDirectoryPath)) {
+    return [base];
+  }
+
+  final sharedImagesDirectory = _resolvedDirectoryPath(
+    _joinPath(Directory(baseDirectoryPath).parent.path, 'images'),
+  );
+  return sharedImagesDirectory == null ? const [] : [sharedImagesDirectory];
+}
+
+bool _isManagedNoteDirectory(String path) {
+  return _noteDirectoryNames.contains(_pathBasename(path).toLowerCase());
 }
 
 bool _isSameOrInsideDirectory({required String path, required String base}) {

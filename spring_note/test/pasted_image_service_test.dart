@@ -38,6 +38,46 @@ void main() {
     expect(await File(second.path).readAsBytes(), [4, 5, 6]);
   });
 
+  test(
+    'managed note images are stored in shared notes image directory',
+    () async {
+      final temp = await Directory.systemTemp.createTemp(
+        'spring_note_pasted_image_',
+      );
+      addTearDown(() async {
+        if (await temp.exists()) {
+          await temp.delete(recursive: true);
+        }
+      });
+
+      final noteFile = File(_join(temp.path, 'notes/daily/2026-06-30.md'));
+      await noteFile.parent.create(recursive: true);
+      await noteFile.writeAsString('');
+
+      final sourceFile = File(_join(temp.path, 'source #1.png'));
+      await sourceFile.writeAsBytes([1, 2, 3]);
+
+      const service = PastedImageService();
+      final saved = await service.copyImageFileForNote(
+        notePath: noteFile.path,
+        sourcePath: sourceFile.path,
+        sourceName: 'source #1.png',
+      );
+
+      expect(
+        saved.path,
+        _join(_join(_join(temp.path, 'notes'), 'images'), 'source #1.png'),
+      );
+      expect(
+        service.markdownPathForNote(
+          notePath: noteFile.path,
+          imagePath: saved.path,
+        ),
+        '../images/source%20%231.png',
+      );
+    },
+  );
+
   test('save png rejects empty bytes', () async {
     await expectLater(
       const PastedImageService().savePngForNote(

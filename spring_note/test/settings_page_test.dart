@@ -280,7 +280,7 @@ void main() {
           message: '检测到删除项，请确认后继续同步',
           needsDeleteConfirmation: true,
           pendingDeleteLocal: ['notes/daily/old.md'],
-          pendingDeleteRemote: ['notes/daily/images/old.png'],
+          pendingDeleteRemote: ['notes/images/old.png'],
         ),
         CloudSyncResult(
           ok: true,
@@ -312,7 +312,7 @@ void main() {
     expect(find.text('将删除本地文件'), findsOneWidget);
     expect(find.text('将删除远端文件'), findsOneWidget);
     expect(find.text('daily/old.md'), findsNothing);
-    expect(find.text('daily/images/old.png'), findsNothing);
+    expect(find.text('images/old.png'), findsNothing);
 
     await tester.tap(find.text('将删除本地文件'));
     await tester.pumpAndSettle();
@@ -320,7 +320,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('daily/old.md'), findsOneWidget);
-    expect(find.text('daily/images/old.png'), findsOneWidget);
+    expect(find.text('images/old.png'), findsOneWidget);
 
     final confirmButtonCenter = tester.getCenter(find.text('确认删除并同步'));
     await tester.tapAt(confirmButtonCenter);
@@ -330,7 +330,7 @@ void main() {
     expect(cloudSyncService.syncCallCount, 2);
     expect(cloudSyncService.lastConfirmedDeleteLocal, ['notes/daily/old.md']);
     expect(cloudSyncService.lastConfirmedDeleteRemote, [
-      'notes/daily/images/old.png',
+      'notes/images/old.png',
     ]);
     expect(service.savedConfig.cloudSync.lastSyncedAt, isNotNull);
     expect(find.textContaining('手动同步完成'), findsOneWidget);

@@ -642,12 +642,12 @@ fn scan_local_directory(
         let file_type = entry.file_type()?;
         let path = entry.path();
         if file_type.is_dir() {
-            if should_descend_local_directory(root, &path) {
+            if should_descend_local_directory(kind, root, &path) {
                 scan_local_directory(kind, root, &path, previous_entries, result)?;
             }
             continue;
         }
-        if !file_type.is_file() || !should_sync_local_file(root, &path) {
+        if !file_type.is_file() || !should_sync_local_file(kind, root, &path) {
             continue;
         }
         let Some(name) = local_relative_name(root, &path) else {
@@ -695,31 +695,16 @@ fn local_metadata_changed(size: u64, modified_ms: i64, previous: &SyncManifestEn
     size != previous.size || modified_ms != previous.local_modified_ms
 }
 
-fn should_descend_local_directory(root: &Path, directory: &Path) -> bool {
-    let Ok(relative) = directory.strip_prefix(root) else {
-        return false;
-    };
-    relative
-        .components()
-        .next()
-        .and_then(|component| component.as_os_str().to_str())
-        .map(|segment| segment.eq_ignore_ascii_case(IMAGES_DIRECTORY_NAME))
-        .unwrap_or(false)
+fn should_descend_local_directory(kind: NoteKind, root: &Path, directory: &Path) -> bool {
+    kind == NoteKind::Images && directory.strip_prefix(root).is_ok()
 }
 
-fn should_sync_local_file(root: &Path, path: &Path) -> bool {
-    if is_markdown_file(path) {
-        return path.parent() == Some(root);
+fn should_sync_local_file(kind: NoteKind, root: &Path, path: &Path) -> bool {
+    if kind == NoteKind::Images {
+        return path.strip_prefix(root).is_ok();
     }
-    let Ok(relative) = path.strip_prefix(root) else {
-        return false;
-    };
-    relative
-        .components()
-        .next()
-        .and_then(|component| component.as_os_str().to_str())
-        .map(|segment| segment.eq_ignore_ascii_case(IMAGES_DIRECTORY_NAME))
-        .unwrap_or(false)
+
+    is_markdown_file(path) && path.parent() == Some(root)
 }
 
 fn local_relative_name(root: &Path, path: &Path) -> Option<String> {
@@ -771,7 +756,7 @@ fn local_note_metadata_for_upload_request(
         let Some(name) = local_relative_name_if_inside(&root, &note_path) else {
             continue;
         };
-        if should_sync_local_file(&root, &note_path) && is_markdown_file(&note_path) {
+        if should_sync_local_file(kind, &root, &note_path) && is_markdown_file(&note_path) {
             let metadata = fs::metadata(&note_path)?;
             return Ok(LocalSyncFileMetadata {
                 kind,
@@ -846,12 +831,12 @@ async fn scan_remote_notes<C: WebDavClient + Sync>(
                     format!("{relative_directory}/{}", file.name)
                 };
                 if file.is_directory {
-                    if should_descend_remote_directory(&child_name) {
+                    if should_descend_remote_directory(kind, &child_name) {
                         pending.push((file.url, child_name));
                     }
                     continue;
                 }
-                if !should_sync_remote_file(&child_name) {
+                if !should_sync_remote_file(kind, &child_name) {
                     continue;
                 }
                 let Some(name) = sanitize_remote_relative_name(&child_name) else {
@@ -896,17 +881,16 @@ async fn scan_remote_notes<C: WebDavClient + Sync>(
     Ok(result)
 }
 
-fn should_descend_remote_directory(name: &str) -> bool {
-    let lowered = name.to_lowercase();
-    lowered == IMAGES_DIRECTORY_NAME || lowered.starts_with(&format!("{IMAGES_DIRECTORY_NAME}/"))
+fn should_descend_remote_directory(kind: NoteKind, name: &str) -> bool {
+    kind == NoteKind::Images && !name.is_empty()
 }
 
-fn should_sync_remote_file(name: &str) -> bool {
-    if !name.contains('/') {
-        return name.to_lowercase().ends_with(".md");
+fn should_sync_remote_file(kind: NoteKind, name: &str) -> bool {
+    if kind == NoteKind::Images {
+        return true;
     }
-    name.to_lowercase()
-        .starts_with(&format!("{IMAGES_DIRECTORY_NAME}/"))
+
+    !name.contains('/') && name.to_lowercase().ends_with(".md")
 }
 
 fn sanitize_remote_relative_name(name: &str) -> Option<String> {
@@ -946,21 +930,21 @@ fn collect_referenced_local_images(
     note: &LocalSyncFile,
 ) -> Result<Vec<LocalSyncFile>, CloudSyncError> {
     let markdown = String::from_utf8_lossy(local_bytes(note)?);
-    let root = local_directory_for_note_upload(request, note.kind);
     let mut names = BTreeSet::new();
     for target in markdown_link_targets(&markdown) {
-        if let Some(name) = local_image_name_from_markdown_target(&target) {
+        if let Some(name) = shared_image_name_from_markdown_target(&target) {
             names.insert(name);
         }
     }
 
     let mut files = Vec::new();
     for name in names {
+        let root = local_directory_for_note_upload(request, NoteKind::Images);
         let path = local_path_from_relative_name(&root, &name);
-        if !path.exists() || !should_sync_local_file(&root, &path) {
+        if !path.exists() || !should_sync_local_file(NoteKind::Images, &root, &path) {
             continue;
         }
-        files.push(local_sync_file_from_path(note.kind, &name, &path)?);
+        files.push(local_sync_file_from_path(NoteKind::Images, &name, &path)?);
     }
     Ok(files)
 }
@@ -1126,6 +1110,7 @@ fn local_directory_for(request: &CloudSyncRequest, kind: NoteKind) -> PathBuf {
         NoteKind::Daily => PathBuf::from(&request.daily_notes_directory),
         NoteKind::Weekly => PathBuf::from(&request.weekly_notes_directory),
         NoteKind::Monthly => PathBuf::from(&request.monthly_notes_directory),
+        NoteKind::Images => shared_images_directory(&request.daily_notes_directory),
     }
 }
 
@@ -1137,7 +1122,16 @@ fn local_directory_for_note_upload(
         NoteKind::Daily => PathBuf::from(&request.daily_notes_directory),
         NoteKind::Weekly => PathBuf::from(&request.weekly_notes_directory),
         NoteKind::Monthly => PathBuf::from(&request.monthly_notes_directory),
+        NoteKind::Images => shared_images_directory(&request.daily_notes_directory),
     }
+}
+
+fn shared_images_directory(daily_notes_directory: &str) -> PathBuf {
+    let daily = PathBuf::from(daily_notes_directory);
+    daily
+        .parent()
+        .map(|parent| parent.join(IMAGES_DIRECTORY_NAME))
+        .unwrap_or_else(|| PathBuf::from(IMAGES_DIRECTORY_NAME))
 }
 
 fn sync_request_from_note_upload_request(request: &CloudSyncNoteUploadRequest) -> CloudSyncRequest {
@@ -1222,7 +1216,7 @@ fn markdown_link_targets(markdown: &str) -> Vec<String> {
     targets
 }
 
-fn local_image_name_from_markdown_target(target: &str) -> Option<String> {
+fn shared_image_name_from_markdown_target(target: &str) -> Option<String> {
     let target = markdown_target_path_part(target)?;
     let target = strip_query_and_fragment(target);
     if target.is_empty()
@@ -1239,20 +1233,21 @@ fn local_image_name_from_markdown_target(target: &str) -> Option<String> {
         .replace('\\', "/");
     let mut segments = Vec::new();
     for segment in decoded.split('/') {
-        if segment.is_empty() || segment == "." || segment == ".." {
+        if segment.is_empty() || segment == "." {
             return None;
         }
         segments.push(segment);
     }
-    if segments
-        .first()
-        .map(|segment| segment.eq_ignore_ascii_case(IMAGES_DIRECTORY_NAME))
-        .unwrap_or(false)
+
+    if segments.len() >= 3
+        && segments[0] == ".."
+        && segments[1].eq_ignore_ascii_case(IMAGES_DIRECTORY_NAME)
+        && !segments[2..].iter().any(|segment| *segment == "..")
     {
-        Some(segments.join("/"))
-    } else {
-        None
+        return Some(segments[2..].join("/"));
     }
+
+    None
 }
 
 fn markdown_target_path_part(target: &str) -> Option<&str> {
@@ -1503,16 +1498,22 @@ fn find_tag(source: &str, tag: &str, offset: usize, opening: bool) -> Option<Tag
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum NoteKind {
     Daily,
     Weekly,
     Monthly,
+    Images,
 }
 
 impl NoteKind {
-    fn all() -> [NoteKind; 3] {
-        [NoteKind::Daily, NoteKind::Weekly, NoteKind::Monthly]
+    fn all() -> [NoteKind; 4] {
+        [
+            NoteKind::Daily,
+            NoteKind::Weekly,
+            NoteKind::Monthly,
+            NoteKind::Images,
+        ]
     }
 
     fn directory_name(self) -> &'static str {
@@ -1520,6 +1521,7 @@ impl NoteKind {
             NoteKind::Daily => "daily",
             NoteKind::Weekly => "weekly",
             NoteKind::Monthly => "monthly",
+            NoteKind::Images => "images",
         }
     }
 }
@@ -2173,17 +2175,16 @@ mod tests {
             "# 本地日报\n",
         )
         .unwrap();
-        let local_image = Path::new(&request.daily_notes_directory)
-            .join(IMAGES_DIRECTORY_NAME)
-            .join("local.png");
-        fs::create_dir_all(local_image.parent().unwrap()).unwrap();
-        fs::write(&local_image, b"local image").unwrap();
+        let shared_image =
+            shared_images_directory(&request.daily_notes_directory).join("shared.png");
+        fs::create_dir_all(shared_image.parent().unwrap()).unwrap();
+        fs::write(&shared_image, b"shared image").unwrap();
 
         let client = MemoryWebDavClient::default();
         client.put_text("/dav/SpringNote/notes/weekly/2026-W26.md", "# 远端周报\n");
         client.put_text(
-            "/dav/SpringNote/notes/daily/images/remote.png",
-            "remote image",
+            "/dav/SpringNote/notes/images/remote-shared.png",
+            "remote shared image",
         );
 
         let result = sync_with_client(&client, request.clone()).await.unwrap();
@@ -2196,8 +2197,8 @@ mod tests {
             Some("# 本地日报\n".to_string())
         );
         assert_eq!(
-            client.text("/dav/SpringNote/notes/daily/images/local.png"),
-            Some("local image".to_string())
+            client.text("/dav/SpringNote/notes/images/shared.png"),
+            Some("shared image".to_string())
         );
         assert_eq!(
             fs::read_to_string(Path::new(&request.weekly_notes_directory).join("2026-W26.md"))
@@ -2206,12 +2207,10 @@ mod tests {
         );
         assert_eq!(
             fs::read_to_string(
-                Path::new(&request.daily_notes_directory)
-                    .join(IMAGES_DIRECTORY_NAME)
-                    .join("remote.png")
+                shared_images_directory(&request.daily_notes_directory).join("remote-shared.png")
             )
             .unwrap(),
-            "remote image"
+            "remote shared image"
         );
     }
 
@@ -2222,10 +2221,10 @@ mod tests {
         let note_path = Path::new(&request.daily_notes_directory).join("2026-06-29.md");
         fs::write(
             &note_path,
-            "# 自动同步\n\n![截图](images/local%20pic.png)\n![缺失](images/missing.png)\n",
+            "# 自动同步\n\n![截图](../images/local%20pic.png)\n![缺失](../images/missing.png)\n",
         )
         .unwrap();
-        let image_directory = Path::new(&request.daily_notes_directory).join(IMAGES_DIRECTORY_NAME);
+        let image_directory = shared_images_directory(&request.daily_notes_directory);
         fs::create_dir_all(&image_directory).unwrap();
         fs::write(image_directory.join("local pic.png"), b"local image").unwrap();
         fs::write(image_directory.join("unused.png"), b"unused image").unwrap();
@@ -2240,18 +2239,15 @@ mod tests {
         assert_eq!(
             client.text("/dav/SpringNote/notes/daily/2026-06-29.md"),
             Some(
-                "# 自动同步\n\n![截图](images/local%20pic.png)\n![缺失](images/missing.png)\n"
+                "# 自动同步\n\n![截图](../images/local%20pic.png)\n![缺失](../images/missing.png)\n"
                     .to_string()
             )
         );
         assert_eq!(
-            client.text("/dav/SpringNote/notes/daily/images/local%20pic.png"),
+            client.text("/dav/SpringNote/notes/images/local%20pic.png"),
             Some("local image".to_string())
         );
-        assert_eq!(
-            client.text("/dav/SpringNote/notes/daily/images/unused.png"),
-            None
-        );
+        assert_eq!(client.text("/dav/SpringNote/notes/images/unused.png"), None);
     }
 
     #[tokio::test]
@@ -2699,7 +2695,7 @@ mod tests {
         let xml = r#"
             <d:multistatus xmlns:d="DAV:">
               <d:response><d:href>/dav/SpringNote/notes/daily/</d:href></d:response>
-              <d:response><d:href>/dav/SpringNote/notes/daily/images/</d:href></d:response>
+              <d:response><d:href>/dav/SpringNote/notes/daily/archive/</d:href></d:response>
               <d:response>
                 <d:href>/dav/SpringNote/notes/daily/2026-06-28.md</d:href>
                 <d:propstat><d:prop>
@@ -2716,7 +2712,7 @@ mod tests {
             parse_propfind_files("https://example.com/dav/SpringNote/notes/daily/", xml).unwrap();
 
         assert_eq!(files.len(), 3);
-        assert_eq!(files[0].name, "images");
+        assert_eq!(files[0].name, "archive");
         assert!(files[0].is_directory);
         assert_eq!(files[1].name, "2026-06-28.md");
         assert!(!files[1].is_directory);

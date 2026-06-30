@@ -410,7 +410,7 @@ final value = 1;
     const imagePath = 'D:\\Temp\\SpringNote\\assets\\screenshot final.png';
     final pastedImageService = _MemoryPastedImageService(
       const SavedPastedImage(
-        path: 'D:\\Temp\\SpringNote\\notes\\daily\\images\\screenshot #1.png',
+        path: 'D:\\Temp\\SpringNote\\notes\\images\\screenshot #1.png',
         name: 'screenshot [final](copy)\ncopy.png',
       ),
     );
@@ -439,7 +439,7 @@ final value = 1;
 
     final expectedImage =
         r'![screenshot \[final\]\(copy\) copy.png]'
-        '(images/screenshot%20%231.png)';
+        '(../images/screenshot%20%231.png)';
     expect(noteService.contents.values.single, '# 日报\n前缀\n$expectedImage');
     expect(pastedImageService.notePath, contains('2026-06-18.md'));
     expect(pastedImageService.sourcePath, imagePath);
@@ -537,7 +537,7 @@ final value = 1;
       var pickerCalls = 0;
       final pastedImageService = _MemoryPastedImageService(
         const SavedPastedImage(
-          path: 'D:\\Temp\\SpringNote\\notes\\daily\\images\\screenshot.png',
+          path: 'D:\\Temp\\SpringNote\\notes\\images\\screenshot.png',
           name: 'screenshot.png',
         ),
       );
@@ -600,7 +600,7 @@ final value = 1;
       );
       final pastedImageService = _MemoryPastedImageService(
         const SavedPastedImage(
-          path: 'E:\\SpringNoteData\\notes\\daily\\images\\screenshot.png',
+          path: 'E:\\SpringNoteData\\notes\\images\\screenshot.png',
           name: 'screenshot.png',
         ),
       );
@@ -650,7 +650,7 @@ final value = 1;
       );
       expect(
         noteService.contents['E:\\SpringNoteData\\notes\\daily\\2026-06-18.md'],
-        contains('![screenshot.png](images/screenshot.png)'),
+        contains('![screenshot.png](../images/screenshot.png)'),
       );
       expect(
         noteService
@@ -673,7 +673,7 @@ final value = 1;
     final pastedImageService = _MemoryPastedImageService(
       const SavedPastedImage(
         path:
-            'D:\\Temp\\SpringNote\\notes\\daily\\images\\pasted-image-20260618-120000-000.png',
+            'D:\\Temp\\SpringNote\\notes\\images\\pasted-image-20260618-120000-000.png',
         name: 'pasted-image-20260618-120000-000.png',
       ),
     );
@@ -704,7 +704,7 @@ final value = 1;
 
     final expectedImage =
         '![pasted-image-20260618-120000-000.png]'
-        '(images/pasted-image-20260618-120000-000.png)';
+        '(../images/pasted-image-20260618-120000-000.png)';
     expect(noteService.contents.values.single, '# 日报\n前缀\n$expectedImage');
     expect(clipboardImageService.calls, 1);
     expect(pastedImageService.savedBytes, imageBytes);

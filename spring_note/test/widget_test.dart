@@ -442,7 +442,7 @@ void main() {
     final rawInput = fakeDailyNoteService.savedNote?.rawInput ?? '';
     expect(rawInput, contains('整理附件内容'));
     expect(rawInput, contains('图片：'));
-    expect(rawInput, contains('![screenshot.png](images/screenshot.png)'));
+    expect(rawInput, contains('![screenshot.png](../images/screenshot.png)'));
     expect(rawInput, contains('附件：'));
     expect(rawInput, contains('[文件] spec.pdf'));
     expect(rawInput, contains('/Users/demo/Documents/spec.pdf'));
@@ -499,7 +499,7 @@ void main() {
     expect(aiClientService.generatedInput, contains('根据截图整理今天进展'));
     expect(
       aiClientService.generatedInput,
-      contains('![screen.jpg](images/screen.jpg)'),
+      contains('![screen.jpg](../images/screen.jpg)'),
     );
     expect(aiClientService.generatedImages, hasLength(1));
     final image = aiClientService.generatedImages!.single;
@@ -623,7 +623,7 @@ void main() {
     expect(fakePendingImageService.savedBytes.single, svgBytes);
     expect(
       fakeDailyNoteService.savedNote?.rawInput,
-      contains('![diagram.svg](images/diagram.svg)'),
+      contains('![diagram.svg](../images/diagram.svg)'),
     );
   });
 
@@ -682,7 +682,7 @@ void main() {
       expect(fakePendingImageService.savedBytes.single, imageBytes);
       expect(
         fakeDailyNoteService.savedNote?.rawInput,
-        contains('![screen.png](images/screen.png)'),
+        contains('![screen.png](../images/screen.png)'),
       );
       expect(find.text('当前智能生成模型未标记支持图像输入，图片已保存进日报但未发送给 AI。'), findsOneWidget);
     },
@@ -744,7 +744,7 @@ void main() {
     expect(fakePendingImageService.savedBytes.single, imageBytes);
     final rawInput = fakeDailyNoteService.savedNote?.rawInput ?? '';
     expect(rawInput, contains('整理带图日报'));
-    expect(rawInput, contains('![clipboard.png](images/clipboard.png)'));
+    expect(rawInput, contains('![clipboard.png](../images/clipboard.png)'));
     expect(find.text('图片 · clipboard.png'), findsNothing);
   });
 
@@ -795,7 +795,7 @@ void main() {
     final rawInput = fakeDailyNoteService.savedNote?.rawInput ?? '';
     expect(
       rawInput,
-      contains('![【哲风壁纸】庭院雨景-树木-清新.png](images/【哲风壁纸】庭院雨景-树木-清新.png)'),
+      contains('![【哲风壁纸】庭院雨景-树木-清新.png](../images/【哲风壁纸】庭院雨景-树木-清新.png)'),
     );
   });
 
@@ -936,6 +936,12 @@ String _joinPath(String left, String right) {
   return '$left${Platform.pathSeparator}$right';
 }
 
+String _sharedImagePathForNote(String notePath, String imageName) {
+  final noteDirectory = File(notePath).parent;
+  final notesDirectory = noteDirectory.parent;
+  return _joinPath(_joinPath(notesDirectory.path, 'images'), imageName);
+}
+
 class _FakeDailyNoteService extends DailyNoteService {
   StructuredWorkNote? savedNote;
 
@@ -1028,9 +1034,9 @@ class _FakePendingImageService extends PendingImageService {
     return images
         .map(
           (image) => SavedPendingImage(
-            path: '$notePath.images\\${image.name}',
+            path: _sharedImagePathForNote(notePath, image.name),
             name: image.name,
-            markdownPath: 'images/${image.name}',
+            markdownPath: '../images/${image.name}',
           ),
         )
         .toList();
