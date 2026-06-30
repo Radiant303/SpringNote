@@ -742,6 +742,7 @@ mod tests {
             },
             system_prompt: String::new(),
             user_prompt: String::new(),
+            images: vec![],
             purpose: purpose.to_string(),
             api_log_enabled: false,
         }

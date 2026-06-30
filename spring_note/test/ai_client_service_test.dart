@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spring_note/core/models/app_config.dart';
 import 'package:spring_note/core/models/model_config.dart';
@@ -25,6 +27,52 @@ void main() {
 
     expect(parsed?.providerId, 'openrouter');
     expect(parsed?.modelId, 'openai/gpt-4.1-mini');
+  });
+
+  test('AI image input guard allows only safe multimodal images', () {
+    expect(isSupportedAiImageExtension('png'), isTrue);
+    expect(isSupportedAiImageExtension('.jpeg'), isTrue);
+    expect(isSupportedAiImageExtension('svg'), isFalse);
+    expect(isSupportedAiImageExtension('unknown'), isFalse);
+
+    expect(
+      isSupportedAiImageInput(
+        AiImageInput(
+          name: 'screen.png',
+          bytes: Uint8List.fromList([1, 2, 3]),
+          mimeType: 'image/png',
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      isSupportedAiImageInput(
+        AiImageInput(
+          name: 'diagram.svg',
+          bytes: Uint8List.fromList([1, 2, 3]),
+          mimeType: 'image/svg+xml',
+        ),
+      ),
+      isFalse,
+    );
+    expect(
+      isSupportedAiImageInput(
+        AiImageInput(
+          name: 'huge.png',
+          bytes: Uint8List(maxAiImageInputBytes + 1),
+          mimeType: 'image/png',
+        ),
+      ),
+      isFalse,
+    );
+    expect(
+      AiImageInput.fromBytes(
+        name: 'capture.raw',
+        bytes: Uint8List.fromList([1, 2, 3]),
+        extension: 'raw',
+      ).mimeType,
+      'application/octet-stream',
+    );
   });
 
   test(

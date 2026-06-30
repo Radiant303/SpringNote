@@ -63,12 +63,20 @@ pub struct AiModel {
 }
 
 #[derive(Clone, Debug)]
+pub struct AiImageAttachment {
+    pub name: String,
+    pub mime_type: String,
+    pub data_base64: String,
+}
+
+#[derive(Clone, Debug)]
 pub struct AiChatRequest {
     pub app_data_dir: String,
     pub provider: AiProvider,
     pub model: AiModel,
     pub system_prompt: String,
     pub user_prompt: String,
+    pub images: Vec<AiImageAttachment>,
     pub purpose: String,
     pub api_log_enabled: bool,
 }
@@ -95,6 +103,7 @@ pub struct StructuredNoteRequest {
     pub provider: AiProvider,
     pub model: AiModel,
     pub input: String,
+    pub images: Vec<AiImageAttachment>,
     pub industry: String,
     pub api_log_enabled: bool,
 }
@@ -268,6 +277,7 @@ pub async fn test_provider_connection(
         model,
         system_prompt: "You are a connection test endpoint. Reply with OK only.".to_string(),
         user_prompt: "Say OK.".to_string(),
+        images: vec![],
         purpose: "provider_connection_test".to_string(),
         api_log_enabled,
     };
@@ -318,6 +328,7 @@ pub async fn fetch_provider_models(
                 },
                 system_prompt: String::new(),
                 user_prompt: String::new(),
+                images: vec![],
                 purpose: "fetch_provider_models".to_string(),
                 api_log_enabled,
             };
@@ -352,6 +363,7 @@ pub async fn generate_structured_note(request: StructuredNoteRequest) -> Structu
         model: request.model,
         system_prompt,
         user_prompt: request.input,
+        images: request.images,
         purpose: "home_structured_note".to_string(),
         api_log_enabled: request.api_log_enabled,
     })
@@ -381,6 +393,7 @@ pub async fn merge_daily_note(request: DailyMergeRequest) -> AiTextResult {
         model: request.model.clone(),
         system_prompt: daily_merge_system_prompt(&request),
         user_prompt: daily_merge_user_prompt(&request),
+        images: vec![],
         purpose: "daily_note_merge".to_string(),
         api_log_enabled: request.api_log_enabled,
     })
@@ -396,6 +409,7 @@ pub async fn generate_weekly_report(request: ReportRequest) -> AiTextResult {
         model: request.model,
         system_prompt,
         user_prompt,
+        images: vec![],
         purpose: "weekly_report".to_string(),
         api_log_enabled: request.api_log_enabled,
     })
@@ -411,6 +425,7 @@ pub async fn generate_monthly_report(request: ReportRequest) -> AiTextResult {
         model: request.model,
         system_prompt,
         user_prompt,
+        images: vec![],
         purpose: "monthly_report".to_string(),
         api_log_enabled: request.api_log_enabled,
     })
@@ -425,6 +440,7 @@ pub async fn memory_chat(request: MemoryChatRequest) -> AiTextResult {
         model: request.model,
         system_prompt: MEMORY_CHAT_SYSTEM_PROMPT.to_string(),
         user_prompt,
+        images: vec![],
         purpose: "memory_chat".to_string(),
         api_log_enabled: request.api_log_enabled,
     })
@@ -443,6 +459,7 @@ pub async fn memory_tool_chat(request: MemoryToolChatRequest) -> MemoryToolChatR
             .map(|message| message.content.as_str())
             .collect::<Vec<_>>()
             .join("\n"),
+        images: vec![],
         purpose: "memory_tool_chat".to_string(),
         api_log_enabled: request.api_log_enabled,
     };
@@ -514,6 +531,7 @@ pub async fn memory_tool_chat_stream(
             .map(|message| message.content.as_str())
             .collect::<Vec<_>>()
             .join("\n"),
+        images: vec![],
         purpose: "memory_tool_chat_stream".to_string(),
         api_log_enabled: request.api_log_enabled,
     };
@@ -557,6 +575,7 @@ pub async fn fim_complete(request: FimCompleteRequest) -> AiTextResult {
         model: request.model.clone(),
         system_prompt: String::new(),
         user_prompt: request.prompt.clone(),
+        images: vec![],
         purpose: "fim_edit_completion".to_string(),
         api_log_enabled: request.api_log_enabled,
     };
@@ -860,10 +879,11 @@ impl MemoryToolChatStreamEvent {
     }
 }
 
-const STRUCTURED_SYSTEM_PROMPT: &str = r#"你是 SpringNote 的日报结构化助手。请把用户的中文工作记录整理成 JSON，不要输出 Markdown，不要解释。
+const STRUCTURED_SYSTEM_PROMPT: &str = r#"你是 SpringNote 的日报结构化助手。请把用户的中文工作记录和图片中可见的工作信息整理成 JSON，不要输出 Markdown，不要解释。
 JSON 格式必须是：
 {"completed":["完成事项"],"issues":["问题记录"],"plans":["明日计划"]}
-如果某一类没有内容，返回空数组。"#;
+如果某一类没有内容，返回空数组。
+可以根据图片中明确可见的界面、文字、报错、流程或任务状态总结事实；不得编造图片外的信息。"#;
 
 fn structured_system_prompt(industry: &str) -> String {
     with_industry_context(STRUCTURED_SYSTEM_PROMPT, industry)
@@ -953,6 +973,7 @@ mod tests {
             },
             system_prompt: String::new(),
             user_prompt: String::new(),
+            images: vec![],
             purpose: "test".to_string(),
             api_log_enabled: false,
         }

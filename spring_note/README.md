@@ -2,6 +2,24 @@
 
 A new Flutter project.
 
+## Development Notes
+
+### Flutter Rust Bridge
+
+Rust APIs exposed to Flutter are declared under `rust/src/`, with generated
+Dart and Rust bridge files written to `lib/src/rust/` and
+`rust/src/frb_generated.rs`.
+
+After changing exposed Rust types or functions, regenerate the bridge from the
+`spring_note/` directory:
+
+```sh
+flutter_rust_bridge_codegen generate
+```
+
+This project currently pins `flutter_rust_bridge` to `2.12.0` in
+`pubspec.yaml`; keep the generated files synchronized with that version.
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.

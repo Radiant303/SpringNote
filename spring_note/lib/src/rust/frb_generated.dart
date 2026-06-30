@@ -845,6 +845,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  AiImageAttachment dco_decode_ai_image_attachment(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return AiImageAttachment(
+      name: dco_decode_String(arr[0]),
+      mimeType: dco_decode_String(arr[1]),
+      dataBase64: dco_decode_String(arr[2]),
+    );
+  }
+
+  @protected
   AiProvider dco_decode_ai_provider(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -1154,6 +1167,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<AiImageAttachment> dco_decode_list_ai_image_attachment(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_ai_image_attachment).toList();
+  }
+
+  @protected
   List<AiToolCall> dco_decode_list_ai_tool_call(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_ai_tool_call).toList();
@@ -1368,15 +1387,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   StructuredNoteRequest dco_decode_structured_note_request(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 6)
-      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    if (arr.length != 7)
+      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
     return StructuredNoteRequest(
       appDataDir: dco_decode_String(arr[0]),
       provider: dco_decode_ai_provider(arr[1]),
       model: dco_decode_ai_model(arr[2]),
       input: dco_decode_String(arr[3]),
-      industry: dco_decode_String(arr[4]),
-      apiLogEnabled: dco_decode_bool(arr[5]),
+      images: dco_decode_list_ai_image_attachment(arr[4]),
+      industry: dco_decode_String(arr[5]),
+      apiLogEnabled: dco_decode_bool(arr[6]),
     );
   }
 
@@ -1458,6 +1478,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_modelId = sse_decode_String(deserializer);
     var var_displayName = sse_decode_String(deserializer);
     return AiModel(modelId: var_modelId, displayName: var_displayName);
+  }
+
+  @protected
+  AiImageAttachment sse_decode_ai_image_attachment(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_name = sse_decode_String(deserializer);
+    var var_mimeType = sse_decode_String(deserializer);
+    var var_dataBase64 = sse_decode_String(deserializer);
+    return AiImageAttachment(
+      name: var_name,
+      mimeType: var_mimeType,
+      dataBase64: var_dataBase64,
+    );
   }
 
   @protected
@@ -1844,6 +1879,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<AiImageAttachment> sse_decode_list_ai_image_attachment(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <AiImageAttachment>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_ai_image_attachment(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   List<AiToolCall> sse_decode_list_ai_tool_call(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -2147,6 +2196,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_provider = sse_decode_ai_provider(deserializer);
     var var_model = sse_decode_ai_model(deserializer);
     var var_input = sse_decode_String(deserializer);
+    var var_images = sse_decode_list_ai_image_attachment(deserializer);
     var var_industry = sse_decode_String(deserializer);
     var var_apiLogEnabled = sse_decode_bool(deserializer);
     return StructuredNoteRequest(
@@ -2154,6 +2204,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       provider: var_provider,
       model: var_model,
       input: var_input,
+      images: var_images,
       industry: var_industry,
       apiLogEnabled: var_apiLogEnabled,
     );
@@ -2249,6 +2300,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.modelId, serializer);
     sse_encode_String(self.displayName, serializer);
+  }
+
+  @protected
+  void sse_encode_ai_image_attachment(
+    AiImageAttachment self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.name, serializer);
+    sse_encode_String(self.mimeType, serializer);
+    sse_encode_String(self.dataBase64, serializer);
   }
 
   @protected
@@ -2573,6 +2635,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_ai_image_attachment(
+    List<AiImageAttachment> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_ai_image_attachment(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_ai_tool_call(
     List<AiToolCall> self,
     SseSerializer serializer,
@@ -2780,6 +2854,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_ai_provider(self.provider, serializer);
     sse_encode_ai_model(self.model, serializer);
     sse_encode_String(self.input, serializer);
+    sse_encode_list_ai_image_attachment(self.images, serializer);
     sse_encode_String(self.industry, serializer);
     sse_encode_bool(self.apiLogEnabled, serializer);
   }

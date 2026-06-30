@@ -59,6 +59,30 @@ class AiModel {
           displayName == other.displayName;
 }
 
+class AiImageAttachment {
+  final String name;
+  final String mimeType;
+  final String dataBase64;
+
+  const AiImageAttachment({
+    required this.name,
+    required this.mimeType,
+    required this.dataBase64,
+  });
+
+  @override
+  int get hashCode => name.hashCode ^ mimeType.hashCode ^ dataBase64.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AiImageAttachment &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          mimeType == other.mimeType &&
+          dataBase64 == other.dataBase64;
+}
+
 class AiProvider {
   final String id;
   final String name;
@@ -578,6 +602,7 @@ class StructuredNoteRequest {
   final AiProvider provider;
   final AiModel model;
   final String input;
+  final List<AiImageAttachment> images;
   final String industry;
   final bool apiLogEnabled;
 
@@ -586,6 +611,7 @@ class StructuredNoteRequest {
     required this.provider,
     required this.model,
     required this.input,
+    required this.images,
     required this.industry,
     required this.apiLogEnabled,
   });
@@ -596,6 +622,7 @@ class StructuredNoteRequest {
       provider.hashCode ^
       model.hashCode ^
       input.hashCode ^
+      images.hashCode ^
       industry.hashCode ^
       apiLogEnabled.hashCode;
 
@@ -608,6 +635,7 @@ class StructuredNoteRequest {
           provider == other.provider &&
           model == other.model &&
           input == other.input &&
+          images == other.images &&
           industry == other.industry &&
           apiLogEnabled == other.apiLogEnabled;
 }

@@ -1,5 +1,6 @@
 use crate::ai::{
-    AiChatRequest, AiModel, AiProvider, AiTextResult, extract_text, http_client, usage_from_value,
+    AiChatRequest, AiImageAttachment, AiModel, AiProvider, AiTextResult, extract_text, http_client,
+    usage_from_value,
 };
 use crate::ai_log::{ApiNetworkLog, write_api_network_log};
 use serde_json::{Value, json};
@@ -151,18 +152,39 @@ pub async fn fetch_models(
 }
 
 pub fn build_generate_content_body(request: &AiChatRequest) -> Value {
+    let mut parts = vec![json!({"text": request.user_prompt})];
+    parts.extend(request.images.iter().map(gemini_image_part));
+
     json!({
         "systemInstruction": {
             "parts": [{"text": request.system_prompt}]
         },
         "contents": [{
             "role": "user",
-            "parts": [{"text": request.user_prompt}]
+            "parts": parts
         }],
         "generationConfig": {
             "temperature": 0.2
         }
     })
+}
+
+fn gemini_image_part(image: &AiImageAttachment) -> Value {
+    json!({
+        "inline_data": {
+            "mime_type": normalized_image_mime_type(&image.mime_type),
+            "data": image.data_base64
+        }
+    })
+}
+
+fn normalized_image_mime_type(mime_type: &str) -> &str {
+    let trimmed = mime_type.trim();
+    if trimmed.starts_with("image/") {
+        trimmed
+    } else {
+        "image/png"
+    }
 }
 
 fn generate_content_url(provider: &AiProvider, model_id: &str) -> String {
@@ -238,9 +260,8 @@ fn log_fetch_models(
 mod tests {
     use super::*;
 
-    #[test]
-    fn builds_gemini_payload() {
-        let request = AiChatRequest {
+    fn request() -> AiChatRequest {
+        AiChatRequest {
             app_data_dir: ".".to_string(),
             provider: AiProvider {
                 id: "p".to_string(),
@@ -256,13 +277,37 @@ mod tests {
             },
             system_prompt: "system".to_string(),
             user_prompt: "user".to_string(),
+            images: vec![],
             purpose: "test".to_string(),
             api_log_enabled: false,
-        };
+        }
+    }
+
+    #[test]
+    fn builds_gemini_payload() {
+        let request = request();
 
         let body = build_generate_content_body(&request);
         assert_eq!(body["systemInstruction"]["parts"][0]["text"], "system");
         assert_eq!(body["contents"][0]["parts"][0]["text"], "user");
+    }
+
+    #[test]
+    fn builds_gemini_payload_with_images() {
+        let request = AiChatRequest {
+            images: vec![AiImageAttachment {
+                name: "screen.webp".to_string(),
+                mime_type: "image/webp".to_string(),
+                data_base64: "aW1hZ2U=".to_string(),
+            }],
+            ..request()
+        };
+
+        let body = build_generate_content_body(&request);
+        let parts = body["contents"][0]["parts"].as_array().unwrap();
+        assert_eq!(parts[0]["text"], "user");
+        assert_eq!(parts[1]["inline_data"]["mime_type"], "image/webp");
+        assert_eq!(parts[1]["inline_data"]["data"], "aW1hZ2U=");
     }
 
     #[test]

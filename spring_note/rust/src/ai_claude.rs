@@ -1,5 +1,6 @@
 use crate::ai::{
-    AiChatRequest, AiModel, AiProvider, AiTextResult, extract_text, http_client, usage_from_value,
+    AiChatRequest, AiImageAttachment, AiModel, AiProvider, AiTextResult, extract_text, http_client,
+    usage_from_value,
 };
 use crate::ai_log::{ApiNetworkLog, write_api_network_log};
 use serde_json::{Value, json};
@@ -147,16 +148,54 @@ pub async fn fetch_models(
 }
 
 pub fn build_messages_body(request: &AiChatRequest) -> Value {
+    let content = if request.images.is_empty() {
+        Value::String(request.user_prompt.clone())
+    } else {
+        claude_user_content(request)
+    };
+
     json!({
         "model": request.model.model_id,
         "system": request.system_prompt,
         "messages": [{
             "role": "user",
-            "content": request.user_prompt
+            "content": content
         }],
         "max_tokens": 4096,
         "temperature": 0.2
     })
+}
+
+fn claude_user_content(request: &AiChatRequest) -> Value {
+    let mut parts = Vec::new();
+    if !request.user_prompt.trim().is_empty() {
+        parts.push(json!({
+            "type": "text",
+            "text": request.user_prompt
+        }));
+    }
+    parts.extend(request.images.iter().map(claude_image_part));
+    Value::Array(parts)
+}
+
+fn claude_image_part(image: &AiImageAttachment) -> Value {
+    json!({
+        "type": "image",
+        "source": {
+            "type": "base64",
+            "media_type": normalized_image_mime_type(&image.mime_type),
+            "data": image.data_base64
+        }
+    })
+}
+
+fn normalized_image_mime_type(mime_type: &str) -> &str {
+    let trimmed = mime_type.trim();
+    if trimmed.starts_with("image/") {
+        trimmed
+    } else {
+        "image/png"
+    }
 }
 
 fn messages_url(provider: &AiProvider) -> String {
@@ -237,9 +276,8 @@ fn log_fetch_models(
 mod tests {
     use super::*;
 
-    #[test]
-    fn builds_claude_messages_payload() {
-        let request = AiChatRequest {
+    fn request() -> AiChatRequest {
+        AiChatRequest {
             app_data_dir: ".".to_string(),
             provider: AiProvider {
                 id: "p".to_string(),
@@ -255,13 +293,40 @@ mod tests {
             },
             system_prompt: "system".to_string(),
             user_prompt: "user".to_string(),
+            images: vec![],
             purpose: "test".to_string(),
             api_log_enabled: false,
-        };
+        }
+    }
+
+    #[test]
+    fn builds_claude_messages_payload() {
+        let request = request();
 
         let body = build_messages_body(&request);
         assert_eq!(body["model"], "claude-test");
         assert_eq!(body["system"], "system");
         assert_eq!(body["messages"][0]["content"], "user");
+    }
+
+    #[test]
+    fn builds_claude_messages_payload_with_images() {
+        let request = AiChatRequest {
+            images: vec![AiImageAttachment {
+                name: "screen.jpeg".to_string(),
+                mime_type: "image/jpeg".to_string(),
+                data_base64: "aW1hZ2U=".to_string(),
+            }],
+            ..request()
+        };
+
+        let body = build_messages_body(&request);
+        let content = body["messages"][0]["content"].as_array().unwrap();
+        assert_eq!(content[0]["type"], "text");
+        assert_eq!(content[0]["text"], "user");
+        assert_eq!(content[1]["type"], "image");
+        assert_eq!(content[1]["source"]["type"], "base64");
+        assert_eq!(content[1]["source"]["media_type"], "image/jpeg");
+        assert_eq!(content[1]["source"]["data"], "aW1hZ2U=");
     }
 }

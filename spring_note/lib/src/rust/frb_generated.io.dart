@@ -40,6 +40,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   AiModel dco_decode_ai_model(dynamic raw);
 
   @protected
+  AiImageAttachment dco_decode_ai_image_attachment(dynamic raw);
+
+  @protected
   AiProvider dco_decode_ai_provider(dynamic raw);
 
   @protected
@@ -134,6 +137,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<AiModel> dco_decode_list_ai_model(dynamic raw);
 
   @protected
+  List<AiImageAttachment> dco_decode_list_ai_image_attachment(dynamic raw);
+
+  @protected
   List<AiToolCall> dco_decode_list_ai_tool_call(dynamic raw);
 
   @protected
@@ -214,6 +220,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   AiModel sse_decode_ai_model(SseDeserializer deserializer);
+
+  @protected
+  AiImageAttachment sse_decode_ai_image_attachment(
+    SseDeserializer deserializer,
+  );
 
   @protected
   AiProvider sse_decode_ai_provider(SseDeserializer deserializer);
@@ -332,6 +343,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<AiModel> sse_decode_list_ai_model(SseDeserializer deserializer);
 
   @protected
+  List<AiImageAttachment> sse_decode_list_ai_image_attachment(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<AiToolCall> sse_decode_list_ai_tool_call(SseDeserializer deserializer);
 
   @protected
@@ -435,6 +451,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_ai_model(AiModel self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ai_image_attachment(
+    AiImageAttachment self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_ai_provider(AiProvider self, SseSerializer serializer);
@@ -585,6 +607,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_list_ai_model(List<AiModel> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_ai_image_attachment(
+    List<AiImageAttachment> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_ai_tool_call(

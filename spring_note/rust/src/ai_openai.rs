@@ -1,5 +1,5 @@
 use crate::ai::{
-    AiChatMessage, AiChatRequest, AiModel, AiProvider, AiTextResult, AiToolCall,
+    AiChatMessage, AiChatRequest, AiImageAttachment, AiModel, AiProvider, AiTextResult, AiToolCall,
     FimCompleteRequest, MemoryToolChatRequest, MemoryToolChatResult, MemoryToolChatStreamEvent,
     extract_text, http_client, http_stream_client, usage_from_value,
 };
@@ -680,8 +680,11 @@ pub async fn fim_complete(request: &FimCompleteRequest) -> Result<AiTextResult, 
 
 pub fn build_chat_body(request: &AiChatRequest) -> Value {
     let mut messages = vec![json!({"role": "system", "content": request.system_prompt})];
-    if !request.user_prompt.trim().is_empty() {
-        messages.push(json!({"role": "user", "content": request.user_prompt}));
+    if !request.user_prompt.trim().is_empty() || !request.images.is_empty() {
+        messages.push(json!({
+            "role": "user",
+            "content": chat_user_content(request)
+        }));
     }
 
     let mut body = json!({
@@ -696,12 +699,78 @@ pub fn build_chat_body(request: &AiChatRequest) -> Value {
 }
 
 pub fn build_responses_chat_body(request: &AiChatRequest) -> Value {
+    let input = if request.images.is_empty() {
+        Value::String(request.user_prompt.clone())
+    } else {
+        json!([{
+            "role": "user",
+            "content": responses_user_content(request)
+        }])
+    };
+
     json!({
         "model": request.model.model_id,
         "instructions": request.system_prompt,
-        "input": request.user_prompt,
+        "input": input,
         "temperature": 0.2
     })
+}
+
+fn chat_user_content(request: &AiChatRequest) -> Value {
+    if request.images.is_empty() {
+        return Value::String(request.user_prompt.clone());
+    }
+
+    let mut parts = Vec::new();
+    if !request.user_prompt.trim().is_empty() {
+        parts.push(json!({
+            "type": "text",
+            "text": request.user_prompt
+        }));
+    }
+    parts.extend(request.images.iter().map(|image| {
+        json!({
+            "type": "image_url",
+            "image_url": {
+                "url": data_url(image)
+            }
+        })
+    }));
+    Value::Array(parts)
+}
+
+fn responses_user_content(request: &AiChatRequest) -> Value {
+    let mut parts = Vec::new();
+    if !request.user_prompt.trim().is_empty() {
+        parts.push(json!({
+            "type": "input_text",
+            "text": request.user_prompt
+        }));
+    }
+    parts.extend(request.images.iter().map(|image| {
+        json!({
+            "type": "input_image",
+            "image_url": data_url(image)
+        })
+    }));
+    Value::Array(parts)
+}
+
+fn data_url(image: &AiImageAttachment) -> String {
+    format!(
+        "data:{};base64,{}",
+        normalized_image_mime_type(&image.mime_type),
+        image.data_base64
+    )
+}
+
+fn normalized_image_mime_type(mime_type: &str) -> &str {
+    let trimmed = mime_type.trim();
+    if trimmed.starts_with("image/") {
+        trimmed
+    } else {
+        "image/png"
+    }
 }
 
 pub fn build_memory_tool_body(request: &MemoryToolChatRequest, system_prompt: &str) -> Value {
@@ -1528,6 +1597,7 @@ fn fim_as_chat_request(request: &FimCompleteRequest) -> AiChatRequest {
         model: request.model.clone(),
         system_prompt: String::new(),
         user_prompt: request.prompt.clone(),
+        images: vec![],
         purpose: "fim_edit_completion".to_string(),
         api_log_enabled: request.api_log_enabled,
     }
@@ -1545,6 +1615,7 @@ fn memory_as_chat_request(request: &MemoryToolChatRequest, system_prompt: &str) 
             .map(|message| message.content.as_str())
             .collect::<Vec<_>>()
             .join("\n"),
+        images: vec![],
         purpose: "memory_tool_chat".to_string(),
         api_log_enabled: request.api_log_enabled,
     }
@@ -1611,9 +1682,8 @@ fn log_fetch_models(
 mod tests {
     use super::*;
 
-    #[test]
-    fn builds_openai_chat_payload() {
-        let request = AiChatRequest {
+    fn request() -> AiChatRequest {
+        AiChatRequest {
             app_data_dir: ".".to_string(),
             provider: AiProvider {
                 id: "p".to_string(),
@@ -1629,9 +1699,23 @@ mod tests {
             },
             system_prompt: "system".to_string(),
             user_prompt: "user".to_string(),
+            images: vec![],
             purpose: "test".to_string(),
             api_log_enabled: false,
-        };
+        }
+    }
+
+    fn image() -> AiImageAttachment {
+        AiImageAttachment {
+            name: "screen.png".to_string(),
+            mime_type: "image/png".to_string(),
+            data_base64: "aW1hZ2U=".to_string(),
+        }
+    }
+
+    #[test]
+    fn builds_openai_chat_payload() {
+        let request = request();
 
         let body = build_chat_body(&request);
         assert_eq!(body["model"], "gpt-test");
@@ -1642,23 +1726,8 @@ mod tests {
     #[test]
     fn omits_empty_user_prompt_from_openai_chat_payload() {
         let request = AiChatRequest {
-            app_data_dir: ".".to_string(),
-            provider: AiProvider {
-                id: "p".to_string(),
-                name: "OpenAI".to_string(),
-                protocol: "openaiCompatible".to_string(),
-                api_key: "key".to_string(),
-                base_url: "https://api.example.com/v1".to_string(),
-                api_path: "/chat/completions".to_string(),
-            },
-            model: AiModel {
-                model_id: "gpt-test".to_string(),
-                display_name: "GPT Test".to_string(),
-            },
-            system_prompt: "system".to_string(),
             user_prompt: String::new(),
-            purpose: "test".to_string(),
-            api_log_enabled: false,
+            ..request()
         };
 
         let body = build_chat_body(&request);
@@ -1669,9 +1738,26 @@ mod tests {
     }
 
     #[test]
+    fn builds_openai_chat_payload_with_images() {
+        let request = AiChatRequest {
+            images: vec![image()],
+            ..request()
+        };
+
+        let body = build_chat_body(&request);
+        let content = body["messages"][1]["content"].as_array().unwrap();
+        assert_eq!(content[0]["type"], "text");
+        assert_eq!(content[0]["text"], "user");
+        assert_eq!(content[1]["type"], "image_url");
+        assert_eq!(
+            content[1]["image_url"]["url"],
+            "data:image/png;base64,aW1hZ2U="
+        );
+    }
+
+    #[test]
     fn builds_openai_responses_chat_payload() {
         let request = AiChatRequest {
-            app_data_dir: ".".to_string(),
             provider: AiProvider {
                 id: "p".to_string(),
                 name: "OpenAI".to_string(),
@@ -1680,14 +1766,7 @@ mod tests {
                 base_url: "https://api.example.com/v1".to_string(),
                 api_path: "/responses".to_string(),
             },
-            model: AiModel {
-                model_id: "gpt-test".to_string(),
-                display_name: "GPT Test".to_string(),
-            },
-            system_prompt: "system".to_string(),
-            user_prompt: "user".to_string(),
-            purpose: "test".to_string(),
-            api_log_enabled: false,
+            ..request()
         };
 
         let body = build_responses_chat_body(&request);
@@ -1695,6 +1774,29 @@ mod tests {
         assert_eq!(body["instructions"], "system");
         assert_eq!(body["input"], "user");
         assert!(body.get("messages").is_none());
+    }
+
+    #[test]
+    fn builds_openai_responses_payload_with_images() {
+        let request = AiChatRequest {
+            provider: AiProvider {
+                id: "p".to_string(),
+                name: "OpenAI".to_string(),
+                protocol: "openaiCompatible".to_string(),
+                api_key: "key".to_string(),
+                base_url: "https://api.example.com/v1".to_string(),
+                api_path: "/responses".to_string(),
+            },
+            images: vec![image()],
+            ..request()
+        };
+
+        let body = build_responses_chat_body(&request);
+        let content = body["input"][0]["content"].as_array().unwrap();
+        assert_eq!(content[0]["type"], "input_text");
+        assert_eq!(content[0]["text"], "user");
+        assert_eq!(content[1]["type"], "input_image");
+        assert_eq!(content[1]["image_url"], "data:image/png;base64,aW1hZ2U=");
     }
 
     #[test]

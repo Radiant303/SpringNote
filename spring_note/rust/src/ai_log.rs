@@ -1,5 +1,5 @@
 use chrono::Utc;
-use serde_json::json;
+use serde_json::{Value, json};
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::Path;
@@ -31,6 +31,7 @@ pub fn write_api_network_log(entry: ApiNetworkLog<'_>) {
         return;
     }
 
+    let request_body = redacted_request_body(entry.request_body);
     let line = json!({
         "timestamp": Utc::now().to_rfc3339(),
         "providerId": entry.provider_id,
@@ -40,7 +41,7 @@ pub fn write_api_network_log(entry: ApiNetworkLog<'_>) {
         "purpose": entry.purpose,
         "method": entry.method,
         "url": entry.url,
-        "requestBody": entry.request_body,
+        "requestBody": request_body,
         "responseStatus": entry.response_status,
         "responseBody": entry.response_body,
         "durationMs": entry.duration_ms,
@@ -53,6 +54,97 @@ pub fn write_api_network_log(entry: ApiNetworkLog<'_>) {
         return;
     };
     let _ = writeln!(file, "{line}");
+}
+
+fn redacted_request_body(request_body: &str) -> String {
+    let Ok(mut value) = serde_json::from_str::<Value>(request_body) else {
+        return request_body.to_string();
+    };
+    redact_image_payloads(&mut value);
+    serde_json::to_string_pretty(&value).unwrap_or_else(|_| request_body.to_string())
+}
+
+fn redact_image_payloads(value: &mut Value) {
+    match value {
+        Value::Object(map) => {
+            if let Some(image_url) = map.get_mut("image_url") {
+                match image_url {
+                    Value::String(url) => redact_data_url(url),
+                    Value::Object(image_url) => {
+                        if let Some(Value::String(url)) = image_url.get_mut("url") {
+                            redact_data_url(url);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            if let Some(Value::Object(inline_data)) = map.get_mut("inline_data") {
+                if has_image_mime(inline_data, "mime_type") {
+                    if let Some(Value::String(data)) = inline_data.get_mut("data") {
+                        redact_base64_data(data);
+                    }
+                }
+            }
+            if let Some(Value::Object(source)) = map.get_mut("source") {
+                if has_image_mime(source, "media_type") {
+                    if let Some(Value::String(data)) = source.get_mut("data") {
+                        redact_base64_data(data);
+                    }
+                }
+            }
+            if has_image_mime(map, "mime_type") {
+                if let Some(Value::String(data)) = map.get_mut("data") {
+                    redact_base64_data(data);
+                }
+            }
+            if has_image_mime(map, "media_type") {
+                if let Some(Value::String(data)) = map.get_mut("data") {
+                    redact_base64_data(data);
+                }
+            }
+            for child in map.values_mut() {
+                redact_image_payloads(child);
+            }
+        }
+        Value::Array(items) => {
+            for item in items {
+                redact_image_payloads(item);
+            }
+        }
+        Value::String(text) => redact_data_url(text),
+        _ => {}
+    }
+}
+
+fn has_image_mime(map: &serde_json::Map<String, Value>, key: &str) -> bool {
+    map.get(key)
+        .and_then(Value::as_str)
+        .map(|mime_type| mime_type.trim().starts_with("image/"))
+        .unwrap_or(false)
+}
+
+fn redact_data_url(value: &mut String) {
+    let Some((prefix, data)) = value.split_once(";base64,") else {
+        return;
+    };
+    if !prefix.trim_start().starts_with("data:image/") {
+        return;
+    }
+    if data.starts_with("[redacted image base64:") {
+        return;
+    }
+    *value = format!("{prefix};base64,{}", redacted_base64_marker(data.len()));
+}
+
+fn redact_base64_data(value: &mut String) {
+    if value.starts_with("[redacted image base64:") {
+        return;
+    }
+    *value = redacted_base64_marker(value.len());
+}
+
+fn redacted_base64_marker(length: usize) -> String {
+    format!("[redacted image base64: {length} chars]")
 }
 
 #[cfg(test)]
@@ -124,5 +216,87 @@ mod tests {
         assert!(content.contains("return fib(a-1) + fib(a-2)"));
         assert!(content.contains("if a <= 1"));
         fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn redacts_openai_chat_image_data_urls_from_request_body() {
+        let request_body = r#"{
+            "messages": [{
+                "role": "user",
+                "content": [{
+                    "type": "image_url",
+                    "image_url": {
+                        "url": "data:image/png;base64,aW1hZ2U="
+                    }
+                }]
+            }]
+        }"#;
+
+        let redacted = redacted_request_body(request_body);
+
+        assert!(!redacted.contains("aW1hZ2U="));
+        assert!(redacted.contains("data:image/png;base64,[redacted image base64: 8 chars]"));
+        assert!(redacted.contains("image_url"));
+    }
+
+    #[test]
+    fn redacts_openai_responses_image_data_urls_from_request_body() {
+        let request_body = r#"{
+            "input": [{
+                "role": "user",
+                "content": [{
+                    "type": "input_image",
+                    "image_url": "data:image/webp;base64,d2VicA=="
+                }]
+            }]
+        }"#;
+
+        let redacted = redacted_request_body(request_body);
+
+        assert!(!redacted.contains("d2VicA=="));
+        assert!(redacted.contains("data:image/webp;base64,[redacted image base64: 8 chars]"));
+        assert!(redacted.contains("input_image"));
+    }
+
+    #[test]
+    fn redacts_gemini_inline_image_data_from_request_body() {
+        let request_body = r#"{
+            "contents": [{
+                "parts": [{
+                    "inline_data": {
+                        "mime_type": "image/jpeg",
+                        "data": "anBlZw=="
+                    }
+                }]
+            }]
+        }"#;
+
+        let redacted = redacted_request_body(request_body);
+
+        assert!(!redacted.contains("anBlZw=="));
+        assert!(redacted.contains("\"mime_type\": \"image/jpeg\""));
+        assert!(redacted.contains("[redacted image base64: 8 chars]"));
+    }
+
+    #[test]
+    fn redacts_claude_source_image_data_from_request_body() {
+        let request_body = r#"{
+            "messages": [{
+                "content": [{
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "image/png",
+                        "data": "cG5n"
+                    }
+                }]
+            }]
+        }"#;
+
+        let redacted = redacted_request_body(request_body);
+
+        assert!(!redacted.contains("cG5n"));
+        assert!(redacted.contains("\"media_type\": \"image/png\""));
+        assert!(redacted.contains("[redacted image base64: 4 chars]"));
     }
 }

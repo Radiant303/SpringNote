@@ -186,8 +186,42 @@ String? _resolvedDirectoryPath(String path) {
       file: file.absolute,
     );
   } on FileSystemException {
-    return (path: _canonicalPath(file.absolute.path), file: file.absolute);
+    final resolvedMissingPath = _resolvedMissingFilePath(file.absolute);
+    if (resolvedMissingPath == null) {
+      return null;
+    }
+    return (path: resolvedMissingPath, file: file.absolute);
   }
+}
+
+String? _resolvedMissingFilePath(File file) {
+  var directory = file.parent;
+  final missingParts = <String>[_pathBasename(file.path)];
+
+  while (true) {
+    try {
+      final resolvedDirectory = directory.resolveSymbolicLinksSync();
+      return _canonicalPath(
+        _joinPath(resolvedDirectory, missingParts.reversed.join('/')),
+      );
+    } on FileSystemException {
+      final parent = directory.parent;
+      if (parent.path == directory.path) {
+        return null;
+      }
+      missingParts.add(_pathBasename(directory.path));
+      directory = parent;
+    }
+  }
+}
+
+String _pathBasename(String path) {
+  final normalized = path.replaceAll('\\', '/');
+  final trimmed = normalized.endsWith('/') && normalized.length > 1
+      ? normalized.substring(0, normalized.length - 1)
+      : normalized;
+  final separator = trimmed.lastIndexOf('/');
+  return separator < 0 ? trimmed : trimmed.substring(separator + 1);
 }
 
 bool _isSameOrInsideDirectory({required String path, required String base}) {

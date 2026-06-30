@@ -813,6 +813,20 @@ impl SseDecode for crate::ai::AiModel {
     }
 }
 
+impl SseDecode for crate::ai::AiImageAttachment {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_name = <String>::sse_decode(deserializer);
+        let mut var_mimeType = <String>::sse_decode(deserializer);
+        let mut var_dataBase64 = <String>::sse_decode(deserializer);
+        return crate::ai::AiImageAttachment {
+            name: var_name,
+            mime_type: var_mimeType,
+            data_base64: var_dataBase64,
+        };
+    }
+}
+
 impl SseDecode for crate::ai::AiProvider {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1137,6 +1151,18 @@ impl SseDecode for Vec<crate::ai::AiModel> {
     }
 }
 
+impl SseDecode for Vec<crate::ai::AiImageAttachment> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::ai::AiImageAttachment>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<crate::ai::AiToolCall> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1423,6 +1449,7 @@ impl SseDecode for crate::ai::StructuredNoteRequest {
         let mut var_provider = <crate::ai::AiProvider>::sse_decode(deserializer);
         let mut var_model = <crate::ai::AiModel>::sse_decode(deserializer);
         let mut var_input = <String>::sse_decode(deserializer);
+        let mut var_images = <Vec<crate::ai::AiImageAttachment>>::sse_decode(deserializer);
         let mut var_industry = <String>::sse_decode(deserializer);
         let mut var_apiLogEnabled = <bool>::sse_decode(deserializer);
         return crate::ai::StructuredNoteRequest {
@@ -1430,6 +1457,7 @@ impl SseDecode for crate::ai::StructuredNoteRequest {
             provider: var_provider,
             model: var_model,
             input: var_input,
+            images: var_images,
             industry: var_industry,
             api_log_enabled: var_apiLogEnabled,
         };
@@ -1601,6 +1629,25 @@ impl flutter_rust_bridge::IntoDart for crate::ai::AiModel {
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::ai::AiModel {}
 impl flutter_rust_bridge::IntoIntoDart<crate::ai::AiModel> for crate::ai::AiModel {
     fn into_into_dart(self) -> crate::ai::AiModel {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::ai::AiImageAttachment {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.name.into_into_dart().into_dart(),
+            self.mime_type.into_into_dart().into_dart(),
+            self.data_base64.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::ai::AiImageAttachment {}
+impl flutter_rust_bridge::IntoIntoDart<crate::ai::AiImageAttachment>
+    for crate::ai::AiImageAttachment
+{
+    fn into_into_dart(self) -> crate::ai::AiImageAttachment {
         self
     }
 }
@@ -2132,6 +2179,7 @@ impl flutter_rust_bridge::IntoDart for crate::ai::StructuredNoteRequest {
             self.provider.into_into_dart().into_dart(),
             self.model.into_into_dart().into_dart(),
             self.input.into_into_dart().into_dart(),
+            self.images.into_into_dart().into_dart(),
             self.industry.into_into_dart().into_dart(),
             self.api_log_enabled.into_into_dart().into_dart(),
         ]
@@ -2221,6 +2269,15 @@ impl SseEncode for crate::ai::AiModel {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.model_id, serializer);
         <String>::sse_encode(self.display_name, serializer);
+    }
+}
+
+impl SseEncode for crate::ai::AiImageAttachment {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.name, serializer);
+        <String>::sse_encode(self.mime_type, serializer);
+        <String>::sse_encode(self.data_base64, serializer);
     }
 }
 
@@ -2438,6 +2495,16 @@ impl SseEncode for Vec<crate::ai::AiModel> {
     }
 }
 
+impl SseEncode for Vec<crate::ai::AiImageAttachment> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::ai::AiImageAttachment>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<crate::ai::AiToolCall> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2624,6 +2691,7 @@ impl SseEncode for crate::ai::StructuredNoteRequest {
         <crate::ai::AiProvider>::sse_encode(self.provider, serializer);
         <crate::ai::AiModel>::sse_encode(self.model, serializer);
         <String>::sse_encode(self.input, serializer);
+        <Vec<crate::ai::AiImageAttachment>>::sse_encode(self.images, serializer);
         <String>::sse_encode(self.industry, serializer);
         <bool>::sse_encode(self.api_log_enabled, serializer);
     }

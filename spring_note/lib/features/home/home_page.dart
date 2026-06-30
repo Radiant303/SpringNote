@@ -31,6 +31,9 @@ typedef HomeImagePicker = Future<List<PendingImage>> Function();
 
 enum HomeAttachmentKind { image, document }
 
+const int _maxHomeImageAttachments = maxAiImageInputs;
+const int _maxHomeImageAttachmentBytes = maxAiImageInputBytes;
+
 class HomeAttachment {
   const HomeAttachment({
     required this.path,
@@ -235,6 +238,16 @@ class _HomePageState extends State<HomePage> {
             notePath: notePath,
             images: _attachmentManager.images,
           );
+      final aiImages = _attachmentManager.images
+          .where(_canSendImageToAi)
+          .map(
+            (image) => AiImageInput.fromBytes(
+              name: image.name,
+              bytes: image.bytes,
+              extension: image.extension,
+            ),
+          )
+          .toList();
       final submissionInput = _inputWithAttachmentSummary(
         input,
         savedPendingImages,
@@ -253,6 +266,7 @@ class _HomePageState extends State<HomePage> {
           appDataDir: widget.localDataState.dataDirectory,
           config: widget.localDataState.config,
           input: submissionInput,
+          images: aiImages,
         );
       } catch (_) {
         aiFailed = true;
@@ -377,14 +391,7 @@ class _HomePageState extends State<HomePage> {
       }
       if (images.isNotEmpty) {
         setState(() {
-          for (final image in images) {
-            _attachmentManager.addImage(
-              bytes: image.bytes,
-              name: image.name,
-              extension: image.extension,
-            );
-          }
-          _attachmentError = null;
+          _attachmentError = _addPendingImages(images);
         });
         _focusNode.requestFocus();
         return;
@@ -445,14 +452,7 @@ class _HomePageState extends State<HomePage> {
         return;
       }
       setState(() {
-        for (final image in picked) {
-          _attachmentManager.addImage(
-            bytes: image.bytes,
-            name: image.name,
-            extension: image.extension,
-          );
-        }
-        _attachmentError = null;
+        _attachmentError = _addPendingImages(picked);
       });
     } catch (_) {
       if (mounted) {
@@ -496,6 +496,87 @@ class _HomePageState extends State<HomePage> {
         setState(() => _attachmentError = '无法添加附件，请重新选择文件。');
       }
     }
+  }
+
+  String? _addPendingImages(List<PendingImage> images) {
+    var added = 0;
+    var skippedForLimit = 0;
+    final oversizedNames = <String>[];
+    final unsupportedAiNames = <String>[];
+
+    for (final image in images) {
+      if (image.bytes.isEmpty) {
+        continue;
+      }
+      if (image.bytes.length > _maxHomeImageAttachmentBytes) {
+        oversizedNames.add(image.name);
+        continue;
+      }
+      if (_attachmentManager.images.length >= _maxHomeImageAttachments) {
+        skippedForLimit++;
+        continue;
+      }
+
+      _attachmentManager.addImage(
+        bytes: image.bytes,
+        name: image.name,
+        extension: image.extension,
+      );
+      added++;
+      if (!_canSendImageToAi(image)) {
+        unsupportedAiNames.add(image.name);
+      }
+    }
+
+    final messages = <String>[];
+    if (oversizedNames.isNotEmpty) {
+      messages.add(
+        '单张图片不能超过 ${_formatBytes(_maxHomeImageAttachmentBytes)}：'
+        '${_formatNameList(oversizedNames)}。',
+      );
+    }
+    if (skippedForLimit > 0) {
+      messages.add(
+        '最多添加 $_maxHomeImageAttachments 张图片，已忽略 $skippedForLimit 张。',
+      );
+    }
+    if (unsupportedAiNames.isNotEmpty) {
+      messages.add(
+        '这些图片会保存进日报，但不会发送给 AI：'
+        '${_formatNameList(unsupportedAiNames)}。',
+      );
+    }
+    if (added == 0 && messages.isEmpty) {
+      messages.add('没有可添加的图片。');
+    }
+    return messages.isEmpty ? null : messages.join('\n');
+  }
+
+  bool _canSendImageToAi(PendingImage image) {
+    if (!isSupportedAiImageExtension(image.extension)) {
+      return false;
+    }
+    final aiImage = AiImageInput.fromBytes(
+      name: image.name,
+      bytes: image.bytes,
+      extension: image.extension,
+    );
+    return isSupportedAiImageInput(aiImage);
+  }
+
+  String _formatBytes(int bytes) {
+    final megabytes = bytes / (1024 * 1024);
+    if (megabytes == megabytes.roundToDouble()) {
+      return '${megabytes.toInt()} MB';
+    }
+    return '${megabytes.toStringAsFixed(1)} MB';
+  }
+
+  String _formatNameList(List<String> names) {
+    const maxNames = 3;
+    final visible = names.take(maxNames).join('、');
+    final remaining = names.length - maxNames;
+    return remaining > 0 ? '$visible 等 $remaining 张' : visible;
   }
 
   Future<List<PendingImage>> _defaultImagePicker() async {

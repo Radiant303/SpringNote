@@ -10,6 +10,7 @@ import 'package:spring_note/core/models/local_data_state.dart';
 import 'package:spring_note/core/models/structured_work_note.dart';
 import 'package:spring_note/core/router/app_shell.dart';
 import 'package:spring_note/core/services/cloud_sync_service.dart';
+import 'package:spring_note/core/services/ai_client_service.dart';
 import 'package:spring_note/core/services/daily_note_service.dart';
 import 'package:spring_note/core/services/desktop_widget_controller.dart';
 import 'package:spring_note/core/services/home_overview_service.dart';
@@ -444,6 +445,181 @@ void main() {
     expect(rawInput, contains('/Users/demo/Documents/spec.pdf'));
   });
 
+  testWidgets('home image attachment is sent to AI as multimodal input', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final imageBytes = Uint8List.fromList(_transparentPngBytes);
+    final aiClientService = _RecordingAiClientService();
+    final fakeDailyNoteService = _FakeDailyNoteService();
+    final fakeHomeOverviewService = _FakeHomeOverviewService();
+    final fakePendingImageService = _FakePendingImageService();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: HomePage(
+          localDataState: _testLocalDataState(),
+          dailyNoteService: fakeDailyNoteService,
+          homeOverviewService: fakeHomeOverviewService,
+          pendingImageService: fakePendingImageService,
+          aiClientService: aiClientService,
+          imageAttachmentPicker: () async => [
+            PendingImage(
+              id: 'picked-image',
+              bytes: imageBytes,
+              name: 'screen.jpg',
+              extension: 'jpg',
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('上传图片'));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), '根据截图整理今天进展');
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('home-smart-generate-button')));
+    await _pumpUntil(
+      tester,
+      () => aiClientService.generatedImages != null,
+      'AI image inputs to be recorded',
+    );
+
+    expect(aiClientService.generatedInput, contains('根据截图整理今天进展'));
+    expect(
+      aiClientService.generatedInput,
+      contains('![screen.jpg](images/screen.jpg)'),
+    );
+    expect(aiClientService.generatedImages, hasLength(1));
+    final image = aiClientService.generatedImages!.single;
+    expect(image.name, 'screen.jpg');
+    expect(image.mimeType, 'image/jpeg');
+    expect(image.bytes, imageBytes);
+    expect(fakeDailyNoteService.savedNote?.completed, contains('AI 识别了 1 张图片'));
+  });
+
+  testWidgets('home image attachments enforce count and size limits', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final imageBytes = Uint8List.fromList(_transparentPngBytes);
+    final oversizedBytes = Uint8List(5 * 1024 * 1024 + 1);
+    final fakeDailyNoteService = _FakeDailyNoteService();
+    final fakePendingImageService = _FakePendingImageService();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: HomePage(
+          localDataState: _testLocalDataState(),
+          dailyNoteService: fakeDailyNoteService,
+          homeOverviewService: _FakeHomeOverviewService(),
+          pendingImageService: fakePendingImageService,
+          imageAttachmentPicker: () async => [
+            for (var index = 0; index < 5; index++)
+              PendingImage(
+                id: 'picked-image-$index',
+                bytes: imageBytes,
+                name: 'screen-$index.png',
+                extension: 'png',
+              ),
+            PendingImage(
+              id: 'oversized-image',
+              bytes: oversizedBytes,
+              name: 'huge.png',
+              extension: 'png',
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('上传图片'));
+    await tester.pump();
+
+    expect(find.text('图片 · screen-0.png'), findsOneWidget);
+    expect(find.text('图片 · screen-3.png'), findsOneWidget);
+    expect(find.text('图片 · screen-4.png'), findsNothing);
+    expect(find.text('图片 · huge.png'), findsNothing);
+    expect(find.textContaining('单张图片不能超过 5 MB'), findsOneWidget);
+    expect(find.textContaining('最多添加 4 张图片'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('home-smart-generate-button')));
+    await _pumpUntil(
+      tester,
+      () => fakeDailyNoteService.savedNote != null,
+      'daily note with limited image attachments to be saved',
+    );
+
+    expect(fakePendingImageService.savedBytes, hasLength(4));
+  });
+
+  testWidgets('home image attachment unsupported by AI is saved but not sent', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final svgBytes = Uint8List.fromList('<svg></svg>'.codeUnits);
+    final aiClientService = _RecordingAiClientService();
+    final fakeDailyNoteService = _FakeDailyNoteService();
+    final fakePendingImageService = _FakePendingImageService();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: HomePage(
+          localDataState: _testLocalDataState(),
+          dailyNoteService: fakeDailyNoteService,
+          homeOverviewService: _FakeHomeOverviewService(),
+          pendingImageService: fakePendingImageService,
+          aiClientService: aiClientService,
+          imageAttachmentPicker: () async => [
+            PendingImage(
+              id: 'picked-svg',
+              bytes: svgBytes,
+              name: 'diagram.svg',
+              extension: 'svg',
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('上传图片'));
+    await tester.pump();
+    expect(find.text('图片 · diagram.svg'), findsOneWidget);
+    expect(find.textContaining('不会发送给 AI'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), '整理 SVG 图');
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('home-smart-generate-button')));
+    await _pumpUntil(
+      tester,
+      () => aiClientService.generatedImages != null,
+      'AI image inputs to be recorded for unsupported image',
+    );
+
+    expect(aiClientService.generatedImages, isEmpty);
+    expect(fakePendingImageService.savedBytes.single, svgBytes);
+    expect(
+      fakeDailyNoteService.savedNote?.rawInput,
+      contains('![diagram.svg](images/diagram.svg)'),
+    );
+  });
+
   testWidgets('home paste image saves markdown path on submit', (
     WidgetTester tester,
   ) async {
@@ -749,6 +925,28 @@ class _FakePendingImageService extends PendingImageService {
           ),
         )
         .toList();
+  }
+}
+
+class _RecordingAiClientService extends AiClientService {
+  String? generatedInput;
+  List<AiImageInput>? generatedImages;
+
+  @override
+  Future<StructuredWorkNote?> generateStructuredNote({
+    required String appDataDir,
+    required AppConfig config,
+    required String input,
+    List<AiImageInput> images = const [],
+  }) async {
+    generatedInput = input;
+    generatedImages = List.of(images);
+    return StructuredWorkNote(
+      rawInput: input,
+      completed: ['AI 识别了 ${images.length} 张图片'],
+      issues: const [],
+      plans: const [],
+    );
   }
 }
 
