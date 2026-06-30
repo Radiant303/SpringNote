@@ -551,31 +551,22 @@ class _DeleteModifyConflictTile extends StatelessWidget {
             const SizedBox(height: 4),
             Text(_description, style: textTheme.bodySmall),
             const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                ChoiceChip(
-                  label: Text(_overwriteRemoteLabel),
-                  selected: value == _DeleteModifyResolution.overwriteRemote,
-                  onSelected: enabled
-                      ? (_) =>
-                            onChanged(_DeleteModifyResolution.overwriteRemote)
-                      : null,
+            _SettingsSegmentedControl<_DeleteModifyResolution>(
+              value: value,
+              enabled: enabled,
+              onChanged: onChanged,
+              options: const [
+                _SettingsSegmentOption(
+                  value: _DeleteModifyResolution.overwriteRemote,
+                  label: '覆盖远端',
                 ),
-                ChoiceChip(
-                  label: Text(_overwriteLocalLabel),
-                  selected: value == _DeleteModifyResolution.overwriteLocal,
-                  onSelected: enabled
-                      ? (_) => onChanged(_DeleteModifyResolution.overwriteLocal)
-                      : null,
+                _SettingsSegmentOption(
+                  value: _DeleteModifyResolution.skip,
+                  label: '跳过',
                 ),
-                ChoiceChip(
-                  label: const Text('跳过'),
-                  selected: value == _DeleteModifyResolution.skip,
-                  onSelected: enabled
-                      ? (_) => onChanged(_DeleteModifyResolution.skip)
-                      : null,
+                _SettingsSegmentOption(
+                  value: _DeleteModifyResolution.overwriteLocal,
+                  label: '覆盖本地',
                 ),
               ],
             ),
@@ -587,14 +578,6 @@ class _DeleteModifyConflictTile extends StatelessWidget {
 
   String get _description {
     return _localModifiedRemoteDeleted ? '本地已修改，远端已删除' : '本地已删除，远端已修改';
-  }
-
-  String get _overwriteRemoteLabel {
-    return _localModifiedRemoteDeleted ? '覆盖远端（上传本地）' : '覆盖远端（删除云端）';
-  }
-
-  String get _overwriteLocalLabel {
-    return _localModifiedRemoteDeleted ? '覆盖本地（删除本地）' : '覆盖本地（下载云端）';
   }
 }
 

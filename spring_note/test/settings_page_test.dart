@@ -381,8 +381,10 @@ void main() {
     );
     expect(find.text('daily/2026-06-29.md'), findsOneWidget);
     expect(find.text('本地已修改，远端已删除'), findsOneWidget);
+    expect(find.text('覆盖远端（上传本地）'), findsNothing);
+    expect(find.text('覆盖本地（删除本地）'), findsNothing);
 
-    await tester.tap(find.text('覆盖远端（上传本地）'));
+    await tester.tap(find.text('覆盖远端'));
     await tester.pump();
     await tester.tap(find.text('按选择继续'));
     await tester.pumpAndSettle();

@@ -536,6 +536,109 @@ class _SwitchSettingRow extends StatelessWidget {
   }
 }
 
+class _SettingsSegmentOption<T> {
+  const _SettingsSegmentOption({required this.value, required this.label});
+
+  final T value;
+  final String label;
+}
+
+class _SettingsSegmentedControl<T> extends StatelessWidget {
+  const _SettingsSegmentedControl({
+    required this.value,
+    required this.options,
+    required this.onChanged,
+    this.enabled = true,
+  });
+
+  final T value;
+  final List<_SettingsSegmentOption<T>> options;
+  final ValueChanged<T> onChanged;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: enabled ? 1 : 0.6,
+      child: Container(
+        height: 38,
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F5F5),
+          border: Border.all(color: AppTheme.border),
+          borderRadius: BorderRadius.circular(13),
+        ),
+        child: Row(
+          children: [
+            for (final option in options)
+              Expanded(
+                child: _SettingsSegmentButton<T>(
+                  option: option,
+                  selected: option.value == value,
+                  enabled: enabled,
+                  onChanged: onChanged,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsSegmentButton<T> extends StatelessWidget {
+  const _SettingsSegmentButton({
+    required this.option,
+    required this.selected,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final _SettingsSegmentOption<T> option;
+  final bool selected;
+  final bool enabled;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final textColor = selected ? AppTheme.text : AppTheme.textMuted;
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      hoverColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      splashColor: Colors.transparent,
+      onTap: enabled ? () => onChanged(option.value) : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOutCubic,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: selected
+              ? const [
+                  BoxShadow(
+                    color: Color(0x0D000000),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          option.label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: textColor,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ShortcutSettingRow extends StatelessWidget {
   const _ShortcutSettingRow({required this.label, required this.shortcut});
 
