@@ -4,6 +4,24 @@
 
 #include "flutter/generated_plugin_registrant.h"
 
+namespace {
+
+bool IsCloseFromSpringNoteWindow(HWND hwnd) {
+  HWND foreground = GetForegroundWindow();
+  if (!foreground) {
+    return true;
+  }
+  if (foreground == hwnd || GetAncestor(foreground, GA_ROOT) == hwnd) {
+    return true;
+  }
+
+  DWORD foreground_process_id = 0;
+  GetWindowThreadProcessId(foreground, &foreground_process_id);
+  return foreground_process_id == GetCurrentProcessId();
+}
+
+}  // namespace
+
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
 
@@ -73,8 +91,11 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
 
   if (message == WM_CLOSE && tray_manager_ &&
       tray_manager_->ShouldCloseToTray()) {
-    ShowWindow(hwnd, SW_HIDE);
-    return 0;
+    if (IsCloseFromSpringNoteWindow(hwnd)) {
+      ShowWindow(hwnd, SW_HIDE);
+      return 0;
+    }
+    tray_manager_->PrepareForApplicationExit();
   }
 
   if (tray_manager_ && message == tray_manager_->QuitForUpdateMessage()) {
