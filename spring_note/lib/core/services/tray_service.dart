@@ -36,4 +36,28 @@ class TrayService {
       // Tray integration is optional and platform-dependent.
     }
   }
+
+  Future<void> prepareForApplicationExit() async {
+    if (!PlatformFeatureSupport.supportsTray) {
+      return;
+    }
+
+    try {
+      await _channel.invokeMethod<void>('prepareForApplicationExit');
+    } on PlatformException {
+      // Tray integration is optional and platform-dependent.
+    }
+  }
+
+  Future<void> quitForUpdate() async {
+    if (!PlatformFeatureSupport.supportsTray) {
+      return;
+    }
+
+    try {
+      await _channel.invokeMethod<void>('quitForUpdate');
+    } on PlatformException {
+      // Tray integration is optional and platform-dependent.
+    }
+  }
 }

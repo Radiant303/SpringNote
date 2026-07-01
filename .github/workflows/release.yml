@@ -6,7 +6,7 @@ on:
       - '[0-9]*.[0-9]*.[0-9]*'
 
 concurrency:
-  group: release-${{ github.ref_name }}
+  group: release
   cancel-in-progress: false
 
 permissions:
@@ -127,7 +127,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Windows release
-        run: flutter build windows --release
+        run: flutter build windows --release --dart-define SPRINGNOTE_UPDATE_BASE_URL=https://api.github.com/repos/${{ github.repository }}/contents/update
 
       - name: Install Inno Setup
         shell: pwsh
@@ -138,7 +138,7 @@ jobs:
         env:
           SPRINGNOTE_APP_VERSION: ${{ needs.prepare-release.outputs.version }}
           SPRINGNOTE_BUILD_OUTPUT_DIR: ${{ github.workspace }}\spring_note\build\windows\x64\runner\Release
-          SPRINGNOTE_SETUP_OUTPUT_DIR: ${{ github.workspace }}\spring_note\build\windows\x64\runner\Release
+          SPRINGNOTE_SETUP_OUTPUT_DIR: ${{ github.workspace }}\spring_note\build\windows\installer
         run: |
           $isccCommand = Get-Command ISCC.exe -ErrorAction SilentlyContinue
           if ($null -ne $isccCommand) {
@@ -155,7 +155,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: SpringNote-${{ needs.prepare-release.outputs.version }}-windows-x64-setup
-          path: spring_note/build/windows/x64/runner/Release/${{ needs.prepare-release.outputs.windows_asset }}
+          path: spring_note/build/windows/installer/${{ needs.prepare-release.outputs.windows_asset }}
           if-no-files-found: error
 
   macos-build:
@@ -195,8 +195,21 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
+      - name: Configure Sparkle public key
+        shell: bash
+        env:
+          SPARKLE_PUBLIC_ED_KEY: ${{ secrets.SPARKLE_PUBLIC_ED_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SPARKLE_PUBLIC_ED_KEY}" ]; then
+            echo "Missing SPARKLE_PUBLIC_ED_KEY secret."
+            exit 1
+          fi
+          /usr/libexec/PlistBuddy -c "Delete :SUPublicEDKey" macos/Runner/Info.plist 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :SUPublicEDKey string ${SPARKLE_PUBLIC_ED_KEY}" macos/Runner/Info.plist
+
       - name: Build macOS release
-        run: flutter build macos --release
+        run: flutter build macos --release --dart-define SPRINGNOTE_UPDATE_BASE_URL=https://api.github.com/repos/${{ github.repository }}/contents/update
 
       - name: Package macOS DMG
         shell: bash
@@ -233,6 +246,37 @@ jobs:
           path: spring_note/build/macos/Build/Products/Release/${{ needs.prepare-release.outputs.macos_asset }}
           if-no-files-found: error
 
+      - name: Sign macOS update
+        shell: bash
+        env:
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+          MACOS_ASSET: ${{ needs.prepare-release.outputs.macos_asset }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SPARKLE_ED_PRIVATE_KEY}" ]; then
+            echo "Missing SPARKLE_ED_PRIVATE_KEY secret."
+            exit 1
+          fi
+          asset_path="build/macos/Build/Products/Release/${MACOS_ASSET}"
+          private_key_path="$(mktemp)"
+          trap 'rm -f "$private_key_path"' EXIT
+          printf '%s' "$SPARKLE_ED_PRIVATE_KEY" > "$private_key_path"
+          signature_output="$(macos/Pods/Sparkle/bin/sign_update --ed-key-file "$private_key_path" "$asset_path")"
+          ed_signature="$(printf '%s\n' "$signature_output" | sed -n 's/.*sparkle:edSignature="\([^"]*\)".*/\1/p')"
+          length="$(stat -f '%z' "$asset_path")"
+          if [ -z "$ed_signature" ] || [ -z "$length" ]; then
+            echo "Failed to parse macOS update signature: $signature_output"
+            exit 1
+          fi
+          ED_SIGNATURE="$ed_signature" UPDATE_LENGTH="$length" python3 -c 'import json, os, pathlib; pathlib.Path(os.environ["GITHUB_WORKSPACE"], "macos-update-signature.json").write_text(json.dumps({"edSignature": os.environ["ED_SIGNATURE"], "length": os.environ["UPDATE_LENGTH"]}), encoding="utf-8")'
+
+      - name: Upload macOS update signature
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-update-signature
+          path: macos-update-signature.json
+          if-no-files-found: error
+
   publish-release:
     name: Publish GitHub Release
     runs-on: ubuntu-latest
@@ -261,7 +305,8 @@ jobs:
             --macos-asset "${{ needs.prepare-release.outputs.macos_asset }}" \
             --windows-asset "${{ needs.prepare-release.outputs.windows_asset }}" \
             --notes release-assets/release-notes.md \
-            --output-dir release-assets/update
+            --output-dir release-assets/update \
+            --macos-signature-file release-assets/macos-update-signature.json
 
       - name: Generate SHA256 checksums
         working-directory: release-assets
@@ -272,6 +317,7 @@ jobs:
             "${{ needs.prepare-release.outputs.windows_asset }}" \
             update/mac.json \
             update/windows.json \
+            update/appcast.xml \
             update/LATESTCHANGELOG.md \
             > SHA256SUMS.txt
 
@@ -282,6 +328,7 @@ jobs:
           test -s "release-assets/${{ needs.prepare-release.outputs.windows_asset }}"
           test -s "release-assets/update/mac.json"
           test -s "release-assets/update/windows.json"
+          test -s "release-assets/update/appcast.xml"
           test -s "release-assets/update/LATESTCHANGELOG.md"
           test -s "release-assets/SHA256SUMS.txt"
           python3 .github/scripts/verify_update_metadata.py \
@@ -309,6 +356,7 @@ jobs:
             release-assets/${{ needs.prepare-release.outputs.windows_asset }}
             release-assets/update/mac.json
             release-assets/update/windows.json
+            release-assets/update/appcast.xml
             release-assets/update/LATESTCHANGELOG.md
             release-assets/SHA256SUMS.txt
 
@@ -322,14 +370,21 @@ jobs:
           for attempt in 1 2 3; do
             git fetch origin "${{ github.event.repository.default_branch }}:refs/remotes/origin/${{ github.event.repository.default_branch }}" --depth=1
             git switch -C release-metadata "origin/${{ github.event.repository.default_branch }}"
+            current_update_version="$(python3 -c 'import json, pathlib; path = pathlib.Path("update/windows.json"); print(json.loads(path.read_text(encoding="utf-8")).get("version", "0.0.0") if path.exists() else "0.0.0")')"
+            if CURRENT_UPDATE_VERSION="$current_update_version" RELEASE_VERSION="${{ needs.prepare-release.outputs.version }}" python3 -c 'import os, sys; parts = lambda version: tuple(int(part) for part in version.split(".")); sys.exit(0 if parts(os.environ["CURRENT_UPDATE_VERSION"]) > parts(os.environ["RELEASE_VERSION"]) else 1)'
+            then
+              echo "Update metadata is already newer (${current_update_version}); skipping metadata write for ${{ needs.prepare-release.outputs.version }}."
+              exit 0
+            fi
             cp release-assets/update/mac.json update/mac.json
             cp release-assets/update/windows.json update/windows.json
+            cp release-assets/update/appcast.xml update/appcast.xml
             cp release-assets/update/LATESTCHANGELOG.md update/LATESTCHANGELOG.md
-            if git diff --quiet -- update/mac.json update/windows.json update/LATESTCHANGELOG.md; then
+            if git diff --quiet -- update/mac.json update/windows.json update/appcast.xml update/LATESTCHANGELOG.md; then
               echo "Update metadata is already current."
               exit 0
             fi
-            git add update/mac.json update/windows.json update/LATESTCHANGELOG.md
+            git add update/mac.json update/windows.json update/appcast.xml update/LATESTCHANGELOG.md
             git commit -m "chore: update release metadata for ${{ needs.prepare-release.outputs.version }}"
             if git push origin HEAD:${{ github.event.repository.default_branch }}; then
               exit 0

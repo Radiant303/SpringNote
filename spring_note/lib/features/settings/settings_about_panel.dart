@@ -1,7 +1,9 @@
 part of 'settings_page.dart';
 
 class _AboutPanel extends StatelessWidget {
-  const _AboutPanel();
+  const _AboutPanel({required this.updateCheckService});
+
+  final UpdateCheckService updateCheckService;
 
   static const _websiteUrl = 'https://radiant303.github.io/SpringNote';
   static const _githubUrl = 'https://github.com/Radiant303/SpringNote';
@@ -58,6 +60,11 @@ class _AboutPanel extends StatelessWidget {
             const _PubspecVersionRow(),
             const _PlatformInfoRow(),
             _AboutListRow(
+              icon: _AboutRowIconType.update,
+              label: '检查更新',
+              onTap: () => _checkForUpdates(context),
+            ),
+            _AboutListRow(
               icon: _AboutRowIconType.globe,
               label: '官网',
               onTap: () => _externalLinkService.open(_websiteUrl),
@@ -81,6 +88,38 @@ class _AboutPanel extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  Future<void> _checkForUpdates(BuildContext context) async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    messenger?.showSnackBar(const SnackBar(content: Text('正在检查更新...')));
+    final result = await updateCheckService.check(
+      mode: UpdateCheckMode.userInitiated,
+    );
+    if (!context.mounted) {
+      return;
+    }
+    messenger?.hideCurrentSnackBar();
+    switch (result.status) {
+      case UpdateCheckStatus.updateAvailable:
+        final latest = result.latest;
+        if (latest == null) {
+          messenger?.showSnackBar(const SnackBar(content: Text('暂时无法读取更新内容')));
+          return;
+        }
+        await showAppUpdateDialog(
+          context: context,
+          updateCheckService: updateCheckService,
+          currentVersion: result.currentVersion,
+          latest: latest,
+        );
+      case UpdateCheckStatus.idle:
+        messenger?.showSnackBar(const SnackBar(content: Text('当前已是最新版本')));
+      case UpdateCheckStatus.failed:
+        messenger?.showSnackBar(
+          const SnackBar(content: Text('暂时无法检查更新，请稍后重试')),
+        );
+    }
   }
 }
 
@@ -129,7 +168,7 @@ class _AboutListCard extends StatelessWidget {
   }
 }
 
-enum _AboutRowIconType { code, system, globe, github, license, qq }
+enum _AboutRowIconType { code, system, update, globe, github, license, qq }
 
 class _PubspecVersionRow extends StatelessWidget {
   const _PubspecVersionRow();
@@ -360,6 +399,24 @@ class _AboutRowIconPainter extends CustomPainter {
         canvas.drawRRect(rr(5, 4, 14, 12, 2), paint);
         canvas.drawLine(p(9, 20), p(15, 20), paint);
         canvas.drawLine(p(12, 16), p(12, 20), paint);
+        break;
+      case _AboutRowIconType.update:
+        canvas.drawArc(
+          Rect.fromCenter(center: p(12, 12), width: 14 * sx, height: 14 * sy),
+          -1.25,
+          4.6,
+          false,
+          paint,
+        );
+        final arrow = Path()
+          ..moveTo(17.4 * sx, 7.1 * sy)
+          ..lineTo(19.4 * sx, 7.2 * sy)
+          ..lineTo(18.6 * sx, 5.3 * sy);
+        canvas.drawPath(arrow, paint);
+        canvas.drawLine(p(12, 7), p(12, 14), paint);
+        canvas.drawLine(p(9.2, 11.2), p(12, 14), paint);
+        canvas.drawLine(p(14.8, 11.2), p(12, 14), paint);
+        canvas.drawLine(p(8.5, 17.5), p(15.5, 17.5), paint);
         break;
       case _AboutRowIconType.globe:
         canvas.drawCircle(p(12, 12), 8 * strokeScale, paint);

@@ -77,6 +77,23 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     return 0;
   }
 
+  if (tray_manager_ && message == tray_manager_->QuitForUpdateMessage()) {
+    tray_manager_->PrepareForApplicationExit();
+    DestroyWindow(hwnd);
+    return 0;
+  }
+
+  if (message == WM_QUERYENDSESSION) {
+    if (tray_manager_) {
+      tray_manager_->PrepareForApplicationExit();
+    }
+    return TRUE;
+  }
+
+  if (message == WM_ENDSESSION && wparam != FALSE && tray_manager_) {
+    tray_manager_->PrepareForApplicationExit();
+  }
+
   if (global_hotkey_manager_ &&
       global_hotkey_manager_->HandleMessage(hwnd, message, wparam, lparam)) {
     return 0;

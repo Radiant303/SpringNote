@@ -29,16 +29,16 @@ enum AppSection { home, notes, memory, settings }
 enum _StartupCloudSyncFailureKind { offline, temporary, permanent }
 
 class AppShell extends StatefulWidget {
-  const AppShell({
+  AppShell({
     super.key,
     required this.localDataState,
     this.startupReportGenerationService =
         const StartupReportGenerationService(),
-    this.updateCheckService = const UpdateCheckService(),
+    UpdateCheckService? updateCheckService,
     this.cloudSyncService = const CloudSyncService(),
     this.localDataService = const LocalDataService(),
     this.onConfigChanged,
-  });
+  }) : updateCheckService = updateCheckService ?? UpdateCheckService();
 
   final LocalDataState localDataState;
   final StartupReportGenerationService startupReportGenerationService;
@@ -443,6 +443,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   Future<void> _runUpdateCheck(
     AppConfig config, {
     required bool resetRetry,
+    UpdateCheckMode mode = UpdateCheckMode.background,
   }) async {
     if (resetRetry) {
       _cancelUpdateCheckRetry();
@@ -463,7 +464,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _lastUpdateCheckAttemptAt = DateTime.now();
     late final UpdateCheckResult result;
     try {
-      result = await widget.updateCheckService.check();
+      result = await widget.updateCheckService.check(mode: mode);
     } catch (_) {
       result = UpdateCheckResult.failedWithKind(
         currentVersion: '',
@@ -567,6 +568,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                       desktopWidgetController: _desktopWidgetController,
                       levelProgressController: _levelProgressController,
                       updateCheckResult: _updateCheckResult,
+                      updateCheckService: widget.updateCheckService,
                       startupCloudSyncMessage: _startupCloudSyncMessage,
                       onDailyNoteSaved: (path) =>
                           _notifyNoteSaved(NoteKind.daily, path),
@@ -578,6 +580,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                     MemoryPage(localDataState: _localDataState),
                     SettingsPage(
                       localDataState: _localDataState,
+                      updateCheckService: widget.updateCheckService,
                       onConfigChanged: (config) {
                         final state = _localDataState.copyWith(config: config);
                         _handleLocalDataStateChanged(state);

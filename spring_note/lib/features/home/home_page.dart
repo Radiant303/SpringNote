@@ -2,7 +2,6 @@ import 'package:file_selector/file_selector.dart';
 import 'package:path/path.dart' as p;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:gpt_markdown/gpt_markdown.dart';
 
 import '../../core/attachments/attachment_manager.dart';
 import '../../core/attachments/pending_image.dart';
@@ -12,7 +11,6 @@ import '../../core/models/structured_work_note.dart';
 import '../../core/services/ai_client_service.dart';
 import '../../core/services/daily_note_service.dart';
 import '../../core/services/desktop_widget_controller.dart';
-import '../../core/services/external_link_service.dart';
 import '../../core/services/home_overview_service.dart';
 import '../../core/services/image_file_types.dart';
 import '../../core/services/level_progress_controller.dart';
@@ -22,8 +20,8 @@ import '../../core/services/pending_image_service.dart';
 import '../../core/services/stats_service.dart';
 import '../../core/services/update_check_service.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/widgets/markdown_code_block.dart';
 import '../../core/widgets/page_scaffold.dart';
+import '../../core/widgets/update_dialog.dart';
 import '../../src/rust/stats.dart' as rust_stats;
 
 typedef HomeAttachmentPicker = Future<List<HomeAttachment>> Function();
@@ -73,6 +71,7 @@ class HomePage extends StatefulWidget {
     this.desktopWidgetController,
     this.levelProgressController,
     this.updateCheckResult = UpdateCheckResult.idle,
+    this.updateCheckService,
     this.imageAttachmentPicker,
     this.documentAttachmentPicker,
     this.onDailyNoteSaved,
@@ -91,6 +90,7 @@ class HomePage extends StatefulWidget {
   final DesktopWidgetController? desktopWidgetController;
   final LevelProgressController? levelProgressController;
   final UpdateCheckResult updateCheckResult;
+  final UpdateCheckService? updateCheckService;
   final HomeImagePicker? imageAttachmentPicker;
   final HomeAttachmentPicker? documentAttachmentPicker;
   final ValueChanged<String>? onDailyNoteSaved;
@@ -761,7 +761,10 @@ class _HomePageState extends State<HomePage> {
               if (widget.updateCheckResult.status !=
                   UpdateCheckStatus.idle) ...[
                 const SizedBox(height: 12),
-                _UpdateNoticeBanner(result: widget.updateCheckResult),
+                _UpdateNoticeBanner(
+                  result: widget.updateCheckResult,
+                  updateCheckService: widget.updateCheckService,
+                ),
               ],
               if (widget.startupCloudSyncMessage != null) ...[
                 const SizedBox(height: 12),
@@ -2654,9 +2657,13 @@ class _CloudSyncIssueBanner extends StatelessWidget {
 }
 
 class _UpdateNoticeBanner extends StatefulWidget {
-  const _UpdateNoticeBanner({required this.result});
+  const _UpdateNoticeBanner({
+    required this.result,
+    required this.updateCheckService,
+  });
 
   final UpdateCheckResult result;
+  final UpdateCheckService? updateCheckService;
 
   @override
   State<_UpdateNoticeBanner> createState() => _UpdateNoticeBannerState();
@@ -2710,7 +2717,7 @@ class _UpdateNoticeBannerState extends State<_UpdateNoticeBanner> {
               if (widget.result.status == UpdateCheckStatus.failed)
                 Icon(Icons.info_outline_rounded, size: 18, color: foreground)
               else
-                _UpdateDownloadIcon(size: 18, color: foreground),
+                UpdateDownloadIcon(size: 18, color: foreground),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -2738,254 +2745,12 @@ class _UpdateNoticeBannerState extends State<_UpdateNoticeBanner> {
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.48),
       builder: (context) {
-        return _UpdateDialog(
+        return AppUpdateDialog(
+          updateCheckService: widget.updateCheckService ?? UpdateCheckService(),
           currentVersion: widget.result.currentVersion,
           latest: latest,
         );
       },
-    );
-  }
-}
-
-class _UpdateDownloadIcon extends StatelessWidget {
-  const _UpdateDownloadIcon({required this.size, required this.color});
-
-  final double size;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      size: Size.square(size),
-      painter: _UpdateDownloadIconPainter(color: color),
-    );
-  }
-}
-
-class _UpdateDownloadIconPainter extends CustomPainter {
-  const _UpdateDownloadIconPainter({required this.color});
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final sx = size.width / 24;
-    final sy = size.height / 24;
-    final strokeScale = sx < sy ? sx : sy;
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2 * strokeScale
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    Offset p(double x, double y) => Offset(x * sx, y * sy);
-
-    canvas.drawLine(p(12, 3), p(12, 15), paint);
-    canvas.drawLine(p(7, 10), p(12, 15), paint);
-    canvas.drawLine(p(17, 10), p(12, 15), paint);
-    canvas.drawPath(
-      Path()
-        ..moveTo(5 * sx, 17 * sy)
-        ..lineTo(5 * sx, 19 * sy)
-        ..cubicTo(5 * sx, 20.1 * sy, 5.9 * sx, 21 * sy, 7 * sx, 21 * sy)
-        ..lineTo(17 * sx, 21 * sy)
-        ..cubicTo(18.1 * sx, 21 * sy, 19 * sx, 20.1 * sy, 19 * sx, 19 * sy)
-        ..lineTo(19 * sx, 17 * sy),
-      paint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _UpdateDownloadIconPainter oldDelegate) {
-    return oldDelegate.color != color;
-  }
-}
-
-class _UpdateDialog extends StatelessWidget {
-  const _UpdateDialog({required this.currentVersion, required this.latest});
-
-  final String currentVersion;
-  final AppUpdateInfo latest;
-
-  static const _externalLinkService = ExternalLinkService();
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return Dialog(
-      backgroundColor: Colors.white,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 760, maxHeight: 700),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text('发现新版本', style: textTheme.titleLarge),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  _UpdateMetaPill(label: '当前版本', value: currentVersion),
-                  _UpdateMetaPill(label: '最新版本', value: latest.version),
-                  _UpdateMetaPill(label: '更新时间', value: latest.changeTime),
-                ],
-              ),
-              const SizedBox(height: 18),
-              Text('更新内容', style: textTheme.titleMedium),
-              const SizedBox(height: 10),
-              Flexible(
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFAFAFA),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: SelectionArea(
-                    child: SingleChildScrollView(
-                      child: DefaultTextStyle.merge(
-                        style: textTheme.bodyLarge?.copyWith(
-                          color: const Color(0xFF3A3A3A),
-                          fontSize: 14,
-                          height: 1.55,
-                        ),
-                        child: GptMarkdown(
-                          latest.changelog,
-                          followLinkColor: true,
-                          useDollarSignsForLatex: true,
-                          codeBuilder: (context, name, code, closed) =>
-                              MarkdownCodeBlock(language: name, code: code),
-                          style: textTheme.bodyLarge?.copyWith(
-                            color: const Color(0xFF3A3A3A),
-                            fontSize: 14,
-                            height: 1.55,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              _InstallerDownloadButton(
-                fileName: latest.installerName,
-                onTap: () => _externalLinkService.open(latest.downloadUrl),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _UpdateMetaPill extends StatelessWidget {
-  const _UpdateMetaPill({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text.rich(
-        TextSpan(
-          text: '$label ',
-          style: const TextStyle(color: Color(0xFF8A8A8A)),
-          children: [
-            TextSpan(
-              text: value,
-              style: const TextStyle(
-                color: AppTheme.text,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(fontSize: 12, height: 1),
-      ),
-    );
-  }
-}
-
-class _InstallerDownloadButton extends StatefulWidget {
-  const _InstallerDownloadButton({required this.fileName, required this.onTap});
-
-  final String fileName;
-  final VoidCallback onTap;
-
-  @override
-  State<_InstallerDownloadButton> createState() =>
-      _InstallerDownloadButtonState();
-}
-
-class _InstallerDownloadButtonState extends State<_InstallerDownloadButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeOutCubic,
-          height: 44,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            color: _hovered ? const Color(0xFFEDEDED) : const Color(0xFFF5F5F5),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Row(
-            children: [
-              const _UpdateDownloadIcon(size: 18, color: Color(0xFF4F4F4F)),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  widget.fileName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.text,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              const Icon(
-                Icons.open_in_new_rounded,
-                size: 16,
-                color: Color(0xFF666666),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

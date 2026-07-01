@@ -9,6 +9,7 @@
 namespace {
 
 constexpr UINT kTrayCallbackMessage = WM_APP + 0x42;
+constexpr UINT kQuitForUpdateMessage = WM_APP + 0x43;
 constexpr UINT kTrayIconId = 0x5352;
 constexpr UINT kOpenMenuId = 0x1001;
 constexpr UINT kExitMenuId = 0x1002;
@@ -58,6 +59,16 @@ bool TrayManager::ShouldCloseToTray() const {
   return !exiting_ && tray_icon_visible_ && close_to_tray_;
 }
 
+void TrayManager::PrepareForApplicationExit() {
+  exiting_ = true;
+  close_to_tray_ = false;
+  HideTrayIcon();
+}
+
+UINT TrayManager::QuitForUpdateMessage() const {
+  return kQuitForUpdateMessage;
+}
+
 void TrayManager::RegisterChannelHandler() {
   channel_ = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
       messenger_, "spring_note/tray",
@@ -84,6 +95,21 @@ void TrayManager::RegisterChannelHandler() {
           HideTrayIcon();
           close_to_tray_ = false;
           result->Success();
+          return;
+        }
+
+        if (call.method_name() == "prepareForApplicationExit") {
+          PrepareForApplicationExit();
+          result->Success();
+          return;
+        }
+
+        if (call.method_name() == "quitForUpdate") {
+          PrepareForApplicationExit();
+          result->Success();
+          if (main_window_) {
+            PostMessage(main_window_, kQuitForUpdateMessage, 0, 0);
+          }
           return;
         }
 
@@ -202,7 +228,7 @@ void TrayManager::ShowContextMenu() {
 }
 
 void TrayManager::ExitApplication() {
-  exiting_ = true;
+  PrepareForApplicationExit();
   HideTrayIcon();
   if (main_window_) {
     PostMessage(main_window_, WM_CLOSE, 0, 0);

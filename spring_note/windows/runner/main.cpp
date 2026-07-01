@@ -12,6 +12,12 @@ constexpr wchar_t kSingleInstanceMutexName[] =
 constexpr wchar_t kMainWindowClassName[] = L"FLUTTER_RUNNER_WIN32_WINDOW";
 constexpr wchar_t kMainWindowTitle[] = L"SpringNote";
 
+void RegisterRestartManagerRelaunch() {
+  // Inno Setup uses Windows Restart Manager to close and relaunch apps during
+  // updates. Register this process so silent updates can bring SpringNote back.
+  RegisterApplicationRestart(L"", 0);
+}
+
 void ShowExistingWindow() {
   HWND window = FindWindowW(kMainWindowClassName, kMainWindowTitle);
   if (!window) {
@@ -38,6 +44,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     CloseHandle(single_instance_mutex);
     return EXIT_SUCCESS;
   }
+
+  RegisterRestartManagerRelaunch();
 
   // Attach to console when present (e.g., 'flutter run') or create a
   // new console when running with a debugger.

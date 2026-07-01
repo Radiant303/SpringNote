@@ -8,6 +8,7 @@ PODS:
     - FlutterMacOS
   - screen_retriever_macos (0.0.1):
     - FlutterMacOS
+  - Sparkle (2.9.3)
   - window_manager (0.5.0):
     - FlutterMacOS
 
@@ -17,7 +18,12 @@ DEPENDENCIES:
   - package_info_plus (from `Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos`)
   - rust (from `Flutter/ephemeral/.symlinks/plugins/rust/macos`)
   - screen_retriever_macos (from `Flutter/ephemeral/.symlinks/plugins/screen_retriever_macos/macos`)
+  - Sparkle
   - window_manager (from `Flutter/ephemeral/.symlinks/plugins/window_manager/macos`)
+
+SPEC REPOS:
+  trunk:
+    - Sparkle
 
 EXTERNAL SOURCES:
   file_selector_macos:
@@ -39,8 +45,9 @@ SPEC CHECKSUMS:
   package_info_plus: f0052d280d17aa382b932f399edf32507174e870
   rust: 439c443b710b8595978daf22738de7950e62afa5
   screen_retriever_macos: c5508cc3c66ff0d4db650480cf0ab691e220d933
+  Sparkle: 39dbdf28637f6056fbf5ee6494bdbfae54f49f41
   window_manager: b729e31d38fb04905235df9ea896128991cad99e
 
-PODFILE CHECKSUM: 54d867c82ac51cbd61b565781b9fada492027009
+PODFILE CHECKSUM: 7906fa6f8b70b93d77b6ccc70f2c717e2ad05bee
 
 COCOAPODS: 1.16.2

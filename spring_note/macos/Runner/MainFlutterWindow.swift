@@ -28,6 +28,9 @@ class MainFlutterWindow: NSWindow {
         mainWindow: self,
         messenger: flutterViewController.engine.binaryMessenger
       )
+      appDelegate.macUpdateController.attach(
+        messenger: flutterViewController.engine.binaryMessenger
+      )
       appDelegate.securityScopedDirectoryController.attach(
         messenger: flutterViewController.engine.binaryMessenger
       )

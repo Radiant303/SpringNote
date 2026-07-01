@@ -18,7 +18,9 @@ import '../../core/services/external_link_service.dart';
 import '../../core/services/local_data_service.dart';
 import '../../core/services/platform_feature_support.dart';
 import '../../core/services/system_font_service.dart';
+import '../../core/services/update_check_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/update_dialog.dart';
 import 'settings_stats_panel.dart';
 
 part 'settings_preferences_panel.dart';
@@ -55,21 +57,23 @@ enum _SettingsNavIconType {
 }
 
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({
+  SettingsPage({
     super.key,
     required this.localDataState,
     this.localDataService = const LocalDataService(),
     this.aiClientService = const AiClientService(),
     this.cloudSyncService = const CloudSyncService(),
+    UpdateCheckService? updateCheckService,
     this.onConfigChanged,
     this.onLocalDataStateChanged,
     this.onCloudSyncCompleted,
-  });
+  }) : updateCheckService = updateCheckService ?? UpdateCheckService();
 
   final LocalDataState localDataState;
   final LocalDataService localDataService;
   final AiClientService aiClientService;
   final CloudSyncService cloudSyncService;
+  final UpdateCheckService updateCheckService;
   final ValueChanged<AppConfig>? onConfigChanged;
   final ValueChanged<LocalDataState>? onLocalDataStateChanged;
   final VoidCallback? onCloudSyncCompleted;
@@ -379,7 +383,9 @@ class _SettingsPageState extends State<SettingsPage> {
       _SettingsSection.stats => SettingsStatsPanel(
         localDataState: widget.localDataState.copyWith(config: _config),
       ),
-      _SettingsSection.about => const _AboutPanel(),
+      _SettingsSection.about => _AboutPanel(
+        updateCheckService: widget.updateCheckService,
+      ),
     };
   }
 }

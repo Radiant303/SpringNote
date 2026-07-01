@@ -7,6 +7,7 @@ class AppDelegate: FlutterAppDelegate {
   let clipboardImageController = ClipboardImageController()
   let desktopWidgetController = DesktopWidgetWindowController()
   let globalHotkeyController = GlobalHotkeyController()
+  let macUpdateController = MacUpdateController()
   let securityScopedDirectoryController = SecurityScopedDirectoryController()
   let trayController = TrayController()
 
@@ -16,6 +17,11 @@ class AppDelegate: FlutterAppDelegate {
       return false
     }
     return true
+  }
+
+  override func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+    trayController.prepareForApplicationExit()
+    return .terminateNow
   }
 
   override func applicationDidBecomeActive(_ notification: Notification) {

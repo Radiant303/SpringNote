@@ -1161,7 +1161,9 @@ class _RetryingStartupCloudSyncService extends CloudSyncService {
 
 class _IdleUpdateCheckService extends UpdateCheckService {
   @override
-  Future<UpdateCheckResult> check() async {
+  Future<UpdateCheckResult> check({
+    UpdateCheckMode mode = UpdateCheckMode.background,
+  }) async {
     return UpdateCheckResult.idle;
   }
 }
@@ -1173,7 +1175,9 @@ class _RetryingUpdateCheckService extends UpdateCheckService {
   int calls = 0;
 
   @override
-  Future<UpdateCheckResult> check() async {
+  Future<UpdateCheckResult> check({
+    UpdateCheckMode mode = UpdateCheckMode.background,
+  }) async {
     final index = calls < results.length ? calls : results.length - 1;
     calls++;
     return results[index];
