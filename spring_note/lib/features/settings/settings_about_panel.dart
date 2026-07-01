@@ -17,7 +17,6 @@ class _AboutPanel extends StatelessWidget {
     return _SettingsScrollFrame(
       maxWidth: 1120,
       children: [
-        Text('关于', style: Theme.of(context).textTheme.titleLarge),
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
