@@ -559,7 +559,7 @@ class _ShortcutKeyField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 48,
+      height: 42,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: const Color(0xFFF6F6F6),
@@ -883,7 +883,7 @@ class _ProtocolFieldState extends State<_ProtocolField> {
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 130),
                         curve: Curves.easeOutCubic,
-                        height: 48,
+                        height: 36,
                         padding: const EdgeInsets.symmetric(horizontal: 14),
                         decoration: BoxDecoration(
                           color: active
