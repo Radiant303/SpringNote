@@ -1477,12 +1477,10 @@ class _FontSettingRowState extends State<_FontSettingRow> {
             loading: _loading,
             onTap: _openFontPicker,
           ),
-          IconButton(
-            tooltip: '重置字体',
+          _FontResetButton(
             onPressed: widget.value == 'system'
                 ? null
                 : () => widget.onChanged('system'),
-            icon: const Icon(Icons.restart_alt_rounded, size: 17),
           ),
         ],
       ),
@@ -1524,7 +1522,7 @@ class _FontPickerButtonState extends State<_FontPickerButton> {
           duration: const Duration(milliseconds: 120),
           curve: Curves.easeOutCubic,
           width: 220,
-          height: 38,
+          height: 42,
           padding: const EdgeInsets.symmetric(horizontal: 13),
           decoration: BoxDecoration(
             color: active ? const Color(0xFFEDEDED) : const Color(0xFFF5F5F5),
@@ -1767,4 +1765,76 @@ class _FontOptionTile extends StatelessWidget {
 
 String _fontLabel(String font) {
   return font == 'system' ? '系统默认' : font;
+}
+
+class _FontResetButton extends StatefulWidget {
+  const _FontResetButton({required this.onPressed});
+
+  final VoidCallback? onPressed;
+
+  @override
+  State<_FontResetButton> createState() => _FontResetButtonState();
+}
+
+class _FontResetButtonState extends State<_FontResetButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.onPressed != null;
+    final active = enabled && _hovered;
+    const backgroundColor = Color(0xFFF5F5F5);
+    final iconColor = !enabled
+        ? const Color(0xFFBDBDBD)
+        : (active ? AppTheme.text : AppTheme.textSubtle);
+
+    return Tooltip(
+      message: '重置字体',
+      waitDuration: const Duration(milliseconds: 450),
+      child: MouseRegion(
+        cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+        onEnter: (_) {
+          if (enabled) {
+            setState(() => _hovered = true);
+          }
+        },
+        onExit: (_) {
+          if (_hovered) {
+            setState(() => _hovered = false);
+          }
+        },
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onPressed,
+          child: SizedBox(
+            width: 36,
+            height: 36,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Positioned.fill(
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 120),
+                    curve: Curves.easeOutCubic,
+                    opacity: active ? 1 : 0,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: backgroundColor,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.restart_alt_rounded,
+                  size: 16,
+                  color: iconColor,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
