@@ -11,6 +11,7 @@ import '../../core/models/note_file.dart';
 import '../../core/services/ai_client_service.dart';
 import '../../core/services/clipboard_image_service.dart';
 import '../../core/services/cloud_sync_service.dart';
+import '../../core/services/image_file_types.dart';
 import '../../core/services/note_service.dart';
 import '../../core/services/pasted_image_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -20,10 +21,17 @@ import 'markdown_preview.dart';
 typedef NoteImagePicker = Future<List<NoteImageAttachment>> Function();
 
 class NoteImageAttachment {
-  const NoteImageAttachment({required this.path, required this.name});
+  const NoteImageAttachment({
+    required this.path,
+    required this.name,
+    this.extension,
+    this.readBytes,
+  });
 
   final String path;
   final String name;
+  final String? extension;
+  final Future<Uint8List> Function()? readBytes;
 }
 
 class NotesPage extends StatefulWidget {
@@ -676,17 +684,14 @@ class _NotesPageState extends State<NotesPage> {
       }
       final copiedImages = <NoteImageAttachment>[];
       for (final image in images) {
-        if (image.path.trim().isEmpty) {
+        final copied = await _copyOrSavePickedImage(
+          notePath: selected.path,
+          image: image,
+        );
+        if (copied == null) {
           continue;
         }
-        final saved = await widget.pastedImageService.copyImageFileForNote(
-          notePath: selected.path,
-          sourcePath: image.path,
-          sourceName: image.name,
-        );
-        copiedImages.add(
-          NoteImageAttachment(path: saved.path, name: saved.name),
-        );
+        copiedImages.add(copied);
       }
       final snippets = copiedImages
           .map((image) => _markdownImageSnippet(image, notePath: selected.path))
@@ -713,6 +718,51 @@ class _NotesPageState extends State<NotesPage> {
     } finally {
       _insertingImage = false;
     }
+  }
+
+  Future<NoteImageAttachment?> _copyOrSavePickedImage({
+    required String notePath,
+    required NoteImageAttachment image,
+  }) async {
+    if (image.path.trim().isNotEmpty) {
+      try {
+        final saved = await widget.pastedImageService.copyImageFileForNote(
+          notePath: notePath,
+          sourcePath: image.path,
+          sourceName: image.name,
+        );
+        return NoteImageAttachment(path: saved.path, name: saved.name);
+      } catch (error, stackTrace) {
+        if (image.readBytes == null) {
+          rethrow;
+        }
+        debugPrint(
+          'Failed to copy picked image, falling back to bytes: '
+          '$error\n$stackTrace',
+        );
+      }
+    }
+
+    final readBytes = image.readBytes;
+    if (readBytes == null) {
+      return null;
+    }
+    final bytes = await readBytes();
+    final extension =
+        image.extension ??
+        _imageExtension(image.name) ??
+        _imageExtension(image.path) ??
+        'png';
+    final preferredName = image.name.trim().isEmpty
+        ? 'image.$extension'
+        : image.name;
+    final saved = await widget.pastedImageService.saveImageBytesForNote(
+      notePath: notePath,
+      bytes: bytes,
+      preferredName: preferredName,
+      extension: extension,
+    );
+    return NoteImageAttachment(path: saved.path, name: saved.name);
   }
 
   Future<void> _handlePasteShortcut() async {
@@ -880,9 +930,22 @@ class _NotesPageState extends State<NotesPage> {
     );
     return files
         .map(
-          (file) => NoteImageAttachment(path: file.path, name: _fileName(file)),
+          (file) => NoteImageAttachment(
+            path: file.path,
+            name: _fileName(file),
+            extension: _imageExtension(file.name) ?? _imageExtension(file.path),
+            readBytes: file.readAsBytes,
+          ),
         )
         .toList();
+  }
+
+  String? _imageExtension(String path) {
+    final extension = allowedImageExtension(path);
+    if (extension == null || extension.length <= 1) {
+      return null;
+    }
+    return extension.substring(1);
   }
 
   String _fileName(XFile file) {

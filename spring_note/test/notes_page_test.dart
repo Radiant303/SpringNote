@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -487,6 +488,61 @@ final value = 1;
       isTrue,
     );
     expect(find.text('已插入图片'), findsOneWidget);
+  });
+
+  testWidgets('notes editor falls back to selected image bytes', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final pastedImageService = _FailingCopyPastedImageService(
+      const SavedPastedImage(
+        path: 'D:\\Temp\\SpringNote\\notes\\images\\fallback.png',
+        name: 'fallback.png',
+      ),
+    );
+    final noteService = _MemoryNoteService({
+      'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-18.md': '# 日报\n前缀',
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: NotesPage(
+          localDataState: _localDataState,
+          noteService: noteService,
+          pastedImageService: pastedImageService,
+          imagePicker: () async => [
+            NoteImageAttachment(
+              path: 'D:\\Blocked\\picked.png',
+              name: 'picked.png',
+              extension: 'png',
+              readBytes: () async => Uint8List.fromList([1, 2, 3]),
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('插入图片'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      noteService.contents.values.single,
+      '# 日报\n前缀\n![fallback.png](../images/fallback.png)',
+    );
+    expect(pastedImageService.copyCalls, 1);
+    expect(pastedImageService.saveBytesCalls, 1);
+    expect(pastedImageService.savedBytes, [1, 2, 3]);
+    expect(pastedImageService.savedPreferredName, 'picked.png');
+    expect(pastedImageService.savedExtension, 'png');
+    expect(find.text('已插入图片'), findsOneWidget);
+    expect(find.text('无法插入图片，请重新选择文件。'), findsNothing);
   });
 
   testWidgets('notes editor ignores empty image picker result', (
@@ -1125,10 +1181,13 @@ class _MemoryPastedImageService extends PastedImageService {
 
   final SavedPastedImage savedImage;
   int copyCalls = 0;
+  int saveBytesCalls = 0;
   Uint8List? savedBytes;
   String? notePath;
   String? sourcePath;
   String? sourceName;
+  String? savedPreferredName;
+  String? savedExtension;
 
   @override
   Future<SavedPastedImage> savePngForNote({
@@ -1138,6 +1197,21 @@ class _MemoryPastedImageService extends PastedImageService {
   }) async {
     this.notePath = notePath;
     savedBytes = pngBytes;
+    return savedImage;
+  }
+
+  @override
+  Future<SavedPastedImage> saveImageBytesForNote({
+    required String notePath,
+    required Uint8List bytes,
+    required String preferredName,
+    required String extension,
+  }) async {
+    saveBytesCalls++;
+    this.notePath = notePath;
+    savedBytes = bytes;
+    savedPreferredName = preferredName;
+    savedExtension = extension;
     return savedImage;
   }
 
@@ -1152,5 +1226,22 @@ class _MemoryPastedImageService extends PastedImageService {
     this.sourcePath = sourcePath;
     this.sourceName = sourceName;
     return savedImage;
+  }
+}
+
+class _FailingCopyPastedImageService extends _MemoryPastedImageService {
+  _FailingCopyPastedImageService(super.savedImage);
+
+  @override
+  Future<SavedPastedImage> copyImageFileForNote({
+    required String notePath,
+    required String sourcePath,
+    required String sourceName,
+  }) async {
+    copyCalls++;
+    this.notePath = notePath;
+    this.sourcePath = sourcePath;
+    this.sourceName = sourceName;
+    throw FileSystemException('copy failed');
   }
 }
