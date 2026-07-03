@@ -80,6 +80,8 @@ class _NotesPageState extends State<NotesPage> {
   bool _autoCloudUploading = false;
   bool _autoCloudUploadAfterSave = false;
   bool _editorFocusedByPointer = false;
+  bool _typoraMode = false;
+  bool _typoraEditOverlayOpen = false;
 
   static const Duration _autoCloudSyncInterval = Duration(seconds: 3);
 
@@ -978,6 +980,21 @@ class _NotesPageState extends State<NotesPage> {
         .toList();
   }
 
+  void _toggleTyporaMode() {
+    setState(() {
+      _typoraMode = !_typoraMode;
+      if (!_typoraMode) {
+        _typoraEditOverlayOpen = false;
+      }
+    });
+  }
+
+  void _toggleTyporaEditOverlay() {
+    setState(() {
+      _typoraEditOverlayOpen = !_typoraEditOverlayOpen;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final selected = _selectedNote;
@@ -995,25 +1012,48 @@ class _NotesPageState extends State<NotesPage> {
             onNoteSelected: _selectNote,
           ),
           Expanded(
-            flex: 32,
-            child: _EditorPane(
-              controller: _editorController,
-              focusNode: _editorFocusNode,
-              statusText: _editorStatusText,
-              enabled: selected != null && !_loading,
-              predicting: _predicting,
-              onInsertImage: _insertImageFromPicker,
-              onPointerFocus: _handleEditorPointerFocus,
-            ),
-          ),
-          Expanded(
-            flex: 32,
-            child: _PreviewPane(
-              markdown: _editorController.text,
-              localImageBasePath: selected == null
-                  ? null
-                  : _parentDirectoryPath(selected.path),
-            ),
+            child: _typoraMode
+                ? _TyporaPane(
+                    markdown: _editorController.text,
+                    localImageBasePath: selected == null
+                        ? null
+                        : _parentDirectoryPath(selected.path),
+                    editOverlayOpen: _typoraEditOverlayOpen,
+                    onToggleEditOverlay: _toggleTyporaEditOverlay,
+                    controller: _editorController,
+                    focusNode: _editorFocusNode,
+                    statusText: _editorStatusText,
+                    enabled: selected != null && !_loading,
+                    predicting: _predicting,
+                    onInsertImage: _insertImageFromPicker,
+                    onPointerFocus: _handleEditorPointerFocus,
+                    onToggleTyporaMode: _toggleTyporaMode,
+                  )
+                : Row(
+                    children: [
+                      Expanded(
+                        flex: 32,
+                        child: _EditorPane(
+                          controller: _editorController,
+                          focusNode: _editorFocusNode,
+                          statusText: _editorStatusText,
+                          enabled: selected != null && !_loading,
+                          predicting: _predicting,
+                          onInsertImage: _insertImageFromPicker,
+                          onPointerFocus: _handleEditorPointerFocus,
+                        ),
+                      ),
+                      Expanded(
+                        flex: 32,
+                        child: _PreviewPane(
+                          markdown: _editorController.text,
+                          localImageBasePath: selected == null
+                              ? null
+                              : _parentDirectoryPath(selected.path),
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ],
       ),
@@ -1959,10 +1999,14 @@ class _PreviewPane extends StatelessWidget {
   const _PreviewPane({
     required this.markdown,
     required this.localImageBasePath,
+    this.typoraMode = false,
+    this.onToggleTyporaMode,
   });
 
   final String markdown;
   final String? localImageBasePath;
+  final bool typoraMode;
+  final VoidCallback? onToggleTyporaMode;
 
   @override
   Widget build(BuildContext context) {
@@ -1980,6 +2024,12 @@ class _PreviewPane extends StatelessWidget {
             ),
           ),
           const Spacer(),
+          SpringNoteIconButton(
+            tooltip: typoraMode ? '退出实时渲染模式' : '实时渲染模式',
+            icon: Icons.remove_red_eye_outlined,
+            onPressed: onToggleTyporaMode,
+          ),
+          const SizedBox(width: 8),
           const Icon(
             Icons.open_in_full_rounded,
             size: 15,
@@ -1991,6 +2041,99 @@ class _PreviewPane extends StatelessWidget {
         markdown: markdown,
         localImageBasePath: localImageBasePath,
       ),
+    );
+  }
+}
+
+class _TyporaPane extends StatelessWidget {
+  const _TyporaPane({
+    required this.markdown,
+    required this.localImageBasePath,
+    required this.editOverlayOpen,
+    required this.onToggleEditOverlay,
+    required this.controller,
+    required this.focusNode,
+    required this.statusText,
+    required this.enabled,
+    required this.predicting,
+    required this.onInsertImage,
+    required this.onPointerFocus,
+    required this.onToggleTyporaMode,
+  });
+
+  final String markdown;
+  final String? localImageBasePath;
+  final bool editOverlayOpen;
+  final VoidCallback onToggleEditOverlay;
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final String statusText;
+  final bool enabled;
+  final bool predicting;
+  final VoidCallback onInsertImage;
+  final VoidCallback onPointerFocus;
+  final VoidCallback onToggleTyporaMode;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final overlayHeight = constraints.maxHeight * 0.4;
+        return Stack(
+          clipBehavior: Clip.hardEdge,
+          children: [
+            // Full-width preview
+            Positioned.fill(
+              child: _PreviewPane(
+                markdown: markdown,
+                localImageBasePath: localImageBasePath,
+                typoraMode: true,
+                onToggleTyporaMode: onToggleTyporaMode,
+              ),
+            ),
+
+            // Slide-up edit overlay
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: editOverlayOpen ? overlayHeight : 0,
+              child: SizedBox(
+                height: overlayHeight,
+                child: Material(
+                  elevation: 8,
+                  color: Colors.white,
+                  child: _EditorPane(
+                    controller: controller,
+                    focusNode: focusNode,
+                    statusText: statusText,
+                    enabled: enabled,
+                    predicting: predicting,
+                    onInsertImage: onInsertImage,
+                    onPointerFocus: onPointerFocus,
+                  ),
+                ),
+              ),
+            ),
+
+            // FAB
+            Positioned(
+              right: 24,
+              bottom: editOverlayOpen ? overlayHeight + 24 : 24,
+              child: FloatingActionButton.small(
+                onPressed: onToggleEditOverlay,
+                backgroundColor: const Color(0xFF3A3A3A),
+                child: Icon(
+                  editOverlayOpen ? Icons.close : Icons.edit_outlined,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
