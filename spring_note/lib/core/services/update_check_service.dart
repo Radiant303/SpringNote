@@ -328,6 +328,7 @@ class UpdateCheckService {
     onProgress?.call(
       const UpdateInstallProgress(stage: UpdateInstallStage.verifying),
     );
+    await _verifyWindowsInstallerChecksum(latest, installer);
     onProgress?.call(
       const UpdateInstallProgress(stage: UpdateInstallStage.launching),
     );
@@ -338,9 +339,7 @@ class UpdateCheckService {
 
   Future<void> _launchWindowsUpdater(Directory tempDir, File installer) async {
     final app = File(Platform.resolvedExecutable);
-    final updater = File(
-      _joinPath(app.parent.path, 'SpringNoteUpdater.exe'),
-    );
+    final updater = File(_joinPath(app.parent.path, 'SpringNoteUpdater.exe'));
     if (!await updater.exists()) {
       throw const UpdateInstallException('更新助手缺失，请下载最新安装包手动更新。');
     }
@@ -414,6 +413,65 @@ class UpdateCheckService {
       await sink?.close();
       client.close(force: true);
     }
+  }
+
+  Future<void> _verifyWindowsInstallerChecksum(
+    AppUpdateInfo latest,
+    File installer,
+  ) async {
+    final expected = await _readExpectedSha256(latest);
+    final actual = await _calculateWindowsSha256(installer);
+    if (actual.toLowerCase() != expected.toLowerCase()) {
+      throw const UpdateInstallException('安装包校验失败，请稍后重试。');
+    }
+  }
+
+  Future<String> _readExpectedSha256(AppUpdateInfo latest) async {
+    final downloadUri = Uri.parse(latest.downloadUrl);
+    final segments = downloadUri.pathSegments;
+    if (segments.isEmpty) {
+      throw const UpdateInstallException('无法读取安装包校验信息。');
+    }
+
+    final checksumUri = downloadUri.replace(
+      pathSegments: [...segments.take(segments.length - 1), 'SHA256SUMS.txt'],
+    );
+    final checksums = await _readUrl(checksumUri.toString());
+    final fileName = latest.installerName;
+    for (final line in checksums.split('\n')) {
+      final parts = line.trim().split(RegExp(r'\s+'));
+      if (parts.length < 2) {
+        continue;
+      }
+      final hash = parts.first;
+      final name = parts.last.replaceFirst(RegExp(r'^\*'), '');
+      if (name == fileName && RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(hash)) {
+        return hash;
+      }
+    }
+
+    throw const UpdateInstallException('未找到安装包校验信息。');
+  }
+
+  Future<String> _calculateWindowsSha256(File file) async {
+    final result = await Process.run('certutil', [
+      '-hashfile',
+      file.path,
+      'SHA256',
+    ]);
+    if (result.exitCode != 0) {
+      throw const UpdateInstallException('安装包校验失败，请稍后重试。');
+    }
+
+    final output = '${result.stdout}\n${result.stderr}';
+    for (final line in output.split('\n')) {
+      final normalized = line.replaceAll(RegExp(r'\s+'), '').trim();
+      if (RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(normalized)) {
+        return normalized;
+      }
+    }
+
+    throw const UpdateInstallException('安装包校验失败，请稍后重试。');
   }
 
   String _safeFileName(String fileName) {

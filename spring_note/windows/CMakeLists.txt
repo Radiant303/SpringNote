@@ -58,7 +58,7 @@ add_executable(SpringNoteUpdater WIN32
 )
 apply_standard_settings(SpringNoteUpdater)
 target_compile_definitions(SpringNoteUpdater PRIVATE "NOMINMAX")
-target_link_libraries(SpringNoteUpdater PRIVATE "shell32.lib" "wintrust.lib")
+target_link_libraries(SpringNoteUpdater PRIVATE "shell32.lib")
 
 
 # Generated plugin build rules, which manage building the plugins and adding

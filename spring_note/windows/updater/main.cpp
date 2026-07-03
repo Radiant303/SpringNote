@@ -1,7 +1,5 @@
 #include <windows.h>
 #include <shellapi.h>
-#include <softpub.h>
-#include <wintrust.h>
 
 #include <cwchar>
 #include <cstdlib>
@@ -131,37 +129,6 @@ void WaitForOldProcess(const Options& options) {
   CloseHandle(process);
 }
 
-bool VerifyInstallerSignature(const Options& options) {
-  WriteLog(options, L"verifying installer signature");
-
-  WINTRUST_FILE_INFO file_info{};
-  file_info.cbStruct = sizeof(file_info);
-  file_info.pcwszFilePath = options.installer.c_str();
-
-  GUID policy = WINTRUST_ACTION_GENERIC_VERIFY_V2;
-  WINTRUST_DATA trust_data{};
-  trust_data.cbStruct = sizeof(trust_data);
-  trust_data.dwUIChoice = WTD_UI_NONE;
-  trust_data.fdwRevocationChecks = WTD_REVOKE_WHOLECHAIN;
-  trust_data.dwUnionChoice = WTD_CHOICE_FILE;
-  trust_data.dwStateAction = WTD_STATEACTION_VERIFY;
-  trust_data.dwProvFlags = WTD_REVOCATION_CHECK_CHAIN;
-  trust_data.pFile = &file_info;
-
-  const LONG status = WinVerifyTrust(nullptr, &policy, &trust_data);
-  trust_data.dwStateAction = WTD_STATEACTION_CLOSE;
-  WinVerifyTrust(nullptr, &policy, &trust_data);
-
-  if (status == ERROR_SUCCESS) {
-    WriteLog(options, L"installer signature is trusted");
-    return true;
-  }
-
-  WriteLog(options, L"installer signature verification failed: " +
-                        LastErrorText(static_cast<DWORD>(status)));
-  return false;
-}
-
 DWORD RunInstaller(const Options& options) {
   const std::wstring arguments = InstallerArguments(options.inno_log);
   const std::wstring installer_directory = ParentPath(options.installer);
@@ -256,10 +223,6 @@ int APIENTRY wWinMain(HINSTANCE, HINSTANCE, wchar_t*, int) {
 
   WriteLog(options, L"helper started");
   WaitForOldProcess(options);
-  if (!VerifyInstallerSignature(options)) {
-    WriteLog(options, L"helper exiting after signature verification failure");
-    return 3;
-  }
   const DWORD installer_exit_code = RunInstaller(options);
   if (installer_exit_code != 0) {
     WriteLog(options, L"helper exiting after installer failure");

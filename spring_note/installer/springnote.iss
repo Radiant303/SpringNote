@@ -7,7 +7,7 @@
 #if EnvAppVersion != ""
   #define MyAppVersion EnvAppVersion
 #else
-  #define MyAppVersion "1.0.1"
+  #define MyAppVersion "1.0.2"
 #endif
 #define MyAppPublisher "Radiant303"
 #define MyAppURL "https://github.com/Radiant303/SpringNote"
