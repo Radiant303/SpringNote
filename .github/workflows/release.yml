@@ -374,25 +374,7 @@ jobs:
           for attempt in 1 2 3; do
             git fetch origin "${{ github.event.repository.default_branch }}:refs/remotes/origin/${{ github.event.repository.default_branch }}" --depth=1
             git switch -C release-metadata "origin/${{ github.event.repository.default_branch }}"
-            current_update_version="$(python3 - <<'PY'
-            import json
-            import pathlib
-
-            versions = []
-            for name in ("mac.json", "windows.json"):
-                path = pathlib.Path("update") / name
-                if path.exists():
-                    versions.append(json.loads(path.read_text(encoding="utf-8")).get("version", "0.0.0"))
-
-            def parts(version):
-                try:
-                    return tuple(int(part) for part in str(version).split("+", 1)[0].split("."))
-                except ValueError:
-                    return (0, 0, 0)
-
-            print(max(versions or ["0.0.0"], key=parts))
-            PY
-            )"
+            current_update_version="$(python3 -c 'import json, pathlib, re; versions = [json.loads(path.read_text(encoding="utf-8")).get("version", "0.0.0") for name in ("mac.json", "windows.json") for path in [pathlib.Path("update") / name] if path.exists()]; parts = lambda version: tuple(int(part) for part in str(version).split("+", 1)[0].strip().split(".")) if re.fullmatch(r"\d+\.\d+\.\d+", str(version).split("+", 1)[0].strip()) else (0, 0, 0); print(max(versions or ["0.0.0"], key=parts))')"
             if python3 .github/scripts/verify_update_metadata.py \
               --is-newer-than "$current_update_version" "${{ needs.prepare-release.outputs.version }}" \
               --version "${{ needs.prepare-release.outputs.version }}" \
