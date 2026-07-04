@@ -67,11 +67,10 @@ class _NotesPageState extends State<NotesPage> {
   bool _loading = true;
   bool _saving = false;
   bool _predicting = false;
-  String _statusText = '正在加载';
+  String _statusText = 'AI 实时补全已就绪';
   String _lastEditorText = '';
   TextSelection _lastEditorSelection = const TextSelection.collapsed(offset: 0);
   int _editorRevision = 0;
-  int _editorTextRevision = 0;
   bool _awaitingInitialEditorSelection = false;
   TextEditingValue? _editorInitialValue;
   bool _restoreInitialSelectionAfterUndo = false;
@@ -282,7 +281,7 @@ class _NotesPageState extends State<NotesPage> {
       if (selected != null && selectedContent != null) {
         if (selectedContent != _editorController.text) {
           _setEditorText(selectedContent, preserveSelection: true);
-          _statusText = '已同步';
+          _statusText = 'AI 实时补全已就绪';
         }
       }
     });
@@ -296,7 +295,6 @@ class _NotesPageState extends State<NotesPage> {
     setState(() {
       _kind = kind;
       _loading = true;
-      _statusText = '正在加载';
     });
 
     final directory = _directoryFor(kind);
@@ -344,7 +342,7 @@ class _NotesPageState extends State<NotesPage> {
       _selectedNote = selected;
       _setEditorText(content);
       _loading = false;
-      _statusText = '已加载';
+      _statusText = 'AI 实时补全已就绪';
     });
   }
 
@@ -352,7 +350,6 @@ class _NotesPageState extends State<NotesPage> {
     setState(() {
       _selectedNote = note;
       _loading = true;
-      _statusText = '正在加载';
     });
 
     final content = await widget.noteService.readMarkdown(note.path);
@@ -363,7 +360,7 @@ class _NotesPageState extends State<NotesPage> {
     setState(() {
       _setEditorText(content);
       _loading = false;
-      _statusText = '已加载';
+      _statusText = 'AI 实时补全已就绪';
     });
   }
 
@@ -377,10 +374,6 @@ class _NotesPageState extends State<NotesPage> {
     final selection = _editorController.selection;
     final textChanged = text != _lastEditorText;
     final selectionChanged = selection != _lastEditorSelection;
-    if (textChanged) {
-      _editorTextRevision++;
-    }
-
     if (_awaitingInitialEditorSelection && selectionChanged && !textChanged) {
       _captureInitialEditorSelection();
     } else if (_awaitingInitialEditorSelection && textChanged) {
@@ -420,7 +413,6 @@ class _NotesPageState extends State<NotesPage> {
   Future<void> _saveEditorText(NoteFile selected, String text) async {
     setState(() {
       _saving = true;
-      _statusText = '保存中';
     });
 
     await widget.noteService.writeMarkdown(selected.path, text);
@@ -460,7 +452,6 @@ class _NotesPageState extends State<NotesPage> {
       return;
     }
 
-    final editorTextRevision = _editorTextRevision;
     try {
       final result = await _noteUploadQueue.flush();
       if (!mounted || !result.attempted) {
@@ -468,11 +459,6 @@ class _NotesPageState extends State<NotesPage> {
       }
       if (result.ok) {
         setState(() {
-          if (result.uploaded > 0 &&
-              _editorTextRevision == editorTextRevision &&
-              !_noteUploadQueue.hasPendingUploads) {
-            _statusText = '已自动同步';
-          }
           _editorMessage = null;
         });
       } else {
@@ -513,7 +499,6 @@ class _NotesPageState extends State<NotesPage> {
       ..selection = nextSelection
       ..addListener(_handleEditorChanged);
     _editorRevision++;
-    _editorTextRevision++;
     _awaitingInitialEditorSelection = true;
     _editorInitialValue = TextEditingValue(
       text: value,
@@ -1148,12 +1133,9 @@ class _NotesPageState extends State<NotesPage> {
     );
   }
 
-  String get _editorStatusText {
-    if (_saving) {
-      return '保存中';
-    }
+  String? get _editorStatusText {
     if (_predicting) {
-      return '补全预测中';
+      return 'AI 编辑预测中';
     }
     if (_fimPrediction != null) {
       return 'Tab 全部 · Ctrl+L 单行 · Ctrl+K 单字';
@@ -1877,7 +1859,7 @@ class _EditorPane extends StatefulWidget {
   final int editorRevision;
   final UndoHistoryController undoController;
   final FocusNode focusNode;
-  final String statusText;
+  final String? statusText;
   final bool enabled;
   final bool predicting;
   final VoidCallback onInsertImage;
@@ -1940,8 +1922,10 @@ class _EditorPaneState extends State<_EditorPane> {
             icon: Icons.image_outlined,
             onPressed: widget.enabled ? widget.onInsertImage : null,
           ),
-          const SizedBox(width: 8),
-          _EditorStatusPill(statusText: widget.statusText),
+          if (widget.statusText != null) ...[
+            const SizedBox(width: 8),
+            _EditorStatusPill(statusText: widget.statusText!),
+          ],
         ],
       ),
       child: LayoutBuilder(
@@ -2043,13 +2027,11 @@ class _EditorStatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final displayText = switch (statusText) {
-      '已加载' => 'AI 实时补全已就绪',
-      '补全预测中' => 'AI 补全预测中',
       _ => statusText,
     };
     final active =
-        statusText == '已加载' ||
-        statusText == '补全预测中' ||
+        statusText == 'AI 实时补全已就绪' ||
+        statusText == 'AI 编辑预测中' ||
         statusText.startsWith('Tab ');
     final foreground = active
         ? const Color(0xFF10B981)
