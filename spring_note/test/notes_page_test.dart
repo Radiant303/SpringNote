@@ -123,7 +123,7 @@ final value = 1;
     expect(find.text('2026-06-17 日报'), findsOneWidget);
   });
 
-  testWidgets('notes page checks focused note every three seconds', (
+  testWidgets('notes page uploads dirty focused note once', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(1440, 900);
@@ -165,7 +165,7 @@ final value = 1;
     await tester.pump(const Duration(seconds: 3));
     await tester.pump();
 
-    expect(cloudSyncApi.uploadCalls, 2);
+    expect(cloudSyncApi.uploadCalls, 1);
   });
 
   testWidgets('notes page uploads changed note once when editor loses focus', (

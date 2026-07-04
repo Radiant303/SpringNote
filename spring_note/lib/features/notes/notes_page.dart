@@ -12,6 +12,7 @@ import '../../core/services/ai_client_service.dart';
 import '../../core/services/clipboard_image_service.dart';
 import '../../core/services/cloud_sync_service.dart';
 import '../../core/services/note_service.dart';
+import '../../core/services/note_upload_queue.dart';
 import '../../core/services/pasted_image_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/page_scaffold.dart';
@@ -34,6 +35,7 @@ class NotesPage extends StatefulWidget {
     this.aiClientService = const AiClientService(),
     this.clipboardImageService = const ClipboardImageService(),
     this.cloudSyncService = const CloudSyncService(),
+    this.noteUploadQueue,
     this.pastedImageService = const PastedImageService(),
     this.externalNoteUpdate,
     this.imagePicker,
@@ -44,6 +46,7 @@ class NotesPage extends StatefulWidget {
   final AiClientService aiClientService;
   final ClipboardImageService clipboardImageService;
   final CloudSyncService cloudSyncService;
+  final NoteUploadQueue? noteUploadQueue;
   final PastedImageService pastedImageService;
   final ValueListenable<NoteExternalUpdate?>? externalNoteUpdate;
   final NoteImagePicker? imagePicker;
@@ -68,6 +71,7 @@ class _NotesPageState extends State<NotesPage> {
   String _lastEditorText = '';
   TextSelection _lastEditorSelection = const TextSelection.collapsed(offset: 0);
   int _editorRevision = 0;
+  int _editorTextRevision = 0;
   bool _awaitingInitialEditorSelection = false;
   TextEditingValue? _editorInitialValue;
   bool _restoreInitialSelectionAfterUndo = false;
@@ -82,9 +86,9 @@ class _NotesPageState extends State<NotesPage> {
   bool _pastingClipboard = false;
   int _notesLoadGeneration = 0;
   Timer? _autoCloudSyncTimer;
-  bool _autoCloudUploading = false;
   bool _autoCloudUploadAfterSave = false;
   bool _editorFocusedByPointer = false;
+  NoteUploadQueue? _ownedNoteUploadQueue;
 
   static const Duration _autoCloudSyncInterval = Duration(seconds: 3);
 
@@ -98,8 +102,9 @@ class _NotesPageState extends State<NotesPage> {
     widget.externalNoteUpdate?.addListener(_handleExternalNoteUpdate);
     _autoCloudSyncTimer = Timer.periodic(
       _autoCloudSyncInterval,
-      (_) => unawaited(_checkAutoUploadCurrentNote(requireEditorFocus: true)),
+      (_) => unawaited(_flushPendingNoteUploads(requireEditorFocus: true)),
     );
+    _noteUploadQueue.attach(widget.localDataState);
     _loadNotes(kind: _kind);
   }
 
@@ -112,6 +117,10 @@ class _NotesPageState extends State<NotesPage> {
     }
     if (_localDataDirectoryChanged(oldWidget.localDataState)) {
       unawaited(_loadNotes(kind: _kind));
+    }
+    if (widget.localDataState != oldWidget.localDataState ||
+        widget.noteUploadQueue != oldWidget.noteUploadQueue) {
+      _noteUploadQueue.attach(widget.localDataState);
     }
   }
 
@@ -190,7 +199,7 @@ class _NotesPageState extends State<NotesPage> {
       _autoCloudUploadAfterSave = true;
       return;
     }
-    unawaited(_checkAutoUploadCurrentNote(requireEditorFocus: false));
+    unawaited(_flushPendingNoteUploads(requireEditorFocus: false));
   }
 
   void _handleEditorPointerFocus() {
@@ -368,6 +377,9 @@ class _NotesPageState extends State<NotesPage> {
     final selection = _editorController.selection;
     final textChanged = text != _lastEditorText;
     final selectionChanged = selection != _lastEditorSelection;
+    if (textChanged) {
+      _editorTextRevision++;
+    }
 
     if (_awaitingInitialEditorSelection && selectionChanged && !textChanged) {
       _captureInitialEditorSelection();
@@ -412,6 +424,7 @@ class _NotesPageState extends State<NotesPage> {
     });
 
     await widget.noteService.writeMarkdown(selected.path, text);
+    _noteUploadQueue.markDirty(selected.path);
     final updatedNotes = await widget.noteService.listMarkdownFiles(
       directoryPath: _directoryFor(_kind),
       kind: _kind,
@@ -432,39 +445,32 @@ class _NotesPageState extends State<NotesPage> {
     });
     if (_autoCloudUploadAfterSave && !_editorFocusNode.hasFocus) {
       _autoCloudUploadAfterSave = false;
-      unawaited(_checkAutoUploadCurrentNote(requireEditorFocus: false));
+      unawaited(_flushPendingNoteUploads(requireEditorFocus: false));
     }
   }
 
-  Future<void> _checkAutoUploadCurrentNote({
+  Future<void> _flushPendingNoteUploads({
     required bool requireEditorFocus,
   }) async {
-    final selected = _selectedNote;
     if (!_autoCloudSyncAvailable ||
         (requireEditorFocus &&
             (!_editorFocusNode.hasFocus || !_editorFocusedByPointer)) ||
         _loading ||
-        _saving ||
-        _autoCloudUploading ||
-        selected == null) {
+        _saving) {
       return;
     }
 
-    final path = selected.path;
-    final text = _editorController.text;
-
-    _autoCloudUploading = true;
+    final editorTextRevision = _editorTextRevision;
     try {
-      final result = await widget.cloudSyncService.uploadNote(
-        localDataState: widget.localDataState,
-        notePath: path,
-      );
-      if (!mounted || !_isCurrentEditorSnapshot(path: path, text: text)) {
+      final result = await _noteUploadQueue.flush();
+      if (!mounted || !result.attempted) {
         return;
       }
       if (result.ok) {
         setState(() {
-          if (result.uploaded > 0) {
+          if (result.uploaded > 0 &&
+              _editorTextRevision == editorTextRevision &&
+              !_noteUploadQueue.hasPendingUploads) {
             _statusText = '已自动同步';
           }
           _editorMessage = null;
@@ -476,11 +482,9 @@ class _NotesPageState extends State<NotesPage> {
       }
     } catch (error, stackTrace) {
       debugPrint('Failed to auto upload note: $error\n$stackTrace');
-      if (mounted && _isCurrentEditorSnapshot(path: path, text: text)) {
+      if (mounted) {
         setState(() => _editorMessage = '自动同步失败，请稍后重试。');
       }
-    } finally {
-      _autoCloudUploading = false;
     }
   }
 
@@ -489,11 +493,14 @@ class _NotesPageState extends State<NotesPage> {
     return sync.enabled && sync.realTimeSync && sync.hasRequiredFields;
   }
 
-  bool _isCurrentEditorSnapshot({required String path, required String text}) {
-    final selected = _selectedNote;
-    return selected != null &&
-        _samePath(selected.path, path) &&
-        _editorController.text == text;
+  NoteUploadQueue get _noteUploadQueue {
+    final provided = widget.noteUploadQueue;
+    if (provided != null) {
+      return provided;
+    }
+    return _ownedNoteUploadQueue ??= NoteUploadQueue(
+      cloudSyncService: widget.cloudSyncService,
+    )..attach(widget.localDataState);
   }
 
   void _setEditorText(String value, {bool preserveSelection = false}) {
@@ -506,6 +513,7 @@ class _NotesPageState extends State<NotesPage> {
       ..selection = nextSelection
       ..addListener(_handleEditorChanged);
     _editorRevision++;
+    _editorTextRevision++;
     _awaitingInitialEditorSelection = true;
     _editorInitialValue = TextEditingValue(
       text: value,

@@ -524,12 +524,6 @@ async fn upload_note_with_client<C: WebDavClient + Sync>(
         .entries
         .get(&note_metadata.relative_path)
         .filter(|entry| !entry.deleted && !entry.sha256.is_empty());
-    if previous
-        .map(|entry| !local_metadata_changed(note_metadata.size, note_metadata.modified_ms, entry))
-        .unwrap_or(false)
-    {
-        return Ok(CloudSyncResult::success("笔记未变化", 0, 0, 0));
-    }
 
     let note = local_sync_file_from_metadata(&note_metadata)?;
     if let Some(previous) = previous {
@@ -765,14 +759,11 @@ fn local_note_metadata_for_upload_request(
             continue;
         };
         if should_sync_local_file(kind, &root, &note_path) && is_markdown_file(&note_path) {
-            let metadata = fs::metadata(&note_path)?;
             return Ok(LocalSyncFileMetadata {
                 kind,
                 relative_path: relative_note_path(kind, &name),
                 name,
                 path: note_path,
-                size: metadata.len(),
-                modified_ms: modified_ms(&metadata),
             });
         }
     }
@@ -1560,8 +1551,6 @@ struct LocalSyncFileMetadata {
     name: String,
     relative_path: String,
     path: PathBuf,
-    size: u64,
-    modified_ms: i64,
 }
 
 #[derive(Clone, Debug)]
@@ -2319,6 +2308,42 @@ mod tests {
         assert_eq!(
             client.text("/dav/SpringNote/notes/daily/2026-06-29.md"),
             Some("# 自动同步\n".to_string())
+        );
+    }
+
+    #[tokio::test]
+    async fn upload_note_hashes_file_even_when_manifest_metadata_matches() {
+        let dir = TestDir::new("spring_note_upload_note_hashes_changed_content");
+        let request = request(&dir.path);
+        let note_path = Path::new(&request.daily_notes_directory).join("2026-06-29.md");
+        fs::write(&note_path, "# 自动同步\n").unwrap();
+
+        let client = MemoryWebDavClient::default();
+        let first = upload_note_with_client(&client, note_upload_request(&request, &note_path))
+            .await
+            .unwrap();
+        assert!(first.ok);
+        assert_eq!(first.uploaded, 1);
+
+        fs::write(&note_path, "# 内容变更\n").unwrap();
+        let metadata = fs::metadata(&note_path).unwrap();
+        let mut manifest = read_local_manifest(&request).unwrap();
+        let entry = manifest
+            .entries
+            .get_mut("notes/daily/2026-06-29.md")
+            .unwrap();
+        entry.size = metadata.len();
+        entry.local_modified_ms = modified_ms(&metadata);
+        write_local_manifest(&request, &manifest).unwrap();
+
+        let changed = upload_note_with_client(&client, note_upload_request(&request, &note_path))
+            .await
+            .unwrap();
+        assert!(changed.ok);
+        assert_eq!(changed.uploaded, 1);
+        assert_eq!(
+            client.text("/dav/SpringNote/notes/daily/2026-06-29.md"),
+            Some("# 内容变更\n".to_string())
         );
     }
 

@@ -19,6 +19,7 @@ import '../services/desktop_widget_window_bridge.dart';
 import '../services/global_hotkey_service.dart';
 import '../services/level_progress_controller.dart';
 import '../services/local_data_service.dart';
+import '../services/note_upload_queue.dart';
 import '../services/startup_report_generation_service.dart';
 import '../services/tray_service.dart';
 import '../services/update_check_service.dart';
@@ -77,6 +78,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       LevelProgressController()..attach(_localDataState);
   late final ValueNotifier<NoteExternalUpdate?> _noteExternalUpdate =
       ValueNotifier(null);
+  late final NoteUploadQueue _noteUploadQueue = NoteUploadQueue(
+    cloudSyncService: widget.cloudSyncService,
+  )..attach(_localDataState);
   UpdateCheckResult _updateCheckResult = UpdateCheckResult.idle;
   int _noteExternalUpdateRevision = 0;
   Timer? _desktopWidgetPositionSaveTimer;
@@ -119,6 +123,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     super.didUpdateWidget(oldWidget);
     if (widget.localDataState != oldWidget.localDataState) {
       _localDataState = widget.localDataState;
+      _noteUploadQueue.attach(_localDataState);
       _desktopWidgetController.attach(_localDataState);
       _levelProgressController.attach(_localDataState);
       _syncDesktopWidgetWindow();
@@ -225,6 +230,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         state.dataDirectory != _localDataState.dataDirectory;
     setState(() {
       _localDataState = state;
+      _noteUploadQueue.attach(_localDataState);
       _desktopWidgetController.attach(_localDataState);
       _levelProgressController.attach(_localDataState);
     });
@@ -576,6 +582,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                     NotesPage(
                       localDataState: _localDataState,
                       externalNoteUpdate: _noteExternalUpdate,
+                      noteUploadQueue: _noteUploadQueue,
                     ),
                     MemoryPage(localDataState: _localDataState),
                     SettingsPage(
