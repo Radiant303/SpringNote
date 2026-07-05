@@ -748,33 +748,41 @@ private struct DesktopWidgetColors {
   let textSubtle: NSColor
   let stopped: NSColor
 
-  static let accent = rgb(16, 185, 129)
+  static let accent = NSColor(
+    calibratedRed: 0.06,
+    green: 0.73,
+    blue: 0.51,
+    alpha: 1
+  )
+  static let dark = DesktopWidgetColors(
+    surface: rgb(27, 27, 27),
+    surfaceMuted: rgb(42, 42, 42),
+    surfacePressed: rgb(48, 48, 48),
+    border: rgb(51, 51, 51),
+    text: rgb(242, 242, 242),
+    textSubtle: rgb(154, 154, 154),
+    stopped: rgb(154, 154, 154)
+  )
+  static let light = DesktopWidgetColors(
+    surface: .white,
+    surfaceMuted: white(0.93),
+    surfacePressed: white(0.81),
+    border: white(0.9),
+    text: white(0.09),
+    textSubtle: white(0.4),
+    stopped: white(0.81)
+  )
 
   static func palette(darkMode: Bool) -> DesktopWidgetColors {
-    if darkMode {
-      return DesktopWidgetColors(
-        surface: rgb(27, 27, 27),
-        surfaceMuted: rgb(42, 42, 42),
-        surfacePressed: rgb(48, 48, 48),
-        border: rgb(51, 51, 51),
-        text: rgb(242, 242, 242),
-        textSubtle: rgb(154, 154, 154),
-        stopped: rgb(154, 154, 154)
-      )
-    }
-    return DesktopWidgetColors(
-      surface: rgb(255, 255, 255),
-      surfaceMuted: rgb(237, 237, 237),
-      surfacePressed: rgb(207, 207, 207),
-      border: rgb(229, 229, 229),
-      text: rgb(23, 23, 23),
-      textSubtle: rgb(102, 102, 102),
-      stopped: rgb(207, 207, 207)
-    )
+    darkMode ? dark : light
   }
 
   private static func rgb(_ red: CGFloat, _ green: CGFloat, _ blue: CGFloat) -> NSColor {
     NSColor(calibratedRed: red / 255, green: green / 255, blue: blue / 255, alpha: 1)
+  }
+
+  private static func white(_ white: CGFloat) -> NSColor {
+    NSColor(calibratedWhite: white, alpha: 1)
   }
 }
 
@@ -840,7 +848,7 @@ final class DesktopWidgetWindowController: NSObject {
       max(0.8, doubleValue(arguments, "fontScaleFactor", fallback: state.fontScaleFactor))
     )
     state.orbMode = boolValue(arguments, "orbMode", fallback: state.orbMode)
-    state.darkMode = boolValue(arguments, "darkMode", fallback: false)
+    state.darkMode = boolValue(arguments, "darkMode", fallback: state.darkMode)
     if !state.orbMode {
       expanded = true
     } else if !wasOrbMode || panel == nil {
