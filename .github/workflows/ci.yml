@@ -107,6 +107,9 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
+      - name: Prepare macOS native project
+        run: flutter build macos --debug --config-only
+
       - name: Run macOS native tests
         run: >
           xcodebuild test
