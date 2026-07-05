@@ -51,8 +51,9 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final colors = AppTheme.colors(context);
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: ConstrainedBox(
@@ -96,14 +97,14 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFAFAFA),
+                    color: colors.surfaceMuted,
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: SelectionArea(
                     child: SingleChildScrollView(
                       child: DefaultTextStyle.merge(
                         style: textTheme.bodyLarge?.copyWith(
-                          color: const Color(0xFF3A3A3A),
+                          color: colors.text,
                           fontSize: 14,
                           height: 1.55,
                         ),
@@ -114,7 +115,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                           codeBuilder: (context, name, code, closed) =>
                               MarkdownCodeBlock(language: name, code: code),
                           style: textTheme.bodyLarge?.copyWith(
-                            color: const Color(0xFF3A3A3A),
+                            color: colors.text,
                             fontSize: 14,
                             height: 1.55,
                           ),
@@ -192,13 +193,15 @@ class _UpdateInstallStatus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final error = errorMessage;
     if (error != null) {
       return _StatusBand(
         icon: Icons.error_outline_rounded,
         text: error,
-        color: const Color(0xFFB91C1C),
-        background: const Color(0xFFFEF2F2),
+        color: dark ? const Color(0xFFFCA5A5) : const Color(0xFFB91C1C),
+        background: dark ? const Color(0xFF3B1119) : const Color(0xFFFEF2F2),
       );
     }
 
@@ -219,8 +222,8 @@ class _UpdateInstallStatus extends StatelessWidget {
         _StatusBand(
           icon: Icons.downloading_rounded,
           text: text,
-          color: AppTheme.text,
-          background: const Color(0xFFF5F5F5),
+          color: colors.text,
+          background: colors.surfaceMuted,
         ),
         if (current?.stage == UpdateInstallStage.downloading ||
             current?.stage == UpdateInstallStage.extracting) ...[
@@ -229,8 +232,8 @@ class _UpdateInstallStatus extends StatelessWidget {
             value: current?.fraction,
             minHeight: 5,
             borderRadius: BorderRadius.circular(99),
-            backgroundColor: const Color(0xFFE8E8E8),
-            color: AppTheme.text,
+            backgroundColor: colors.surfacePressed,
+            color: colors.text,
           ),
         ],
       ],
@@ -373,23 +376,21 @@ class _UpdateMetaPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
+        color: colors.surfaceMuted,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text.rich(
         TextSpan(
           text: '$label ',
-          style: const TextStyle(color: Color(0xFF8A8A8A)),
+          style: TextStyle(color: colors.textSubtle),
           children: [
             TextSpan(
               text: value,
-              style: const TextStyle(
-                color: AppTheme.text,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -421,8 +422,11 @@ class _UpdateActionButtonState extends State<_UpdateActionButton> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final enabled = widget.onTap != null;
     final active = enabled && _hovered;
+    final background = active ? colors.textMuted : colors.text;
+    final foreground = colors.onAccent;
     return MouseRegion(
       cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
       onEnter: (_) {
@@ -444,22 +448,22 @@ class _UpdateActionButtonState extends State<_UpdateActionButton> {
           height: 44,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            color: active ? const Color(0xFF2B2B2B) : AppTheme.text,
+            color: background,
             borderRadius: BorderRadius.circular(14),
           ),
           child: Row(
             children: [
               if (widget.installing)
-                const SizedBox(
+                SizedBox(
                   width: 17,
                   height: 17,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Colors.white,
+                    color: foreground,
                   ),
                 )
               else
-                const UpdateDownloadIcon(size: 18, color: Colors.white),
+                UpdateDownloadIcon(size: 18, color: foreground),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -467,7 +471,7 @@ class _UpdateActionButtonState extends State<_UpdateActionButton> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.white,
+                    color: foreground,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -477,7 +481,7 @@ class _UpdateActionButtonState extends State<_UpdateActionButton> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.white.withValues(alpha: 0.72),
+                  color: foreground.withValues(alpha: 0.72),
                   fontSize: 12,
                 ),
               ),

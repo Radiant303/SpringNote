@@ -598,8 +598,9 @@ class _MemoryPageState extends State<MemoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Container(
-      color: Colors.white,
+      color: colors.background,
       child: Column(
         children: [
           _MemoryHeader(
@@ -631,6 +632,7 @@ class _MemoryPageState extends State<MemoryPage> {
   }
 
   Widget _buildEntryState() {
+    final colors = AppTheme.colors(context);
     return Center(
       key: const ValueKey('memory-entry'),
       child: Transform.translate(
@@ -644,7 +646,7 @@ class _MemoryPageState extends State<MemoryPage> {
                 '准备好了，随时开始',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.w400,
-                  color: const Color(0xFF111827),
+                  color: colors.text,
                 ),
               ),
               const SizedBox(height: 22),
@@ -686,6 +688,7 @@ class _MemoryPageState extends State<MemoryPage> {
   }
 
   Widget _buildChatState() {
+    final colors = AppTheme.colors(context);
     final visibleMessages = _messages
         .where(
           (message) =>
@@ -731,11 +734,15 @@ class _MemoryPageState extends State<MemoryPage> {
           child: Container(
             height: 132,
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0x00FFFFFF), Colors.white, Colors.white],
+                colors: [
+                  colors.background.withValues(alpha: 0),
+                  colors.background,
+                  colors.background,
+                ],
               ),
             ),
             child: Center(
@@ -794,18 +801,19 @@ class _MemoryHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Container(
       height: 56,
       padding: const EdgeInsets.symmetric(horizontal: 32),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE))),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: colors.divider)),
       ),
       child: Row(
         children: [
           Text(
             '回忆书',
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: AppTheme.text,
+              color: colors.text,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -825,14 +833,14 @@ class _MemoryHeader extends StatelessWidget {
               minimumSize: const Size(34, 34),
               maximumSize: const Size(34, 34),
               backgroundColor: Colors.transparent,
-              hoverColor: const Color(0xFFEDEDED),
+              hoverColor: colors.surfaceMuted,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            icon: const _MemoryNewConversationIcon(
+            icon: _MemoryNewConversationIcon(
               size: 17,
-              color: AppTheme.textSubtle,
+              color: colors.textSubtle,
             ),
           ),
         ],
@@ -922,16 +930,17 @@ class _MemoryComposer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Container(
       constraints: const BoxConstraints(minHeight: 52),
       padding: const EdgeInsets.fromLTRB(7, 5, 8, 5),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AppTheme.border),
+        color: colors.surface,
+        border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(28),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color(0x0A171717),
+            color: colors.shadow.withValues(alpha: 0.08),
             blurRadius: 28,
             offset: Offset(0, 8),
           ),
@@ -942,8 +951,8 @@ class _MemoryComposer extends StatelessWidget {
           IconButton(
             onPressed: null,
             icon: const Icon(Icons.add_rounded),
-            color: AppTheme.text,
-            disabledColor: AppTheme.text,
+            color: colors.textMuted,
+            disabledColor: colors.textMuted,
           ),
           Expanded(
             child: CallbackShortcuts(
@@ -982,19 +991,19 @@ class _MemoryComposer extends StatelessWidget {
           IconButton.filled(
             onPressed: answering ? null : onSubmit,
             style: IconButton.styleFrom(
-              backgroundColor: AppTheme.text,
-              disabledBackgroundColor: const Color(0xFFE0E0E0),
+              backgroundColor: colors.text,
+              disabledBackgroundColor: colors.surfaceMuted,
             ),
             icon: answering
-                ? const SizedBox(
+                ? SizedBox(
                     width: 14,
                     height: 14,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: AppTheme.textSubtle,
+                      color: colors.textSubtle,
                     ),
                   )
-                : const Icon(Icons.arrow_upward_rounded, color: Colors.white),
+                : Icon(Icons.arrow_upward_rounded, color: colors.onAccent),
           ),
         ],
       ),
@@ -1015,13 +1024,14 @@ class _QuickPromptChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return OutlinedButton.icon(
       onPressed: onTap,
-      icon: Icon(icon, size: 15, color: AppTheme.textSubtle),
+      icon: Icon(icon, size: 15, color: colors.textSubtle),
       label: Text(label),
       style: OutlinedButton.styleFrom(
-        foregroundColor: AppTheme.textMuted,
-        side: const BorderSide(color: AppTheme.border),
+        foregroundColor: colors.textMuted,
+        side: BorderSide(color: colors.border),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
         minimumSize: const Size(0, 36),
         textStyle: Theme.of(context).textTheme.bodyMedium,
@@ -1045,6 +1055,7 @@ class _ThinkingControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final value = enabled ? effort : 'disabled';
     final labelStyle = Theme.of(
       context,
@@ -1064,8 +1075,8 @@ class _ThinkingControl extends StatelessWidget {
           final segmentWidth = constraints.maxWidth / 3;
           return Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFEDEDED),
-              border: Border.all(color: const Color(0xFFE0E0E0)),
+              color: colors.surfaceMuted,
+              border: Border.all(color: colors.border),
               borderRadius: BorderRadius.circular(999),
             ),
             child: Stack(
@@ -1079,11 +1090,11 @@ class _ThinkingControl extends StatelessWidget {
                   height: 28,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: colors.surface,
                       borderRadius: BorderRadius.circular(999),
-                      boxShadow: const [
+                      boxShadow: [
                         BoxShadow(
-                          color: Color(0x14171717),
+                          color: colors.shadow.withValues(alpha: 0.12),
                           blurRadius: 10,
                           offset: Offset(0, 2),
                         ),
@@ -1147,6 +1158,7 @@ class _ThinkingSegment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -1156,11 +1168,9 @@ class _ThinkingSegment extends StatelessWidget {
             duration: const Duration(milliseconds: 140),
             style:
                 style?.copyWith(
-                  color: selected ? AppTheme.text : AppTheme.textSubtle,
+                  color: selected ? colors.text : colors.textSubtle,
                 ) ??
-                TextStyle(
-                  color: selected ? AppTheme.text : AppTheme.textSubtle,
-                ),
+                TextStyle(color: selected ? colors.text : colors.textSubtle),
             child: Text(label),
           ),
         ),
@@ -1190,6 +1200,7 @@ class _MemoryMessageView extends StatelessWidget {
   }
 
   Widget _buildMessage(BuildContext context) {
+    final colors = AppTheme.colors(context);
     if (message.role == 'user') {
       return Align(
         alignment: Alignment.centerRight,
@@ -1198,14 +1209,14 @@ class _MemoryMessageView extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 28),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           decoration: BoxDecoration(
-            color: const Color(0xFFF5F5F5),
+            color: colors.surfaceMuted,
             borderRadius: BorderRadius.circular(22),
           ),
           child: SelectableText(
             message.content,
             style: Theme.of(
               context,
-            ).textTheme.bodyLarge?.copyWith(color: AppTheme.text, height: 1.7),
+            ).textTheme.bodyLarge?.copyWith(color: colors.text, height: 1.7),
           ),
         ),
       );
@@ -1234,7 +1245,7 @@ class _MemoryMessageView extends StatelessWidget {
                   codeBuilder: (context, name, code, closed) =>
                       MarkdownCodeBlock(language: name, code: code),
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: AppTheme.textMuted,
+                    color: colors.textMuted,
                     fontSize: 14,
                     height: 1.55,
                   ),
@@ -1256,6 +1267,7 @@ class _MemoryWaitingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 820),
@@ -1263,12 +1275,12 @@ class _MemoryWaitingIndicator extends StatelessWidget {
           padding: const EdgeInsets.only(top: 4, bottom: 24),
           child: Row(
             children: [
-              const SizedBox(
+              SizedBox(
                 width: 13,
                 height: 13,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: AppTheme.textSubtle,
+                  color: colors.textSubtle,
                 ),
               ),
               const SizedBox(width: 8),
@@ -1276,7 +1288,7 @@ class _MemoryWaitingIndicator extends StatelessWidget {
                 '正在思考并调用工具...',
                 style: Theme.of(
                   context,
-                ).textTheme.bodyMedium?.copyWith(color: AppTheme.textSubtle),
+                ).textTheme.bodyMedium?.copyWith(color: colors.textSubtle),
               ),
             ],
           ),
@@ -1321,6 +1333,8 @@ class _ToolAttachmentChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final resultLabel = memoryToolResultLabel(attachment.resultMessage);
     return Material(
       color: Colors.transparent,
@@ -1332,7 +1346,7 @@ class _ToolAttachmentChip extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.fromLTRB(10, 7, 12, 7),
           decoration: BoxDecoration(
-            color: const Color(0xFFF5F5F5),
+            color: colors.surfaceMuted,
             borderRadius: BorderRadius.circular(999),
           ),
           child: Row(
@@ -1342,20 +1356,24 @@ class _ToolAttachmentChip extends StatelessWidget {
                 width: 22,
                 height: 22,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFECFDF5),
+                  color: dark
+                      ? const Color(0xFF0B3024)
+                      : const Color(0xFFECFDF5),
                   borderRadius: BorderRadius.circular(999),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.check_rounded,
                   size: 14,
-                  color: Color(0xFF10B981),
+                  color: dark
+                      ? const Color(0xFF34D399)
+                      : const Color(0xFF10B981),
                 ),
               ),
               const SizedBox(width: 8),
               Text(
                 _toolLabel(attachment.toolCall.name),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTheme.text,
+                  color: colors.text,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -1364,7 +1382,7 @@ class _ToolAttachmentChip extends StatelessWidget {
                 resultLabel,
                 style: Theme.of(
                   context,
-                ).textTheme.bodySmall?.copyWith(color: AppTheme.textSubtle),
+                ).textTheme.bodySmall?.copyWith(color: colors.textSubtle),
               ),
             ],
           ),
@@ -1374,10 +1392,11 @@ class _ToolAttachmentChip extends StatelessWidget {
   }
 
   void _showToolDialog(BuildContext context, _MemoryToolAttachment attachment) {
+    final colors = AppTheme.colors(context);
     showDialog<void>(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: Colors.white,
+        backgroundColor: colors.surface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: ConstrainedBox(
@@ -1390,10 +1409,10 @@ class _ToolAttachmentChip extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.build_circle_outlined,
                       size: 20,
-                      color: AppTheme.text,
+                      color: colors.text,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -1401,7 +1420,7 @@ class _ToolAttachmentChip extends StatelessWidget {
                         _toolLabel(attachment.toolCall.name),
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(
-                              color: AppTheme.text,
+                              color: colors.text,
                               fontWeight: FontWeight.w800,
                             ),
                       ),
@@ -1473,6 +1492,7 @@ class _ToolDetailBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Column(
@@ -1481,7 +1501,7 @@ class _ToolDetailBlock extends StatelessWidget {
           Text(
             title,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: AppTheme.textSubtle,
+              color: colors.textSubtle,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -1490,13 +1510,13 @@ class _ToolDetailBlock extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF5F5F5),
+              color: colors.surfaceMuted,
               borderRadius: BorderRadius.circular(14),
             ),
             child: SelectableText(
               content,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.textMuted,
+                color: colors.textMuted,
                 height: 1.55,
                 fontFamily: 'monospace',
               ),
@@ -1559,14 +1579,15 @@ class _ReasoningBlockState extends State<_ReasoningBlock> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final titleStyle = Theme.of(context).textTheme.labelMedium?.copyWith(
-      color: AppTheme.textSubtle,
+      color: colors.textSubtle,
       fontWeight: FontWeight.w700,
     );
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
+        color: colors.surfaceMuted,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -1581,10 +1602,10 @@ class _ReasoningBlockState extends State<_ReasoningBlock> {
                 padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.auto_awesome_outlined,
                       size: 17,
-                      color: AppTheme.textMuted,
+                      color: colors.textMuted,
                     ),
                     const SizedBox(width: 6),
                     Expanded(
@@ -1597,7 +1618,9 @@ class _ReasoningBlockState extends State<_ReasoningBlock> {
                                 text:
                                     ' (${_formatReasoningDuration(widget.duration!)})',
                                 style: titleStyle?.copyWith(
-                                  color: const Color(0xB36B7280),
+                                  color: colors.textSubtle.withValues(
+                                    alpha: 0.7,
+                                  ),
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -1611,7 +1634,7 @@ class _ReasoningBlockState extends State<_ReasoningBlock> {
                           ? Icons.keyboard_arrow_up_rounded
                           : Icons.keyboard_arrow_down_rounded,
                       size: 18,
-                      color: AppTheme.textSubtle,
+                      color: colors.textSubtle,
                     ),
                   ],
                 ),
@@ -1634,9 +1657,10 @@ class _ReasoningBlockState extends State<_ReasoningBlock> {
   }
 
   Widget _buildReasoningBody(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final style = Theme.of(
       context,
-    ).textTheme.bodySmall?.copyWith(color: AppTheme.textSubtle, height: 1.65);
+    ).textTheme.bodySmall?.copyWith(color: colors.textSubtle, height: 1.65);
     final text = Text(widget.reasoning.trim(), style: style);
     final body = widget.collapsed
         ? Padding(

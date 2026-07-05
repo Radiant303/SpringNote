@@ -33,6 +33,7 @@ class DesktopWidgetWindow {
     std::wstring font_family = L"Segoe UI Variable";
     double font_scale_factor = 1.0;
     bool orb_mode = false;
+    bool dark_mode = false;
   };
 
   struct WidgetPosition {

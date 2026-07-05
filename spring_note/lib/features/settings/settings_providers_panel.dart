@@ -20,14 +20,15 @@ class _ProviderListItemState extends State<_ProviderListItem> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final backgroundColor = widget.selected
-        ? const Color(0xFFE2E2E2)
-        : const Color(0xFFF5F5F5);
+        ? colors.surfacePressed
+        : colors.surfaceHover;
     final active = widget.selected || _hovered;
-    final contentColor = active ? AppTheme.text : const Color(0xFF6E6E6E);
+    final contentColor = active ? colors.text : colors.textSubtle;
     final avatarBackgroundColor = active
-        ? const Color(0xFFDCDCDC)
-        : const Color(0xFFEDEDED);
+        ? colors.surfacePressed
+        : colors.inputFocusedFill;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -154,13 +155,14 @@ class _ProvidersPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Row(
       children: [
         Container(
           width: 320,
           padding: const EdgeInsets.all(18),
-          decoration: const BoxDecoration(
-            border: Border(right: BorderSide(color: Color(0xFFEEEEEE))),
+          decoration: BoxDecoration(
+            border: Border(right: BorderSide(color: colors.divider)),
           ),
           child: Column(
             children: [
@@ -496,8 +498,9 @@ class _DeleteProviderConfirmDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 340),
@@ -510,7 +513,7 @@ class _DeleteProviderConfirmDialog extends StatelessWidget {
               Text(
                 '删除供应商',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppTheme.text,
+                  color: colors.text,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -518,7 +521,7 @@ class _DeleteProviderConfirmDialog extends StatelessWidget {
               Text(
                 '确定要删除该供应商吗？此操作不可撤销。',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.text,
+                  color: colors.text,
                   height: 1.5,
                 ),
               ),
@@ -567,10 +570,11 @@ class _DeleteDialogButtonState extends State<_DeleteDialogButton> {
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = _hovered ? const Color(0xFFF5F5F5) : Colors.white;
+    final colors = AppTheme.colors(context);
+    final backgroundColor = _hovered ? colors.surfaceHover : colors.surface;
     final foregroundColor = widget.isDestructive
         ? const Color(0xFFEF4444)
-        : AppTheme.text;
+        : colors.text;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -708,9 +712,10 @@ class _ProviderConnectionTestDialogState
   @override
   Widget build(BuildContext context) {
     final selectedModel = _selectedModel;
+    final colors = AppTheme.colors(context);
     return Dialog(
       key: const ValueKey('provider-connection-test-dialog'),
-      backgroundColor: Colors.white,
+      backgroundColor: colors.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       child: SizedBox(
@@ -724,7 +729,7 @@ class _ProviderConnectionTestDialogState
                 '测试连接',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AppTheme.text,
+                  color: colors.text,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -743,7 +748,7 @@ class _ProviderConnectionTestDialogState
                   Text(
                     '使用流式',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: AppTheme.text,
+                      color: colors.text,
                       height: 1.2,
                     ),
                   ),
@@ -755,10 +760,10 @@ class _ProviderConnectionTestDialogState
                       fit: BoxFit.contain,
                       child: Switch(
                         value: _useStream,
-                        activeThumbColor: Colors.white,
-                        activeTrackColor: Colors.black,
-                        inactiveThumbColor: Colors.white,
-                        inactiveTrackColor: const Color(0xFFD8D8D8),
+                        activeThumbColor: colors.surface,
+                        activeTrackColor: colors.text,
+                        inactiveThumbColor: colors.surface,
+                        inactiveTrackColor: colors.surfaceMuted,
                         onChanged: _testing
                             ? null
                             : (value) => setState(() {
@@ -858,6 +863,7 @@ class _ProviderSelectedModelButtonState
   Widget build(BuildContext context) {
     final enabled = widget.onTap != null;
     final model = widget.model;
+    final colors = AppTheme.colors(context);
     return MouseRegion(
       cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
       onEnter: (_) {
@@ -878,9 +884,9 @@ class _ProviderSelectedModelButtonState
           curve: Curves.easeOutCubic,
           height: 50,
           decoration: BoxDecoration(
-            color: _hovered ? const Color(0xFFEDEDED) : const Color(0xFFF7F7F7),
+            color: _hovered ? colors.inputFocusedFill : colors.inputFill,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFDCDCDC)),
+            border: Border.all(color: colors.border),
           ),
           child: Stack(
             alignment: Alignment.center,
@@ -895,7 +901,7 @@ class _ProviderSelectedModelButtonState
                   model?.displayName ?? '选择模型',
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.text,
+                    color: colors.text,
                     fontWeight: FontWeight.w700,
                     height: 1.2,
                   ),
@@ -916,18 +922,19 @@ class _ProviderConnectionResultView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final current = status;
     if (current == null) {
       return const SizedBox(height: 18);
     }
     if (current.kind == _ProviderConnectionTestStatusKind.testing) {
-      return const SizedBox(
-        key: ValueKey('provider-connection-testing'),
+      return SizedBox(
+        key: const ValueKey('provider-connection-testing'),
         width: 22,
         height: 22,
         child: CircularProgressIndicator(
           strokeWidth: 2.2,
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+          valueColor: AlwaysStoppedAnimation<Color>(colors.textMuted),
         ),
       );
     }
@@ -1002,9 +1009,10 @@ class _ProviderConnectionModelPickerDialogState
   @override
   Widget build(BuildContext context) {
     final models = _models;
+    final colors = AppTheme.colors(context);
     return Dialog(
       key: const ValueKey('provider-connection-model-picker-dialog'),
-      backgroundColor: Colors.white,
+      backgroundColor: colors.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: SizedBox(
@@ -1077,6 +1085,7 @@ class _ProviderConnectionModelOptionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = selected || hovered;
+    final colors = AppTheme.colors(context);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => onHoverChanged(true),
@@ -1096,8 +1105,8 @@ class _ProviderConnectionModelOptionTile extends StatelessWidget {
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: selected
-                          ? const Color(0xFFE2E2E2)
-                          : const Color(0xFFF5F5F5),
+                          ? colors.surfacePressed
+                          : colors.surfaceHover,
                       borderRadius: BorderRadius.circular(15),
                     ),
                   ),
@@ -1116,9 +1125,7 @@ class _ProviderConnectionModelOptionTile extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(
-                                color: active
-                                    ? AppTheme.text
-                                    : AppTheme.textMuted,
+                                color: active ? colors.text : colors.textMuted,
                                 fontWeight: selected
                                     ? FontWeight.w600
                                     : FontWeight.w400,
@@ -1130,10 +1137,10 @@ class _ProviderConnectionModelOptionTile extends StatelessWidget {
                       AnimatedOpacity(
                         duration: const Duration(milliseconds: 120),
                         opacity: selected ? 1 : 0,
-                        child: const Icon(
+                        child: Icon(
                           Icons.check_rounded,
                           size: 17,
-                          color: AppTheme.text,
+                          color: colors.text,
                         ),
                       ),
                     ],
@@ -1155,17 +1162,18 @@ class _ProviderModelAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: const Color(0xFFEDEDED),
+        color: colors.surfaceMuted,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Icon(
         Icons.auto_awesome_outlined,
         size: size * 0.62,
-        color: AppTheme.textMuted,
+        color: colors.textMuted,
       ),
     );
   }
@@ -1193,12 +1201,13 @@ class _ProviderTestDialogButtonState extends State<_ProviderTestDialogButton> {
   @override
   Widget build(BuildContext context) {
     final enabled = widget.onTap != null;
+    final colors = AppTheme.colors(context);
     final backgroundColor = widget.filled
         ? !enabled
-              ? const Color(0xFF4F4F4F)
-              : (_hovered ? const Color(0xFF2A2A2A) : Colors.black)
-        : (_hovered && enabled ? const Color(0xFFF5F5F5) : Colors.white);
-    final foregroundColor = widget.filled ? Colors.white : AppTheme.text;
+              ? colors.textSubtle.withValues(alpha: 0.48)
+              : (_hovered ? colors.text.withValues(alpha: 0.88) : colors.text)
+        : (_hovered && enabled ? colors.surfaceHover : colors.surface);
+    final foregroundColor = widget.filled ? colors.onAccent : colors.text;
     return MouseRegion(
       cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
       onEnter: (_) {
@@ -1222,9 +1231,7 @@ class _ProviderTestDialogButtonState extends State<_ProviderTestDialogButton> {
           decoration: BoxDecoration(
             color: backgroundColor,
             borderRadius: BorderRadius.circular(14),
-            border: widget.filled
-                ? null
-                : Border.all(color: const Color(0xFF8A8A8A)),
+            border: widget.filled ? null : Border.all(color: colors.textSubtle),
           ),
           child: Center(
             child: Text(
@@ -1446,9 +1453,10 @@ class _ProviderModelFetchDialogState extends State<_ProviderModelFetchDialog> {
   Widget build(BuildContext context) {
     final groups = _groups;
     final searching = _query.trim().isNotEmpty;
+    final colors = AppTheme.colors(context);
     return Dialog(
       key: const ValueKey('provider-model-fetch-dialog'),
-      backgroundColor: Colors.white,
+      backgroundColor: colors.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: SizedBox(
@@ -1467,14 +1475,15 @@ class _ProviderModelFetchDialogState extends State<_ProviderModelFetchDialog> {
                         Text(
                           '${widget.provider.name} 模型',
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(color: AppTheme.text),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.titleMedium?.copyWith(color: colors.text),
                         ),
                         const SizedBox(height: 3),
                         Text(
                           '选择要添加到当前提供商的模型',
                           style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: AppTheme.textSubtle),
+                              ?.copyWith(color: colors.textSubtle),
                         ),
                       ],
                     ),
@@ -1690,11 +1699,12 @@ class _ProviderModelGroupHeaderState extends State<_ProviderModelGroupHeader> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final backgroundColor = widget.expanded
-        ? const Color(0xFFE8E8E8)
+        ? colors.surfacePressed
         : widget.hovered
-        ? const Color(0xFFEDEDED)
-        : const Color(0xFFF5F5F5);
+        ? colors.inputFocusedFill
+        : colors.inputFill;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => widget.onHoverChanged(true),
@@ -1736,10 +1746,10 @@ class _ProviderModelGroupHeaderState extends State<_ProviderModelGroupHeader> {
                           turns: widget.expanded ? 0.25 : 0,
                           duration: const Duration(milliseconds: 180),
                           curve: Curves.easeOutCubic,
-                          child: const Icon(
+                          child: Icon(
                             Icons.chevron_right_rounded,
                             size: 19,
-                            color: AppTheme.textMuted,
+                            color: colors.textMuted,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -1749,7 +1759,7 @@ class _ProviderModelGroupHeaderState extends State<_ProviderModelGroupHeader> {
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(
-                                  color: AppTheme.text,
+                                  color: colors.text,
                                   fontWeight: FontWeight.w600,
                                   height: 1.2,
                                 ),
@@ -1761,14 +1771,14 @@ class _ProviderModelGroupHeaderState extends State<_ProviderModelGroupHeader> {
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.78),
+                            color: colors.surface.withValues(alpha: 0.78),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
                             '${widget.count}',
                             style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(
-                                  color: AppTheme.textSubtle,
+                                  color: colors.textSubtle,
                                   fontSize: 12,
                                   height: 1.1,
                                 ),
@@ -1807,6 +1817,7 @@ class _ProviderModelOptionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = selected || hovered;
+    final colors = AppTheme.colors(context);
     return MouseRegion(
       cursor: busy ? SystemMouseCursors.basic : SystemMouseCursors.click,
       onEnter: (_) => onHoverChanged(true),
@@ -1830,8 +1841,8 @@ class _ProviderModelOptionTile extends StatelessWidget {
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: selected
-                          ? const Color(0xFFE2E2E2)
-                          : const Color(0xFFF5F5F5),
+                          ? colors.surfacePressed
+                          : colors.surfaceHover,
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
@@ -1852,9 +1863,7 @@ class _ProviderModelOptionTile extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(
-                                color: active
-                                    ? AppTheme.text
-                                    : AppTheme.textMuted,
+                                color: active ? colors.text : colors.textMuted,
                                 fontWeight: selected
                                     ? FontWeight.w600
                                     : FontWeight.w400,
@@ -1890,13 +1899,14 @@ class _ProviderModelToggleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
       width: 28,
       height: 28,
       decoration: BoxDecoration(
-        color: selected ? AppTheme.text : const Color(0xFFEDEDED),
+        color: selected ? colors.text : colors.surfaceMuted,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Center(
@@ -1907,7 +1917,7 @@ class _ProviderModelToggleButton extends StatelessWidget {
                 child: CircularProgressIndicator(
                   strokeWidth: 1.7,
                   valueColor: AlwaysStoppedAnimation<Color>(
-                    selected ? Colors.white : AppTheme.textMuted,
+                    selected ? colors.onAccent : colors.textMuted,
                   ),
                 ),
               )
@@ -1919,7 +1929,7 @@ class _ProviderModelToggleButton extends StatelessWidget {
                   selected ? Icons.remove_rounded : Icons.add_rounded,
                   key: ValueKey(selected),
                   size: 17,
-                  color: selected ? Colors.white : AppTheme.text,
+                  color: selected ? colors.onAccent : colors.text,
                 ),
               ),
       ),
@@ -1932,17 +1942,18 @@ class _ProviderModelLoadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Center(
       key: const ValueKey('provider-model-loading'),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(
+          SizedBox(
             width: 26,
             height: 26,
             child: CircularProgressIndicator(
               strokeWidth: 2.2,
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF666666)),
+              valueColor: AlwaysStoppedAnimation<Color>(colors.textSubtle),
             ),
           ),
           const SizedBox(height: 14),
@@ -1950,7 +1961,7 @@ class _ProviderModelLoadingView extends StatelessWidget {
             '正在获取模型...',
             style: Theme.of(
               context,
-            ).textTheme.bodyMedium?.copyWith(color: AppTheme.textSubtle),
+            ).textTheme.bodyMedium?.copyWith(color: colors.textSubtle),
           ),
         ],
       ),
@@ -1966,6 +1977,7 @@ class _ProviderModelErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Center(
       key: const ValueKey('provider-model-error'),
       child: Column(
@@ -1976,7 +1988,7 @@ class _ProviderModelErrorView extends StatelessWidget {
             textAlign: TextAlign.center,
             style: Theme.of(
               context,
-            ).textTheme.bodyMedium?.copyWith(color: AppTheme.textSubtle),
+            ).textTheme.bodyMedium?.copyWith(color: colors.textSubtle),
           ),
           const SizedBox(height: 14),
           OutlinedButton.icon(
@@ -1997,13 +2009,14 @@ class _ProviderModelEmptyView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Center(
       key: const ValueKey('provider-model-empty'),
       child: Text(
         message,
         style: Theme.of(
           context,
-        ).textTheme.bodyMedium?.copyWith(color: AppTheme.textSubtle),
+        ).textTheme.bodyMedium?.copyWith(color: colors.textSubtle),
       ),
     );
   }
@@ -2076,6 +2089,7 @@ class _ModelsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return _SettingsCard(
       title: '模型',
       titleAccessory: _ModelCountPill(count: provider.models.length),
@@ -2136,7 +2150,7 @@ class _ModelsList extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(
                   context,
-                ).textTheme.bodyMedium?.copyWith(color: AppTheme.textSubtle),
+                ).textTheme.bodyMedium?.copyWith(color: colors.textSubtle),
               ),
             ),
           ),
@@ -2147,8 +2161,8 @@ class _ModelsList extends StatelessWidget {
             Container(
               height: 54,
               padding: const EdgeInsets.symmetric(horizontal: 18),
-              decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: Color(0xFFEEEEEE))),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: colors.divider)),
               ),
               child: Row(
                 children: [
@@ -2158,7 +2172,7 @@ class _ModelsList extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(
                         context,
-                      ).textTheme.bodyMedium?.copyWith(color: AppTheme.text),
+                      ).textTheme.bodyMedium?.copyWith(color: colors.text),
                     ),
                   ),
                   Text(
@@ -2199,19 +2213,20 @@ class _ModelCountPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Container(
       height: 22,
       constraints: const BoxConstraints(minWidth: 30),
       padding: const EdgeInsets.symmetric(horizontal: 9),
       decoration: BoxDecoration(
-        color: const Color(0xFFF2F2F2),
+        color: colors.surfaceHover,
         borderRadius: BorderRadius.circular(999),
       ),
       alignment: Alignment.center,
       child: Text(
         '$count',
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: const Color(0xFF555555),
+          color: colors.textMuted,
           fontWeight: FontWeight.w700,
           height: 1,
         ),
@@ -2243,9 +2258,10 @@ class _ModelHeaderIconButtonState extends State<_ModelHeaderIconButton> {
   Widget build(BuildContext context) {
     final enabled = widget.onPressed != null;
     final active = enabled && _hovered;
+    final colors = AppTheme.colors(context);
     final iconColor = !enabled
-        ? const Color(0xFFBDBDBD)
-        : (active ? AppTheme.text : AppTheme.textSubtle);
+        ? colors.textSubtle.withValues(alpha: 0.56)
+        : (active ? colors.text : colors.textSubtle);
     return Tooltip(
       message: widget.tooltip,
       waitDuration: const Duration(milliseconds: 450),
@@ -2277,7 +2293,7 @@ class _ModelHeaderIconButtonState extends State<_ModelHeaderIconButton> {
                     opacity: active ? 1 : 0,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF2F2F2),
+                        color: colors.surfaceHover,
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
@@ -2422,12 +2438,11 @@ class _ProviderTemplateChipState extends State<_ProviderTemplateChip> {
   Widget build(BuildContext context) {
     final selected = widget.selected;
     final active = selected || _hovered;
+    final colors = AppTheme.colors(context);
     final backgroundColor = selected
-        ? const Color(0xFFE2E2E2)
-        : (_hovered ? const Color(0xFFF3F3F3) : Colors.white);
-    final borderColor = selected
-        ? const Color(0xFFCFCFCF)
-        : const Color(0xFFD5D5D5);
+        ? colors.surfacePressed
+        : (_hovered ? colors.surfaceHover : colors.surface);
+    final borderColor = selected ? colors.textSubtle : colors.border;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
@@ -2455,10 +2470,10 @@ class _ProviderTemplateChipState extends State<_ProviderTemplateChip> {
                     duration: const Duration(milliseconds: 120),
                     curve: Curves.easeOutCubic,
                     opacity: selected ? 1 : 0,
-                    child: const Icon(
+                    child: Icon(
                       Icons.check_rounded,
                       size: 16,
-                      color: AppTheme.text,
+                      color: colors.text,
                     ),
                   ),
                 ),
@@ -2469,7 +2484,7 @@ class _ProviderTemplateChipState extends State<_ProviderTemplateChip> {
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: active ? AppTheme.text : AppTheme.textSubtle,
+                      color: active ? colors.text : colors.textSubtle,
                       fontWeight: FontWeight.w700,
                       height: 1,
                     ),
@@ -2654,8 +2669,9 @@ class _ModelEditDialogShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
       child: ConstrainedBox(
@@ -2677,7 +2693,7 @@ class _ModelEditDialogShell extends StatelessWidget {
                           title,
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(
-                                color: AppTheme.text,
+                                color: colors.text,
                                 fontWeight: FontWeight.w800,
                                 height: 1.15,
                               ),
@@ -2687,7 +2703,7 @@ class _ModelEditDialogShell extends StatelessWidget {
                           subtitle,
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(
-                                color: AppTheme.textSubtle,
+                                color: colors.textSubtle,
                                 height: 1.25,
                               ),
                         ),
@@ -2743,12 +2759,13 @@ class _ModelOptionsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Column(
       children: [
         for (final (index, child) in children.indexed) ...[
           child,
           if (index != children.length - 1)
-            const Divider(height: 1, color: Color(0xFFEDEDED)),
+            Divider(height: 1, color: colors.divider),
         ],
       ],
     );
@@ -2770,6 +2787,7 @@ class _OptionGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
@@ -2780,7 +2798,7 @@ class _OptionGroup extends StatelessWidget {
             child: Text(
               label,
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: AppTheme.text,
+                color: colors.text,
                 fontWeight: FontWeight.w700,
                 height: 1.2,
               ),
@@ -2835,13 +2853,12 @@ class _ModelOptionChipState extends State<_ModelOptionChip> {
   @override
   Widget build(BuildContext context) {
     final selected = widget.selected;
+    final colors = AppTheme.colors(context);
     final background = selected
-        ? const Color(0xFFE2E2E2)
-        : (_hovered ? const Color(0xFFF1F1F1) : Colors.white);
-    final foreground = AppTheme.text;
-    final borderColor = selected
-        ? const Color(0xFFCFCFCF)
-        : const Color(0xFFD5D5D5);
+        ? colors.surfacePressed
+        : (_hovered ? colors.surfaceHover : colors.surface);
+    final foreground = colors.text;
+    final borderColor = selected ? colors.textSubtle : colors.border;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
@@ -2900,6 +2917,7 @@ class _ModelReadOnlyField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return _ModelFieldShell(
       label: label,
       child: Row(
@@ -2908,10 +2926,9 @@ class _ModelReadOnlyField extends StatelessWidget {
             child: SelectableText(
               value,
               maxLines: 1,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: AppTheme.text,
-                height: 1.2,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: colors.text, height: 1.2),
             ),
           ),
           const SizedBox(width: 10),
@@ -2969,6 +2986,7 @@ class _ModelTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return _ModelFieldShell(
       label: label,
       child: TextField(
@@ -2984,7 +3002,7 @@ class _ModelTextField extends StatelessWidget {
         ),
         style: Theme.of(
           context,
-        ).textTheme.bodyLarge?.copyWith(color: AppTheme.text, height: 1.2),
+        ).textTheme.bodyLarge?.copyWith(color: colors.text, height: 1.2),
       ),
     );
   }
@@ -2998,13 +3016,14 @@ class _ModelFieldShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Container(
       height: 58,
       padding: const EdgeInsets.fromLTRB(14, 7, 8, 7),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE1E1E1)),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3012,7 +3031,7 @@ class _ModelFieldShell extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppTheme.textSubtle,
+              color: colors.textSubtle,
               fontWeight: FontWeight.w700,
               height: 1,
             ),
@@ -3048,10 +3067,11 @@ class _ModelDialogButtonState extends State<_ModelDialogButton> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final background = widget.filled
-        ? (_hovered ? const Color(0xFF2A2A2A) : Colors.black)
-        : (_hovered ? const Color(0xFFF3F3F3) : Colors.white);
-    final foreground = widget.filled ? Colors.white : AppTheme.text;
+        ? (_hovered ? colors.text.withValues(alpha: 0.88) : colors.text)
+        : (_hovered ? colors.surfaceHover : colors.surface);
+    final foreground = widget.filled ? colors.onAccent : colors.text;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
@@ -3067,9 +3087,7 @@ class _ModelDialogButtonState extends State<_ModelDialogButton> {
           decoration: BoxDecoration(
             color: background,
             borderRadius: BorderRadius.circular(999),
-            border: widget.filled
-                ? null
-                : Border.all(color: const Color(0xFFD7D7D7)),
+            border: widget.filled ? null : Border.all(color: colors.border),
           ),
           alignment: Alignment.center,
           child: Text(
@@ -3109,6 +3127,7 @@ class _ModelDialogIconButtonState extends State<_ModelDialogIconButton> {
   @override
   Widget build(BuildContext context) {
     final active = widget.active || _hovered;
+    final colors = AppTheme.colors(context);
     return Tooltip(
       message: widget.tooltip,
       child: MouseRegion(
@@ -3124,7 +3143,7 @@ class _ModelDialogIconButtonState extends State<_ModelDialogIconButton> {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: active ? const Color(0xFFEDEDED) : Colors.transparent,
+              color: active ? colors.surfaceHover : Colors.transparent,
               borderRadius: BorderRadius.circular(10),
             ),
             child: TweenAnimationBuilder<double>(
@@ -3138,7 +3157,7 @@ class _ModelDialogIconButtonState extends State<_ModelDialogIconButton> {
               child: Icon(
                 widget.icon,
                 size: 18,
-                color: active ? AppTheme.text : AppTheme.textSubtle,
+                color: active ? colors.text : colors.textSubtle,
               ),
             ),
           ),

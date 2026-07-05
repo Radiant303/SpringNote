@@ -11,6 +11,7 @@ import 'package:spring_note/core/models/model_config.dart';
 import 'package:spring_note/core/models/model_reference.dart';
 import 'package:spring_note/core/models/provider_config.dart';
 import 'package:spring_note/core/models/structured_work_note.dart';
+import 'package:spring_note/app.dart';
 import 'package:spring_note/core/router/app_shell.dart';
 import 'package:spring_note/core/services/cloud_sync_service.dart';
 import 'package:spring_note/core/services/ai_client_service.dart';
@@ -27,6 +28,22 @@ import 'package:spring_note/features/home/home_page.dart';
 import 'package:spring_note/src/rust/stats.dart' as rust_stats;
 
 void main() {
+  testWidgets(
+    'SpringNote app disables theme transition to avoid input flicker',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(
+        SpringNoteApp(
+          localDataService: _ImmediateLocalDataService(_testLocalDataState()),
+          statsService: const _NoopStartupStatsService(),
+        ),
+      );
+
+      final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
+      expect(app.themeAnimationDuration, Duration.zero);
+      expect(app.themeAnimationCurve, Curves.linear);
+    },
+  );
+
   testWidgets('SpringNote app shows home shell', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(1440, 900);
     tester.view.devicePixelRatio = 1;
@@ -1112,6 +1129,22 @@ class _FakeStatsService extends StatsService {
     required int workSeconds,
     required double coins,
   }) async {}
+}
+
+class _ImmediateLocalDataService extends LocalDataService {
+  const _ImmediateLocalDataService(this.state);
+
+  final LocalDataState state;
+
+  @override
+  Future<LocalDataState> initialize() async => state;
+}
+
+class _NoopStartupStatsService extends StatsService {
+  const _NoopStartupStatsService();
+
+  @override
+  Future<void> recordAppStartup({required String appDataDir}) async {}
 }
 
 class _StartupPendingCloudSyncService extends CloudSyncService {

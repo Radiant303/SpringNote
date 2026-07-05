@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/models/local_data_state.dart';
 import '../../core/services/stats_service.dart';
+import '../../core/theme/app_theme.dart';
 import '../../src/rust/stats.dart' as rust_stats;
 
 class SettingsStatsPanel extends StatefulWidget {
@@ -293,12 +294,11 @@ class _StatsRangeChipState extends State<_StatsRangeChip> {
   @override
   Widget build(BuildContext context) {
     final active = widget.selected || _hovered;
+    final colors = AppTheme.colors(context);
     final backgroundColor = widget.selected
-        ? const Color(0xFFE2E2E2)
-        : const Color(0xFFF5F5F5);
-    final contentColor = widget.selected
-        ? const Color(0xFF242424)
-        : (active ? const Color(0xFF3A3A3A) : const Color(0xFF6E6E6E));
+        ? colors.surfacePressed
+        : colors.surfaceHover;
+    final contentColor = active ? colors.text : colors.textSubtle;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
@@ -379,12 +379,13 @@ class _StatsSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        color: colors.surface,
+        border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
@@ -395,7 +396,7 @@ class _StatsSectionCard extends StatelessWidget {
               Text(
                 title,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: const Color(0xFF0F172A),
+                  color: colors.text,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   height: 1,
@@ -406,7 +407,7 @@ class _StatsSectionCard extends StatelessWidget {
                 Text(
                   subtitle!,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFF94A3B8),
+                    color: colors.textSubtle,
                     fontSize: 12,
                     height: 1,
                   ),
@@ -480,11 +481,12 @@ class _StatsMetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Container(
       height: 72,
       padding: const EdgeInsets.fromLTRB(14, 13, 14, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAFAFB),
+        color: colors.surfaceHover,
         borderRadius: BorderRadius.circular(13),
       ),
       child: Column(
@@ -496,7 +498,7 @@ class _StatsMetricCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              color: const Color(0xFF0F172A),
+              color: colors.text,
               fontSize: 21,
               fontWeight: FontWeight.w700,
               height: 1,
@@ -508,7 +510,7 @@ class _StatsMetricCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: const Color(0xFF8A8A8A),
+              color: colors.textSubtle,
               fontSize: 11,
               height: 1,
             ),
@@ -524,13 +526,6 @@ class _YearHeatmap extends StatefulWidget {
 
   final List<rust_stats.DailyActivity> activity;
 
-  static const _colors = [
-    Color(0xFFEDEDED),
-    Color(0xFFDCFCE7),
-    Color(0xFFBBF7D0),
-    Color(0xFF86EFAC),
-    Color(0xFF4ADE80),
-  ];
   static const double _cellSize = 12;
   static const double _gap = 5;
 
@@ -564,6 +559,8 @@ class _YearHeatmapState extends State<_YearHeatmap> {
   @override
   Widget build(BuildContext context) {
     _alignToLatestAfterLayout();
+    final colors = AppTheme.colors(context);
+    final heatmapColors = AppTheme.activityHeatmapColors(context);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final heatmapStart = DateTime(today.year - 1, today.month, today.day);
@@ -618,7 +615,7 @@ class _YearHeatmapState extends State<_YearHeatmap> {
                             softWrap: false,
                             style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(
-                                  color: const Color(0xFF8A8A8A),
+                                  color: colors.textSubtle,
                                   fontSize: 13,
                                   height: 1,
                                 ),
@@ -660,7 +657,7 @@ class _YearHeatmapState extends State<_YearHeatmap> {
                               child: _HeatmapCell(
                                 date: slots[week * 7 + row],
                                 countByDate: activityByDate,
-                                colors: _YearHeatmap._colors,
+                                colors: heatmapColors,
                                 hovered: _hoveredSlotIndex == week * 7 + row,
                               ),
                             ),
@@ -821,6 +818,7 @@ class _HeatmapWeekdayLabels extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return SizedBox(
       width: 22,
       child: Column(
@@ -842,7 +840,7 @@ class _HeatmapWeekdayLabels extends StatelessWidget {
                       _ => '',
                     },
                     style: textStyle.bodySmall?.copyWith(
-                      color: const Color(0xFF8A8A8A),
+                      color: colors.textSubtle,
                       fontSize: 13,
                       height: 1,
                     ),
@@ -921,23 +919,24 @@ class _StatsHeatmapTooltip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return IgnorePointer(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFFEDEDED)),
+          color: colors.surface,
+          border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(8),
-          boxShadow: const [
+          boxShadow: [
             BoxShadow(
-              color: Color(0x26000000),
+              color: colors.shadow.withValues(alpha: 0.24),
               blurRadius: 18,
               offset: Offset(0, 8),
             ),
           ],
         ),
         child: Text.rich(
-          _tooltipMessage(),
+          _tooltipMessage(colors),
           softWrap: false,
           overflow: TextOverflow.visible,
         ),
@@ -945,9 +944,9 @@ class _StatsHeatmapTooltip extends StatelessWidget {
     );
   }
 
-  InlineSpan _tooltipMessage() {
-    const baseStyle = TextStyle(
-      color: Color(0xFF262626),
+  InlineSpan _tooltipMessage(SpringThemeColors colors) {
+    final baseStyle = TextStyle(
+      color: colors.text,
       fontSize: 11,
       fontWeight: FontWeight.w500,
       height: 1.2,
@@ -957,14 +956,14 @@ class _StatsHeatmapTooltip extends StatelessWidget {
       return TextSpan(
         style: baseStyle,
         children: [
-          const TextSpan(
+          TextSpan(
             text: 'No contributions on ',
-            style: TextStyle(color: Color(0xFF9A9A9A)),
+            style: TextStyle(color: colors.textSubtle),
           ),
           TextSpan(
             text: dateLabel,
-            style: const TextStyle(
-              color: Color(0xFF4F4F4F),
+            style: TextStyle(
+              color: colors.textMuted,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -977,19 +976,16 @@ class _StatsHeatmapTooltip extends StatelessWidget {
       children: [
         TextSpan(
           text: '$count ${count == 1 ? 'commit' : 'commits'}',
-          style: const TextStyle(
-            color: Color(0xFF242424),
-            fontWeight: FontWeight.w700,
-          ),
+          style: TextStyle(color: colors.text, fontWeight: FontWeight.w700),
         ),
-        const TextSpan(
+        TextSpan(
           text: ' on ',
-          style: TextStyle(color: Color(0xFF9A9A9A)),
+          style: TextStyle(color: colors.textSubtle),
         ),
         TextSpan(
           text: dateLabel,
-          style: const TextStyle(
-            color: Color(0xFF4F4F4F),
+          style: TextStyle(
+            color: colors.textMuted,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -1021,6 +1017,7 @@ class _UsageTrendChartState extends State<_UsageTrendChart> {
   Widget build(BuildContext context) {
     final series = _buildProviderSeries(widget.snapshot.providerUsage);
     final days = _buildUsageDays(widget.snapshot, series);
+    final colors = AppTheme.colors(context);
     final maxTokens = days.fold<int>(
       1,
       (max, point) => point.totalTokens > max ? point.totalTokens : max,
@@ -1065,7 +1062,7 @@ class _UsageTrendChartState extends State<_UsageTrendChart> {
                                   width: metrics.width,
                                   height: 4,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFE2E8F0),
+                                    color: colors.surfaceMuted,
                                     borderRadius: BorderRadius.circular(999),
                                   ),
                                 ),
@@ -1130,7 +1127,7 @@ class _UsageTrendChartState extends State<_UsageTrendChart> {
                     Text(
                       provider.name,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFF526179),
+                        color: colors.textMuted,
                         fontSize: 12,
                         height: 1,
                       ),
@@ -1561,6 +1558,7 @@ class _UsageBarTooltip extends StatelessWidget {
   Widget build(BuildContext context) {
     final usage = point.usage;
     final providerRows = _providerRows();
+    final colors = AppTheme.colors(context);
     final rows = providerRows.isNotEmpty
         ? providerRows
         : [
@@ -1584,12 +1582,12 @@ class _UsageBarTooltip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 11, 12, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAFAFB),
-        border: Border.all(color: const Color(0xFFEDEDED)),
+        color: colors.surface,
+        border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color(0x1F0F172A),
+            color: colors.shadow.withValues(alpha: 0.22),
             blurRadius: 28,
             offset: Offset(0, 12),
           ),
@@ -1605,7 +1603,7 @@ class _UsageBarTooltip extends StatelessWidget {
                 child: Text(
                   StatsService.formatDate(point.date),
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFF242424),
+                    color: colors.text,
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     height: 1,
@@ -1615,7 +1613,7 @@ class _UsageBarTooltip extends StatelessWidget {
               Text(
                 '${_formatCompactNumber(point.totalTokens)} tokens',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: const Color(0xFF6E6E6E),
+                  color: colors.textSubtle,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                   height: 1,
@@ -1624,7 +1622,7 @@ class _UsageBarTooltip extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Container(height: 1, color: const Color(0xFFEDEDED)),
+          Container(height: 1, color: colors.divider),
           const SizedBox(height: 8),
           for (final row in rows)
             Padding(
@@ -1645,7 +1643,7 @@ class _UsageBarTooltip extends StatelessWidget {
                       row.label,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: const Color(0xFF4F4F4F),
+                        color: colors.textMuted,
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                         height: 1.1,
@@ -1656,7 +1654,7 @@ class _UsageBarTooltip extends StatelessWidget {
                   Text(
                     _formatCompactNumber(row.value),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: const Color(0xFF6E6E6E),
+                      color: colors.textSubtle,
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                       height: 1.1,
@@ -1754,8 +1752,9 @@ class _StatsCustomRangeDialogState extends State<_StatsCustomRangeDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       child: SizedBox(
@@ -1773,7 +1772,7 @@ class _StatsCustomRangeDialogState extends State<_StatsCustomRangeDialog> {
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1F2933),
+                      color: colors.text,
                       height: 1,
                     ),
                   ),
@@ -1867,12 +1866,11 @@ class _StatsDateFieldState extends State<_StatsDateField> {
   @override
   Widget build(BuildContext context) {
     final active = widget.active || _hovered || _pressed;
+    final colors = AppTheme.colors(context);
     final overlayColor = _pressed
-        ? const Color(0xFFDCDCDC)
-        : (widget.active ? const Color(0xFFE2E2E2) : const Color(0xFFEAEAEA));
-    final labelColor = active
-        ? const Color(0xFF606060)
-        : const Color(0xFF8A8A8A);
+        ? colors.surfacePressed
+        : (widget.active ? colors.inputFocusedFill : colors.surfaceHover);
+    final labelColor = active ? colors.textMuted : colors.textSubtle;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
@@ -1894,7 +1892,7 @@ class _StatsDateFieldState extends State<_StatsDateField> {
               Positioned.fill(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF2F2F2),
+                    color: colors.surfaceMuted,
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
@@ -1939,13 +1937,13 @@ class _StatsDateFieldState extends State<_StatsDateField> {
                       StatsService.formatDate(widget.date),
                       style:
                           Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: const Color(0xFF242424),
+                            color: colors.text,
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                             height: 1,
                           ) ??
-                          const TextStyle(
-                            color: Color(0xFF242424),
+                          TextStyle(
+                            color: colors.text,
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                             height: 1,
@@ -1983,13 +1981,15 @@ class _StatsDialogButtonState extends State<_StatsDialogButton> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final color = widget.filled
         ? (_pressed
-              ? const Color(0xFFBEBEBE)
-              : (_hovered ? const Color(0xFFC8C8C8) : const Color(0xFFD4D4D4)))
+              ? colors.textMuted
+              : (_hovered ? colors.text.withValues(alpha: 0.88) : colors.text))
         : (_pressed
-              ? const Color(0xFFD8D8D8)
-              : (_hovered ? const Color(0xFFE4E4E4) : const Color(0xFFF0F0F0)));
+              ? colors.surfacePressed
+              : (_hovered ? colors.surfaceHover : colors.surfaceMuted));
+    final foreground = widget.filled ? colors.onAccent : colors.text;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
@@ -2017,17 +2017,13 @@ class _StatsDialogButtonState extends State<_StatsDialogButton> {
             curve: Curves.easeOutCubic,
             style:
                 Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: _pressed
-                      ? const Color(0xFF202020)
-                      : const Color(0xFF3E3E3E),
+                  color: foreground,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   height: 1,
                 ) ??
                 TextStyle(
-                  color: _pressed
-                      ? const Color(0xFF202020)
-                      : const Color(0xFF3E3E3E),
+                  color: foreground,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   height: 1,
@@ -2063,8 +2059,9 @@ class _StatsCalendarDialogState extends State<_StatsCalendarDialog> {
   @override
   Widget build(BuildContext context) {
     final dates = _visibleDates(_visibleMonth);
+    final colors = AppTheme.colors(context);
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       child: SizedBox(
@@ -2091,13 +2088,13 @@ class _StatsCalendarDialogState extends State<_StatsCalendarDialog> {
                     padding: const EdgeInsets.symmetric(horizontal: 18),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF2F2F2),
+                      color: colors.surfaceMuted,
                       borderRadius: BorderRadius.circular(15),
                     ),
                     child: Text(
                       '${_visibleMonth.year}-${_visibleMonth.month.toString().padLeft(2, '0')}',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: const Color(0xFF242424),
+                        color: colors.text,
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         height: 1,
@@ -2133,7 +2130,7 @@ class _StatsCalendarDialogState extends State<_StatsCalendarDialog> {
                         label,
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: const Color(0xFF9A9A9A),
+                          color: colors.textSubtle,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           height: 1,
@@ -2200,12 +2197,13 @@ class _CalendarIconButtonState extends State<_CalendarIconButton> {
   @override
   Widget build(BuildContext context) {
     final active = _hovered || _pressed;
+    final colors = AppTheme.colors(context);
     final backgroundColor = _pressed
-        ? const Color(0xFFE2E2E2)
-        : const Color(0xFFF2F2F2);
+        ? colors.surfacePressed
+        : colors.surfaceHover;
     final iconColor = _pressed
-        ? const Color(0xFF202020)
-        : (_hovered ? const Color(0xFF303030) : const Color(0xFF4A4A4A));
+        ? colors.text
+        : (_hovered ? colors.text : colors.textMuted);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
@@ -2271,13 +2269,14 @@ class _CalendarDateCellState extends State<_CalendarDateCell> {
   @override
   Widget build(BuildContext context) {
     final active = widget.selected || _hovered || _pressed;
+    final colors = AppTheme.colors(context);
     final backgroundColor = widget.selected
         ? (_pressed
-              ? const Color(0xFFD0D0D0)
-              : (_hovered ? const Color(0xFFDADADA) : const Color(0xFFE2E2E2)))
+              ? colors.surfacePressed
+              : (_hovered ? colors.inputFocusedFill : colors.surfacePressed))
         : (_pressed
-              ? const Color(0xFFDADADA)
-              : (_hovered ? const Color(0xFFE8E8E8) : Colors.transparent));
+              ? colors.surfacePressed
+              : (_hovered ? colors.surfaceHover : Colors.transparent));
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
@@ -2315,10 +2314,8 @@ class _CalendarDateCellState extends State<_CalendarDateCell> {
                   widget.date.day.toString(),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: widget.muted
-                        ? const Color(0xFFA8A8A8)
-                        : (active
-                              ? const Color(0xFF303030)
-                              : const Color(0xFF4A4A4A)),
+                        ? colors.textSubtle
+                        : (active ? colors.text : colors.textMuted),
                     fontSize: 14,
                     fontWeight: widget.selected
                         ? FontWeight.w600

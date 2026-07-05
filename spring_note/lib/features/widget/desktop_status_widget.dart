@@ -22,6 +22,7 @@ class DesktopStatusWidget extends StatelessWidget {
       animation: controller,
       builder: (context, _) {
         final state = controller.state;
+        final colors = AppTheme.colors(context);
         final progress = (levelProgressState.experiencePercent / 100).clamp(
           0.0,
           1.0,
@@ -36,17 +37,17 @@ class DesktopStatusWidget extends StatelessWidget {
               height: 140,
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: const Color(0x0A000000)),
+                color: colors.surface,
+                border: Border.all(color: colors.border),
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: const [
+                boxShadow: [
                   BoxShadow(
-                    color: Color(0x0A000000),
+                    color: colors.shadow.withValues(alpha: 0.16),
                     blurRadius: 24,
                     offset: Offset(0, 4),
                   ),
                   BoxShadow(
-                    color: Color(0x05000000),
+                    color: colors.shadow.withValues(alpha: 0.08),
                     blurRadius: 2,
                     offset: Offset(0, 1),
                   ),
@@ -62,7 +63,7 @@ class DesktopStatusWidget extends StatelessWidget {
                       Text(
                         'Lv.${levelProgressState.level} 实习生 (${levelProgressState.experiencePercent}%)',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.textSubtle,
+                          color: colors.textSubtle,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.3,
                         ),
@@ -73,8 +74,8 @@ class DesktopStatusWidget extends StatelessWidget {
                         child: LinearProgressIndicator(
                           value: progress,
                           minHeight: 2,
-                          color: const Color(0xFFCFCFCF),
-                          backgroundColor: const Color(0xFFEDEDED),
+                          color: colors.textSubtle,
+                          backgroundColor: colors.surfaceMuted,
                         ),
                       ),
                     ],
@@ -82,7 +83,7 @@ class DesktopStatusWidget extends StatelessWidget {
                   Text(
                     state.coins.toStringAsFixed(2),
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                      color: AppTheme.text,
+                      color: colors.text,
                       fontWeight: FontWeight.w500,
                       fontFeatures: const [FontFeature.tabularFigures()],
                       letterSpacing: -1.5,
@@ -114,7 +115,7 @@ class DesktopStatusWidget extends StatelessWidget {
                       Text(
                         _formatDuration(state.workSeconds),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.textMuted,
+                          color: colors.textMuted,
                           fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
@@ -144,11 +145,12 @@ class _StatusDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Container(
       width: 6,
       height: 6,
       decoration: BoxDecoration(
-        color: running ? const Color(0xFF10B981) : const Color(0xFFCFCFCF),
+        color: running ? const Color(0xFF10B981) : colors.textSubtle,
         shape: BoxShape.circle,
       ),
     );

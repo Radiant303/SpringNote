@@ -44,10 +44,11 @@ class _SettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AppTheme.border),
+        color: colors.surface,
+        border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
@@ -93,8 +94,9 @@ class _ActionSettingRowState extends State<_ActionSettingRow> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final active = _hovered;
-    final foreground = active ? AppTheme.text : AppTheme.textSubtle;
+    final foreground = active ? colors.text : colors.textSubtle;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -105,8 +107,8 @@ class _ActionSettingRowState extends State<_ActionSettingRow> {
         onTap: widget.onTap,
         child: Container(
           constraints: const BoxConstraints(minHeight: 58),
-          decoration: const BoxDecoration(
-            border: Border(top: BorderSide(color: Color(0xFFEEEEEE))),
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: colors.divider)),
           ),
           child: Stack(
             alignment: Alignment.centerLeft,
@@ -123,7 +125,7 @@ class _ActionSettingRowState extends State<_ActionSettingRow> {
                     opacity: active ? 1 : 0,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF0F0F0),
+                        color: colors.surfaceHover,
                         borderRadius: BorderRadius.circular(13),
                       ),
                     ),
@@ -136,13 +138,11 @@ class _ActionSettingRowState extends State<_ActionSettingRow> {
                   vertical: 8,
                 ),
                 child: TweenAnimationBuilder<Color?>(
-                  tween: ColorTween(
-                    end: active ? AppTheme.text : AppTheme.text,
-                  ),
+                  tween: ColorTween(end: active ? colors.text : colors.text),
                   duration: const Duration(milliseconds: 280),
                   curve: Curves.easeOutCubic,
                   builder: (context, color, _) {
-                    final labelColor = color ?? AppTheme.text;
+                    final labelColor = color ?? colors.text;
                     return Row(
                       children: [
                         Expanded(
@@ -237,20 +237,27 @@ class _SettingsMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: error ? const Color(0xFFFFF1F2) : const Color(0xFFF0FDF4),
+        color: error
+            ? (dark ? const Color(0xFF3B1119) : const Color(0xFFFFF1F2))
+            : (dark ? const Color(0xFF0F2F1B) : const Color(0xFFF0FDF4)),
         border: Border.all(
-          color: error ? const Color(0xFFFECACA) : const Color(0xFFBBF7D0),
+          color: error
+              ? (dark ? const Color(0xFF7F1D1D) : const Color(0xFFFECACA))
+              : (dark ? const Color(0xFF166534) : const Color(0xFFBBF7D0)),
         ),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Text(
         text,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: error ? const Color(0xFFB91C1C) : const Color(0xFF166534),
+          color: error
+              ? (dark ? const Color(0xFFFCA5A5) : const Color(0xFFB91C1C))
+              : (dark ? const Color(0xFF86EFAC) : const Color(0xFF166534)),
         ),
       ),
     );
@@ -295,12 +302,13 @@ class _SettingsSearchFieldState extends State<_SettingsSearchField> {
   @override
   Widget build(BuildContext context) {
     final focused = _focusNode.hasFocus;
+    final colors = AppTheme.colors(context);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
       height: 40,
       decoration: BoxDecoration(
-        color: focused ? const Color(0xFFE2E2E2) : const Color(0xFFEDEDED),
+        color: focused ? colors.inputFocusedFill : colors.surfaceMuted,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Center(
@@ -313,17 +321,17 @@ class _SettingsSearchFieldState extends State<_SettingsSearchField> {
           cursorHeight: 16,
           style: Theme.of(
             context,
-          ).textTheme.bodyMedium?.copyWith(color: AppTheme.text, height: 1.2),
+          ).textTheme.bodyMedium?.copyWith(color: colors.text, height: 1.2),
           decoration: InputDecoration(
             hintText: widget.hintText,
             hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.textSubtle.withValues(alpha: 0.78),
+              color: colors.textSubtle.withValues(alpha: 0.78),
               height: 1.2,
             ),
-            prefixIcon: const Icon(
+            prefixIcon: Icon(
               Icons.search_rounded,
               size: 18,
-              color: Color(0xFF8A8A8A),
+              color: colors.textSubtle,
             ),
             prefixIconConstraints: const BoxConstraints(
               minWidth: 40,
@@ -536,6 +544,117 @@ class _SwitchSettingRow extends StatelessWidget {
   }
 }
 
+class _ThemeModeSettingRow extends StatelessWidget {
+  const _ThemeModeSettingRow({required this.value, required this.onChanged});
+
+  final AppThemePreference value;
+  final ValueChanged<AppThemePreference> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SettingRowShell(
+      label: '外观模式',
+      child: _ThemeModeSegmentedControl(value: value, onChanged: onChanged),
+    );
+  }
+}
+
+class _ThemeModeSegmentedControl extends StatelessWidget {
+  const _ThemeModeSegmentedControl({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final AppThemePreference value;
+  final ValueChanged<AppThemePreference> onChanged;
+
+  static const _labels = {
+    AppThemePreference.light: '浅色',
+    AppThemePreference.system: '跟随系统',
+    AppThemePreference.dark: '深色',
+  };
+
+  static const _options = [
+    AppThemePreference.light,
+    AppThemePreference.system,
+    AppThemePreference.dark,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    return Container(
+      height: 38,
+      width: 246,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: colors.surfaceHover,
+        border: Border.all(color: colors.border),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          for (final option in _options)
+            Expanded(
+              child: _ThemeModeSegment(
+                label: _labels[option]!,
+                selected: option == value,
+                onTap: () => onChanged(option),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ThemeModeSegment extends StatelessWidget {
+  const _ThemeModeSegment({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    final backgroundColor = selected
+        ? colors.surfacePressed
+        : Colors.transparent;
+    final foreground = selected ? colors.text : colors.textMuted;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(11),
+          ),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: foreground,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              height: 1.2,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ShortcutSettingRow extends StatelessWidget {
   const _ShortcutSettingRow({required this.label, required this.shortcut});
 
@@ -558,19 +677,20 @@ class _ShortcutKeyField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Container(
       height: 42,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF6F6F6),
-        border: Border.all(color: AppTheme.border),
+        color: colors.inputFill,
+        border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(14),
       ),
       alignment: Alignment.centerLeft,
       child: Text(
         label,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: AppTheme.text,
+          color: colors.text,
           fontFeatures: const [FontFeature.tabularFigures()],
         ),
       ),
@@ -593,11 +713,12 @@ class _SettingRowShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Container(
       constraints: const BoxConstraints(minHeight: 58),
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: Color(0xFFEEEEEE))),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: colors.divider)),
       ),
       child: Row(
         children: [
@@ -609,7 +730,7 @@ class _SettingRowShell extends StatelessWidget {
                 Text(
                   label,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: enabled ? AppTheme.text : AppTheme.textSubtle,
+                    color: enabled ? colors.text : colors.textSubtle,
                   ),
                 ),
                 if (description != null && description!.isNotEmpty)
@@ -618,7 +739,7 @@ class _SettingRowShell extends StatelessWidget {
                     child: Text(
                       description!,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.textSubtle,
+                        color: colors.textSubtle,
                         height: 1.15,
                       ),
                     ),
@@ -798,6 +919,7 @@ class _ProtocolFieldState extends State<_ProtocolField> {
     final current = _current;
     final currentLabel = _protocols[current] ?? current;
     final options = _options;
+    final colors = AppTheme.colors(context);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
@@ -891,13 +1013,13 @@ class _ProtocolFieldState extends State<_ProtocolField> {
                         padding: const EdgeInsets.symmetric(horizontal: 14),
                         decoration: BoxDecoration(
                           color: active
-                              ? const Color(0xFFF0F0F0)
-                              : const Color(0xFFF5F5F5),
+                              ? colors.surfaceHover
+                              : colors.inputFill,
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
                             color: _menuOpen
-                                ? const Color(0xFFCFCFCF)
-                                : AppTheme.border,
+                                ? colors.textSubtle
+                                : colors.border,
                           ),
                         ),
                         child: Row(
@@ -908,7 +1030,7 @@ class _ProtocolFieldState extends State<_ProtocolField> {
                                 overflow: TextOverflow.ellipsis,
                                 style: Theme.of(context).textTheme.bodyMedium
                                     ?.copyWith(
-                                      color: AppTheme.text,
+                                      color: colors.text,
                                       fontWeight: FontWeight.w400,
                                       height: 1.2,
                                     ),
@@ -918,10 +1040,10 @@ class _ProtocolFieldState extends State<_ProtocolField> {
                               turns: _menuOpen ? 0.5 : 0,
                               duration: const Duration(milliseconds: 180),
                               curve: Curves.easeOutCubic,
-                              child: const Icon(
+                              child: Icon(
                                 Icons.expand_more_rounded,
                                 size: 19,
-                                color: AppTheme.textMuted,
+                                color: colors.textMuted,
                               ),
                             ),
                           ],
@@ -949,21 +1071,22 @@ class _ProtocolMenuSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Container(
       width: width,
       padding: const EdgeInsets.symmetric(vertical: verticalPadding),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFE8E8E8)),
+        color: colors.surface,
+        border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color(0x17171717),
+            color: colors.shadow,
             blurRadius: 24,
             offset: Offset(0, 10),
           ),
           BoxShadow(
-            color: Color(0x0A171717),
+            color: colors.shadow.withValues(alpha: 0.12),
             blurRadius: 4,
             offset: Offset(0, 1),
           ),
@@ -998,11 +1121,12 @@ class _ProtocolMenuOptionState extends State<_ProtocolMenuOption> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final active = widget.selected || _hovered;
     final backgroundColor = widget.selected
-        ? const Color(0xFFE2E2E2)
-        : const Color(0xFFF5F5F5);
-    final contentColor = active ? AppTheme.text : AppTheme.textMuted;
+        ? colors.surfacePressed
+        : colors.surfaceHover;
+    final contentColor = active ? colors.text : colors.textMuted;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -1052,11 +1176,7 @@ class _ProtocolMenuOptionState extends State<_ProtocolMenuOption> {
                         ),
                       ),
                       if (widget.selected)
-                        const Icon(
-                          Icons.check_rounded,
-                          size: 17,
-                          color: AppTheme.text,
-                        ),
+                        Icon(Icons.check_rounded, size: 17, color: colors.text),
                     ],
                   ),
                 ),
@@ -1091,13 +1211,21 @@ class _StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Container(
       height: 26,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: enabled ? const Color(0xFFDCFCE7) : const Color(0xFFFFEDD5),
+        color: enabled
+            ? (Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFF123522)
+                  : const Color(0xFFDCFCE7))
+            : (Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFF3B2714)
+                  : const Color(0xFFFFEDD5)),
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: colors.border),
       ),
       child: Text(
         enabled ? '启用' : '禁用',
@@ -1138,8 +1266,9 @@ class _DialogFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: width),
@@ -1151,7 +1280,12 @@ class _DialogFrame extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Text(title, style: Theme.of(context).textTheme.titleLarge),
+                  Text(
+                    title,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleLarge?.copyWith(color: colors.text),
+                  ),
                   const Spacer(),
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
@@ -1183,11 +1317,15 @@ class _DialogTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextField(
         controller: controller,
         obscureText: obscureText,
+        style: Theme.of(
+          context,
+        ).textTheme.bodyLarge?.copyWith(color: colors.text, height: 1.25),
         decoration: InputDecoration(labelText: label),
       ),
     );
@@ -1207,17 +1345,24 @@ class _DialogSwitchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Container(
       height: 56,
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: AppTheme.background,
+        color: colors.surfaceMuted,
+        border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
-          Text(label),
+          Text(
+            label,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: colors.text),
+          ),
           const Spacer(),
           Switch(value: value, onChanged: onChanged),
         ],

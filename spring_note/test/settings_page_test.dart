@@ -28,6 +28,32 @@ void main() {
     expect(AppTheme.fontScaleFactor(200), 1.4);
   });
 
+  testWidgets('settings page applies dark theme colors', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
+        themeMode: ThemeMode.dark,
+        home: SettingsPage(
+          localDataState: _state(AppConfig.defaults()),
+          localDataService: _MemoryLocalDataService(AppConfig.defaults()),
+        ),
+      ),
+    );
+
+    final context = tester.element(find.byType(SettingsPage));
+    expect(Theme.of(context).brightness, Brightness.dark);
+    expect(AppTheme.colors(context).surface, SpringThemeColors.dark.surface);
+    expect(find.text('外观模式'), findsOneWidget);
+  });
+
   testWidgets('settings page switches sections and persists preferences', (
     WidgetTester tester,
   ) async {
@@ -63,6 +89,10 @@ void main() {
     await tester.pump();
     expect(service.savedConfig.apiLogEnabled, isTrue);
     expect(latestConfig?.apiLogEnabled, isTrue);
+
+    await tester.tap(find.text('深色'));
+    await tester.pump();
+    expect(service.savedConfig.themeMode, AppThemePreference.dark);
   });
 
   testWidgets('settings page persists desktop widget orb mode', (

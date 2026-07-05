@@ -83,8 +83,9 @@ class _AppWindowTitleBarState extends State<AppWindowTitleBar>
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
+    final colors = AppTheme.colors(context);
     final textStyle = Theme.of(context).textTheme.labelLarge?.copyWith(
-      color: AppTheme.textMuted,
+      color: colors.textMuted,
       fontSize: 12.5,
       fontWeight: FontWeight.w500,
       height: 1,
@@ -92,7 +93,7 @@ class _AppWindowTitleBarState extends State<AppWindowTitleBar>
     );
 
     return ColoredBox(
-      color: AppTheme.background,
+      color: colors.background,
       child: SizedBox(
         height: AppWindowTitleBar.height,
         child: Row(

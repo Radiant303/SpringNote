@@ -60,6 +60,10 @@ class _SpringNoteAppState extends State<SpringNoteApp> {
         Locale.fromSubtags(languageCode: 'zh', countryCode: 'CN'),
       ],
       theme: AppTheme.light(appFont: _config.appFont),
+      darkTheme: AppTheme.dark(appFont: _config.appFont),
+      themeMode: _themeMode(_config.themeMode),
+      themeAnimationDuration: Duration.zero,
+      themeAnimationCurve: Curves.linear,
       builder: (context, child) {
         final mediaQuery = MediaQuery.of(context);
         return MediaQuery(
@@ -88,6 +92,14 @@ class _SpringNoteAppState extends State<SpringNoteApp> {
       ),
     );
   }
+
+  ThemeMode _themeMode(AppThemePreference preference) {
+    return switch (preference) {
+      AppThemePreference.system => ThemeMode.system,
+      AppThemePreference.light => ThemeMode.light,
+      AppThemePreference.dark => ThemeMode.dark,
+    };
+  }
 }
 
 class AppStartupLoading extends StatelessWidget {
@@ -114,14 +126,15 @@ class AppStartupError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Scaffold(
       body: Center(
         child: Container(
           width: 520,
           padding: const EdgeInsets.all(28),
           decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: const Color(0xFFE5E5E5)),
+            color: colors.surface,
+            border: Border.all(color: colors.border),
             borderRadius: BorderRadius.circular(24),
           ),
           child: Column(
@@ -135,9 +148,9 @@ class AppStartupError extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 error,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFF666666),
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: colors.textSubtle),
               ),
             ],
           ),

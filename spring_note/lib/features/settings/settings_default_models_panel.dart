@@ -92,6 +92,7 @@ class _DefaultModelCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final selectedRef = ModelReference.parse(value);
     final selected = selectedRef == null
         ? null
@@ -106,8 +107,8 @@ class _DefaultModelCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AppTheme.border),
+        color: colors.surface,
+        border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(22),
       ),
       child: Column(
@@ -127,7 +128,7 @@ class _DefaultModelCard extends StatelessWidget {
                 height: 54,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  color: AppTheme.surfaceMuted,
+                  color: colors.surfaceMuted,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Row(
@@ -135,11 +136,16 @@ class _DefaultModelCard extends StatelessWidget {
                     CircleAvatar(
                       radius: 13,
                       backgroundColor: value == null
-                          ? const Color(0xFFE0E0E0)
+                          ? colors.surfacePressed
                           : const Color(0xFFDCFCE7),
                       child: Text(
                         value == null ? '未' : '已',
-                        style: const TextStyle(fontSize: 11),
+                        style: TextStyle(
+                          color: value == null
+                              ? colors.textMuted
+                              : const Color(0xFF166534),
+                          fontSize: 11,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -149,9 +155,12 @@ class _DefaultModelCard extends StatelessWidget {
                             ? '未选择模型'
                             : '${selected.model.displayName} · ${selected.provider.name}',
                         overflow: TextOverflow.ellipsis,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.copyWith(color: colors.text),
                       ),
                     ),
-                    const Icon(Icons.expand_more_rounded),
+                    Icon(Icons.expand_more_rounded, color: colors.textSubtle),
                   ],
                 ),
               ),
@@ -288,8 +297,9 @@ class _ModelPickerDialogState extends State<_ModelPickerDialog> {
     final groups = _groups;
     final showNoneOption = _showNoneOption;
     final selectedRef = ModelReference.parse(widget.selectedValue);
+    final colors = AppTheme.colors(context);
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: SizedBox(
@@ -308,14 +318,15 @@ class _ModelPickerDialogState extends State<_ModelPickerDialog> {
                         Text(
                           '选择${widget.title}',
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(color: AppTheme.text),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.titleMedium?.copyWith(color: colors.text),
                         ),
                         const SizedBox(height: 3),
                         Text(
                           '按供应商选择默认模型',
                           style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: AppTheme.textSubtle),
+                              ?.copyWith(color: colors.textSubtle),
                         ),
                       ],
                     ),
@@ -481,12 +492,13 @@ class _ModelOptionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = selected || hovered;
+    final colors = AppTheme.colors(context);
     final backgroundColor = selected
-        ? const Color(0xFFE2E2E2)
-        : const Color(0xFFF5F5F5);
+        ? colors.surfacePressed
+        : colors.surfaceHover;
     final option = model;
     final title = option?.model.displayName ?? '未选择';
-    final contentColor = active ? AppTheme.text : AppTheme.textMuted;
+    final contentColor = active ? colors.text : colors.textMuted;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -544,11 +556,7 @@ class _ModelOptionTile extends StatelessWidget {
                         ),
                       ),
                       if (selected)
-                        const Icon(
-                          Icons.check_rounded,
-                          size: 17,
-                          color: AppTheme.text,
-                        ),
+                        Icon(Icons.check_rounded, size: 17, color: colors.text),
                     ],
                   ),
                 ),

@@ -19,6 +19,7 @@ class DesktopWidgetWindowSnapshot {
     required this.fontScaleFactor,
     required this.position,
     required this.orbMode,
+    required this.darkMode,
   });
 
   final bool running;
@@ -32,6 +33,7 @@ class DesktopWidgetWindowSnapshot {
   final double fontScaleFactor;
   final DesktopWidgetPosition? position;
   final bool orbMode;
+  final bool darkMode;
 
   Map<String, Object?> toJson() {
     return {
@@ -46,6 +48,7 @@ class DesktopWidgetWindowSnapshot {
       'fontScaleFactor': fontScaleFactor,
       'position': position?.toJson(),
       'orbMode': orbMode,
+      'darkMode': darkMode,
     };
   }
 }

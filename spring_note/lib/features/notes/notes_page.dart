@@ -1091,10 +1091,11 @@ class _NotesPageState extends State<NotesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final selected = _selectedNote;
 
     return Material(
-      color: AppTheme.background,
+      color: colors.background,
       child: Row(
         children: [
           _NotesSidebar(
@@ -1243,12 +1244,13 @@ class _NotesSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Container(
       width: 278,
       padding: const EdgeInsets.fromLTRB(18, 24, 14, 20),
-      decoration: const BoxDecoration(
-        color: AppTheme.background,
-        border: Border(right: BorderSide(color: Color(0xFFEEEEEE))),
+      decoration: BoxDecoration(
+        color: colors.background,
+        border: Border(right: BorderSide(color: colors.divider)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1260,7 +1262,7 @@ class _NotesSidebar extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE0E0E0).withValues(alpha: 0.6),
+                  color: colors.surfaceMuted,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -1425,23 +1427,24 @@ class _NotesKindMenuState extends State<_NotesKindMenu> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Material(
       color: Colors.transparent,
       child: Container(
         width: 190,
         padding: const EdgeInsets.all(7),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFFE8E8E8)),
+          color: colors.surface,
+          border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
+          boxShadow: [
             BoxShadow(
-              color: Color(0x17171717),
+              color: colors.shadow.withValues(alpha: 0.16),
               blurRadius: 24,
               offset: Offset(0, 10),
             ),
             BoxShadow(
-              color: Color(0x0A171717),
+              color: colors.shadow.withValues(alpha: 0.08),
               blurRadius: 4,
               offset: Offset(0, 1),
             ),
@@ -1456,7 +1459,7 @@ class _NotesKindMenuState extends State<_NotesKindMenu> {
               child: Text(
                 '切换笔记类型',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppTheme.textSubtle,
+                  color: colors.textSubtle,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.2,
                 ),
@@ -1511,12 +1514,13 @@ class _NotesKindMenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final active = selected || hovered;
     final backgroundColor = selected
-        ? const Color(0xFFE2E2E2)
-        : const Color(0xFFF5F5F5);
-    final contentColor = active ? AppTheme.text : AppTheme.textMuted;
-    final subtleColor = active ? AppTheme.textSubtle : const Color(0xFF8A8A8A);
+        ? colors.surfacePressed
+        : colors.surfaceHover;
+    final contentColor = active ? colors.text : colors.textMuted;
+    final subtleColor = colors.textSubtle;
     final titleStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
       color: contentColor,
       fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
@@ -1565,7 +1569,7 @@ class _NotesKindMenuItem extends StatelessWidget {
                       Icon(
                         _iconForKind(kind),
                         size: 17,
-                        color: active ? AppTheme.text : AppTheme.textSubtle,
+                        color: active ? colors.text : colors.textSubtle,
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -1583,11 +1587,7 @@ class _NotesKindMenuItem extends StatelessWidget {
                         ),
                       ),
                       if (selected)
-                        const Icon(
-                          Icons.check_rounded,
-                          size: 16,
-                          color: AppTheme.text,
-                        ),
+                        Icon(Icons.check_rounded, size: 16, color: colors.text),
                     ],
                   ),
                 ),
@@ -1645,13 +1645,14 @@ class _NotesSearchFieldState extends State<_NotesSearchField> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final focused = _focusNode.hasFocus;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
       height: 40,
       decoration: BoxDecoration(
-        color: focused ? const Color(0xFFE2E2E2) : const Color(0xFFEDEDED),
+        color: focused ? colors.inputFocusedFill : colors.inputFill,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Center(
@@ -1662,17 +1663,17 @@ class _NotesSearchFieldState extends State<_NotesSearchField> {
           cursorHeight: 16,
           style: Theme.of(
             context,
-          ).textTheme.bodyMedium?.copyWith(color: AppTheme.text, height: 1.2),
+          ).textTheme.bodyMedium?.copyWith(color: colors.text, height: 1.2),
           decoration: InputDecoration(
             hintText: '搜索知识记录...',
             hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.textSubtle.withValues(alpha: 0.78),
+              color: colors.textSubtle.withValues(alpha: 0.78),
               height: 1.2,
             ),
-            prefixIcon: const Icon(
+            prefixIcon: Icon(
               Icons.search_rounded,
               size: 18,
-              color: Color(0xFF8A8A8A),
+              color: colors.textSubtle,
             ),
             prefixIconConstraints: const BoxConstraints(
               minWidth: 40,
@@ -1714,14 +1715,13 @@ class _NoteListItemState extends State<_NoteListItem> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final backgroundColor = widget.selected
-        ? const Color(0xFFE2E2E2)
-        : const Color(0xFFF5F5F5);
+        ? colors.surfacePressed
+        : colors.surfaceHover;
     final active = widget.selected || _hovered;
-    final titleColor = active ? AppTheme.text : const Color(0xFF6E6E6E);
-    final secondaryColor = active
-        ? const Color(0xFF737373)
-        : const Color(0xFF8A8A8A);
+    final titleColor = active ? colors.text : colors.textMuted;
+    final secondaryColor = colors.textSubtle;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -1880,13 +1880,14 @@ class _EditorPaneState extends State<_EditorPane> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final editorStyle =
         Theme.of(context).textTheme.bodyLarge?.copyWith(
-          color: const Color(0xFF3A3A3A),
+          color: colors.text,
           fontSize: 14,
           height: 1.55,
         ) ??
-        const TextStyle(color: Color(0xFF3A3A3A), fontSize: 14, height: 1.55);
+        TextStyle(color: colors.text, fontSize: 14, height: 1.55);
     return _PaneFrame(
       headerPadding: const EdgeInsets.only(left: 32, right: 16),
       header: Row(
@@ -1894,11 +1895,7 @@ class _EditorPaneState extends State<_EditorPane> {
           Expanded(
             child: Row(
               children: [
-                const Icon(
-                  Icons.code_rounded,
-                  size: 15,
-                  color: Color(0xFF8A8A8A),
-                ),
+                Icon(Icons.code_rounded, size: 15, color: colors.textSubtle),
                 const SizedBox(width: 8),
                 Flexible(
                   child: Text(
@@ -1906,7 +1903,7 @@ class _EditorPaneState extends State<_EditorPane> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: const Color(0xFF8A8A8A),
+                      color: colors.textSubtle,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.8,
@@ -1943,11 +1940,11 @@ class _EditorPaneState extends State<_EditorPane> {
                     behavior: const _EditorTextFieldScrollBehavior(),
                     child: TextSelectionTheme(
                       data: TextSelectionTheme.of(context).copyWith(
-                        cursorColor: const Color(0xFF6E6E6E),
-                        selectionColor: const Color(
-                          0xFFBDBDBD,
-                        ).withValues(alpha: 0.34),
-                        selectionHandleColor: const Color(0xFF737373),
+                        cursorColor: colors.textMuted,
+                        selectionColor: colors.textSubtle.withValues(
+                          alpha: 0.28,
+                        ),
+                        selectionHandleColor: colors.textSubtle,
                       ),
                       child: TextField(
                         key: ValueKey('note-editor-${widget.editorRevision}'),
@@ -1963,10 +1960,12 @@ class _EditorPaneState extends State<_EditorPane> {
                         keyboardType: TextInputType.multiline,
                         decoration: InputDecoration(
                           hintText: '# 开始编辑 Markdown...',
-                          hintStyle: const TextStyle(color: Color(0xFFCFCFCF)),
+                          hintStyle: TextStyle(
+                            color: colors.textSubtle.withValues(alpha: 0.58),
+                          ),
                           filled: true,
-                          fillColor: Colors.white,
-                          hoverColor: Colors.white,
+                          fillColor: colors.surface,
+                          hoverColor: Colors.transparent,
                           border: InputBorder.none,
                           enabledBorder: InputBorder.none,
                           focusedBorder: InputBorder.none,
@@ -1979,7 +1978,7 @@ class _EditorPaneState extends State<_EditorPane> {
                           ),
                         ),
                         style: editorStyle,
-                        cursorColor: const Color(0xFF6E6E6E),
+                        cursorColor: colors.textMuted,
                         cursorWidth: 1.25,
                         cursorRadius: const Radius.circular(1),
                         selectionControls: desktopTextSelectionHandleControls,
@@ -2026,6 +2025,8 @@ class _EditorStatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final displayText = switch (statusText) {
       _ => statusText,
     };
@@ -2034,11 +2035,11 @@ class _EditorStatusPill extends StatelessWidget {
         statusText == 'AI 编辑预测中' ||
         statusText.startsWith('Tab ');
     final foreground = active
-        ? const Color(0xFF10B981)
-        : const Color(0xFF666666);
+        ? (dark ? const Color(0xFF34D399) : const Color(0xFF10B981))
+        : colors.textSubtle;
     final background = active
-        ? const Color(0xFFECFDF5)
-        : const Color(0xFFF5F5F5);
+        ? (dark ? const Color(0xFF0B3024) : const Color(0xFFECFDF5))
+        : colors.surfaceMuted;
 
     return Align(
       alignment: Alignment.centerRight,
@@ -2082,6 +2083,7 @@ class _PreviewPane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return _PaneFrame(
       headerPadding: const EdgeInsets.symmetric(horizontal: 24),
       header: Row(
@@ -2089,18 +2091,14 @@ class _PreviewPane extends StatelessWidget {
           Text(
             'Markdown Preview · 渲染预览',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: const Color(0xFF8A8A8A),
+              color: colors.textSubtle,
               fontSize: 12,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.8,
             ),
           ),
           const Spacer(),
-          const Icon(
-            Icons.open_in_full_rounded,
-            size: 15,
-            color: AppTheme.textSubtle,
-          ),
+          Icon(Icons.open_in_full_rounded, size: 15, color: colors.textSubtle),
         ],
       ),
       child: MarkdownPreview(
@@ -2124,18 +2122,19 @@ class _PaneFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(left: BorderSide(color: Color(0xFFEEEEEE))),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        border: Border(left: BorderSide(color: colors.divider)),
       ),
       child: Column(
         children: [
           Container(
             height: 56,
             padding: headerPadding,
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Color(0xFFEDEDED))),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: colors.divider)),
             ),
             child: header,
           ),

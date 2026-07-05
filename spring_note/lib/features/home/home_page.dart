@@ -706,8 +706,9 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Material(
-      color: AppTheme.background,
+      color: colors.background,
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1184),
@@ -880,6 +881,8 @@ class _IncomeSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final progress = (levelProgressState.experiencePercent / 100).clamp(
       0.0,
       1.0,
@@ -897,7 +900,7 @@ class _IncomeSummary extends StatelessWidget {
             Text(
               'LEVEL ${levelProgressState.level.toString().padLeft(2, '0')}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: const Color(0xFF666666),
+                color: colors.textSubtle,
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 1,
@@ -912,12 +915,16 @@ class _IncomeSummary extends StatelessWidget {
                 children: [
                   CustomPaint(
                     size: const Size.square(64),
-                    painter: _LevelRingPainter(progress: progress),
+                    painter: _LevelRingPainter(
+                      progress: progress,
+                      backgroundColor: colors.surfaceMuted,
+                      progressColor: colors.textSubtle,
+                    ),
                   ),
                   Text(
                     progressLabel,
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: const Color(0xFF4F4F4F),
+                      color: colors.textMuted,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                     ),
@@ -935,7 +942,7 @@ class _IncomeSummary extends StatelessWidget {
               Text(
                 'EARNINGS TODAY',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: const Color(0xFF8A8A8A),
+                  color: colors.textSubtle,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 1,
@@ -954,7 +961,7 @@ class _IncomeSummary extends StatelessWidget {
                           ?.copyWith(
                             fontSize: 56,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFF171717),
+                            color: colors.text,
                             letterSpacing: -3.2,
                             height: 1,
                             fontFeatures: const [FontFeature.tabularFigures()],
@@ -968,23 +975,29 @@ class _IncomeSummary extends StatelessWidget {
                       vertical: 3,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFECFDF5),
+                      color: dark
+                          ? const Color(0xFF0B3024)
+                          : const Color(0xFFECFDF5),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.trending_up_rounded,
                           size: 12,
-                          color: Color(0xFF059669),
+                          color: dark
+                              ? const Color(0xFF34D399)
+                              : const Color(0xFF059669),
                         ),
                         const SizedBox(width: 2),
                         Text(
                           '+${_formatRate(rate)} c/s',
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(
-                                color: const Color(0xFF059669),
+                                color: dark
+                                    ? const Color(0xFF34D399)
+                                    : const Color(0xFF059669),
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 fontFeatures: const [
@@ -1004,8 +1017,8 @@ class _IncomeSummary extends StatelessWidget {
                   children: [
                     TextSpan(
                       text: _formatCoinAmount(visibleTotalCoins),
-                      style: const TextStyle(
-                        color: Color(0xFF666666),
+                      style: TextStyle(
+                        color: colors.textSubtle,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1013,7 +1026,7 @@ class _IncomeSummary extends StatelessWidget {
                   ],
                 ),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFF8A8A8A),
+                  color: colors.textSubtle,
                   fontSize: 12,
                   letterSpacing: 0.1,
                 ),
@@ -1045,20 +1058,26 @@ class _IncomeSummary extends StatelessWidget {
 }
 
 class _LevelRingPainter extends CustomPainter {
-  const _LevelRingPainter({required this.progress});
+  const _LevelRingPainter({
+    required this.progress,
+    required this.backgroundColor,
+    required this.progressColor,
+  });
 
   final double progress;
+  final Color backgroundColor;
+  final Color progressColor;
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
     final backgroundPaint = Paint()
-      ..color = const Color(0xFFEDEDED)
+      ..color = backgroundColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4.5
       ..strokeCap = StrokeCap.round;
     final progressPaint = Paint()
-      ..color = const Color(0xFF666666)
+      ..color = progressColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4.5
       ..strokeCap = StrokeCap.round;
@@ -1081,7 +1100,9 @@ class _LevelRingPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _LevelRingPainter oldDelegate) {
-    return oldDelegate.progress != progress;
+    return oldDelegate.progress != progress ||
+        oldDelegate.backgroundColor != backgroundColor ||
+        oldDelegate.progressColor != progressColor;
   }
 }
 
@@ -1091,16 +1112,10 @@ class _ActivityPreview extends StatelessWidget {
   final rust_stats.StatsSnapshot stats;
   final bool withDivider;
 
-  static const _colors = [
-    Color(0xFFEDEDED),
-    Color(0xFFDCFCE7),
-    Color(0xFFBBF7D0),
-    Color(0xFF86EFAC),
-    Color(0xFF4ADE80),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final today = DateTime.now();
     final activityByDate = {
       for (final item in stats.activity) item.date: item.count,
@@ -1118,7 +1133,7 @@ class _ActivityPreview extends StatelessWidget {
             Text(
               'ACTIVITY INPUT',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.textSubtle,
+                color: colors.textSubtle,
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
                 letterSpacing: 1,
@@ -1128,7 +1143,7 @@ class _ActivityPreview extends StatelessWidget {
             Text(
               '最近活跃',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: const Color(0xFF10B981),
+                color: dark ? const Color(0xFF34D399) : const Color(0xFF10B981),
                 fontSize: 11,
               ),
             ),
@@ -1138,7 +1153,7 @@ class _ActivityPreview extends StatelessWidget {
         _ActivityHeatmap(
           today: today,
           activityByDate: activityByDate,
-          colors: _colors,
+          colors: AppTheme.activityHeatmapColors(context),
           activityLevel: _activityLevel,
         ),
         const SizedBox(height: 16),
@@ -1154,10 +1169,10 @@ class _ActivityPreview extends StatelessWidget {
                 const SizedBox(width: 24),
                 _ActivityMetric(label: '连续记录', value: '$streak 天'),
                 const SizedBox(width: 24),
-                const _ActivityMetric(
+                _ActivityMetric(
                   label: '上次同步',
                   value: '刚刚',
-                  valueColor: Color(0xFF666666),
+                  valueColor: colors.textSubtle,
                 ),
               ],
             ),
@@ -1173,8 +1188,8 @@ class _ActivityPreview extends StatelessWidget {
     return Container(
       width: 392,
       padding: const EdgeInsets.only(left: 32),
-      decoration: const BoxDecoration(
-        border: Border(left: BorderSide(color: Color(0xFFEDEDED))),
+      decoration: BoxDecoration(
+        border: Border(left: BorderSide(color: colors.divider)),
       ),
       child: content,
     );
@@ -1214,29 +1229,32 @@ class _ActivityMetric extends StatelessWidget {
   const _ActivityMetric({
     required this.label,
     required this.value,
-    this.valueColor = const Color(0xFF3A3A3A),
+    this.valueColor,
   });
 
   final String label;
   final String value;
-  final Color valueColor;
+  final Color? valueColor;
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Text.rich(
       TextSpan(
         text: '$label: ',
         children: [
           TextSpan(
             text: value,
-            style: TextStyle(color: valueColor, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: valueColor ?? colors.textMuted,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
-      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-        color: AppTheme.textSubtle,
-        fontSize: 12,
-      ),
+      style: Theme.of(
+        context,
+      ).textTheme.bodyMedium?.copyWith(color: colors.textSubtle, fontSize: 12),
     );
   }
 }
@@ -1454,23 +1472,24 @@ class _HeatmapTooltip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return IgnorePointer(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFFEDEDED)),
+          color: colors.surface,
+          border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(8),
-          boxShadow: const [
+          boxShadow: [
             BoxShadow(
-              color: Color(0x26000000),
+              color: colors.shadow.withValues(alpha: 0.24),
               blurRadius: 18,
               offset: Offset(0, 8),
             ),
           ],
         ),
         child: Text.rich(
-          _tooltipMessage(),
+          _tooltipMessage(colors),
           softWrap: false,
           overflow: TextOverflow.visible,
         ),
@@ -1478,9 +1497,9 @@ class _HeatmapTooltip extends StatelessWidget {
     );
   }
 
-  InlineSpan _tooltipMessage() {
-    const baseStyle = TextStyle(
-      color: Color(0xFF262626),
+  InlineSpan _tooltipMessage(SpringThemeColors colors) {
+    final baseStyle = TextStyle(
+      color: colors.text,
       fontSize: 11,
       fontWeight: FontWeight.w500,
       height: 1.2,
@@ -1490,14 +1509,14 @@ class _HeatmapTooltip extends StatelessWidget {
       return TextSpan(
         style: baseStyle,
         children: [
-          const TextSpan(
+          TextSpan(
             text: 'No contributions on ',
-            style: TextStyle(color: AppTheme.textSubtle),
+            style: TextStyle(color: colors.textSubtle),
           ),
           TextSpan(
             text: dateLabel,
-            style: const TextStyle(
-              color: Color(0xFF4F4F4F),
+            style: TextStyle(
+              color: colors.textMuted,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1510,19 +1529,16 @@ class _HeatmapTooltip extends StatelessWidget {
       children: [
         TextSpan(
           text: '$count ${count == 1 ? 'commit' : 'commits'}',
-          style: const TextStyle(
-            color: AppTheme.text,
-            fontWeight: FontWeight.w700,
-          ),
+          style: TextStyle(color: colors.text, fontWeight: FontWeight.w700),
         ),
-        const TextSpan(
+        TextSpan(
           text: ' on ',
-          style: TextStyle(color: AppTheme.textSubtle),
+          style: TextStyle(color: colors.textSubtle),
         ),
         TextSpan(
           text: dateLabel,
-          style: const TextStyle(
-            color: Color(0xFF4F4F4F),
+          style: TextStyle(
+            color: colors.textMuted,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -1565,17 +1581,23 @@ class _QuickCaptureCard extends StatelessWidget {
     return AnimatedBuilder(
       animation: focusNode,
       builder: (context, child) {
+        final colors = AppTheme.colors(context);
+        final dark = Theme.of(context).brightness == Brightness.dark;
         final focused = focusNode.hasFocus;
         return AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           curve: Curves.easeOut,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: focused ? const Color(0xE6F5F5F5) : const Color(0x99F5F5F5),
+            color: dark
+                ? (focused ? colors.inputFocusedFill : colors.inputFill)
+                : (focused ? const Color(0xE6F5F5F5) : const Color(0x99F5F5F5)),
             border: Border.all(
-              color: focused
-                  ? const Color(0xCCCFCFCF)
-                  : const Color(0x99E0E0E0),
+              color: dark
+                  ? (focused ? colors.textSubtle : colors.border)
+                  : (focused
+                        ? const Color(0xCCCFCFCF)
+                        : const Color(0x99E0E0E0)),
             ),
             borderRadius: BorderRadius.circular(16),
           ),
@@ -1585,6 +1607,8 @@ class _QuickCaptureCard extends StatelessWidget {
       child: AnimatedBuilder(
         animation: controller,
         builder: (context, _) {
+          final colors = AppTheme.colors(context);
+          final dark = Theme.of(context).brightness == Brightness.dark;
           final characterCount = controller.text.characters.length;
           final canSubmit =
               (controller.text.trim().isNotEmpty ||
@@ -1622,7 +1646,7 @@ class _QuickCaptureCard extends StatelessWidget {
                     decoration: InputDecoration(
                       hintText: '写下你的想法，AI 将自动整理并生成结构化内容...',
                       hintStyle: Theme.of(context).textTheme.bodyMedium
-                          ?.copyWith(color: const Color(0xCC8A8A8A)),
+                          ?.copyWith(color: colors.textSubtle),
                       hoverColor: Colors.transparent,
                       focusColor: Colors.transparent,
                       filled: false,
@@ -1633,7 +1657,7 @@ class _QuickCaptureCard extends StatelessWidget {
                       focusedBorder: InputBorder.none,
                     ),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: const Color(0xFF262626),
+                      color: colors.text,
                       fontSize: 14,
                       height: 1.625,
                     ),
@@ -1661,15 +1685,21 @@ class _QuickCaptureCard extends StatelessWidget {
                 Text(
                   attachmentError!,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFFB45309),
+                    color: dark
+                        ? const Color(0xFFFCD34D)
+                        : const Color(0xFFB45309),
                     fontSize: 12,
                   ),
                 ),
               ],
               Container(
                 padding: const EdgeInsets.only(top: 8),
-                decoration: const BoxDecoration(
-                  border: Border(top: BorderSide(color: Color(0x80EDEDED))),
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(
+                      color: colors.divider.withValues(alpha: 0.5),
+                    ),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -1695,7 +1725,7 @@ class _QuickCaptureCard extends StatelessWidget {
                     Text(
                       '$characterCount 字',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.textSubtle,
+                        color: colors.textSubtle,
                         fontSize: 12,
                       ),
                     ),
@@ -1738,6 +1768,14 @@ class _SmartGenerateButtonState extends State<_SmartGenerateButton> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = dark
+        ? (_hovered && widget.canSubmit ? colors.textMuted : colors.text)
+        : (_hovered && widget.canSubmit
+              ? const Color(0xFF262626)
+              : const Color(0xFF171717));
+    final foregroundColor = dark ? colors.onAccent : Colors.white;
     return MouseRegion(
       cursor: widget.canSubmit
           ? SystemMouseCursors.click
@@ -1754,13 +1792,11 @@ class _SmartGenerateButtonState extends State<_SmartGenerateButton> {
           height: 28,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
-            color: _hovered && widget.canSubmit
-                ? const Color(0xFF262626)
-                : const Color(0xFF171717),
+            color: backgroundColor,
             borderRadius: BorderRadius.circular(14),
-            boxShadow: const [
+            boxShadow: [
               BoxShadow(
-                color: Color(0x0D000000),
+                color: colors.shadow.withValues(alpha: 0.08),
                 offset: Offset(0, 1),
                 blurRadius: 2,
               ),
@@ -1772,8 +1808,8 @@ class _SmartGenerateButtonState extends State<_SmartGenerateButton> {
             children: [
               Text(
                 widget.isSubmitting ? '整理中' : '智能生成',
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: foregroundColor,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                   height: 1.333,
@@ -1842,6 +1878,7 @@ class _PendingImageChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Tooltip(
       message: image.name,
       child: Container(
@@ -1849,8 +1886,8 @@ class _PendingImageChip extends StatelessWidget {
         height: 40,
         padding: const EdgeInsets.only(left: 6, right: 4),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFFE5E5E5)),
+          color: colors.surface,
+          border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -1862,24 +1899,24 @@ class _PendingImageChip extends StatelessWidget {
                 width: 28,
                 height: 28,
                 child: image.isSvg
-                    ? const DecoratedBox(
-                        decoration: BoxDecoration(color: Color(0xFFF5F5F5)),
+                    ? DecoratedBox(
+                        decoration: BoxDecoration(color: colors.surfaceMuted),
                         child: Icon(
                           Icons.image_outlined,
                           size: 16,
-                          color: Color(0xFF525252),
+                          color: colors.textMuted,
                         ),
                       )
                     : Image.memory(
                         image.bytes,
                         fit: BoxFit.cover,
                         gaplessPlayback: true,
-                        errorBuilder: (_, _, _) => const DecoratedBox(
-                          decoration: BoxDecoration(color: Color(0xFFF5F5F5)),
+                        errorBuilder: (_, _, _) => DecoratedBox(
+                          decoration: BoxDecoration(color: colors.surfaceMuted),
                           child: Icon(
                             Icons.image_outlined,
                             size: 16,
-                            color: Color(0xFF525252),
+                            color: colors.textMuted,
                           ),
                         ),
                       ),
@@ -1891,7 +1928,7 @@ class _PendingImageChip extends StatelessWidget {
                 '图片 · ${image.name}',
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFF404040),
+                  color: colors.textMuted,
                   fontSize: 12,
                   height: 1.2,
                 ),
@@ -1907,8 +1944,8 @@ class _PendingImageChip extends StatelessWidget {
                   Icons.close,
                   size: 13,
                   color: enabled
-                      ? const Color(0xFF737373)
-                      : const Color(0xFFBDBDBD),
+                      ? colors.textSubtle
+                      : colors.textSubtle.withValues(alpha: 0.48),
                 ),
               ),
             ),
@@ -1960,6 +1997,7 @@ class _AttachmentChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final icon = attachment.kind == HomeAttachmentKind.image
         ? Icons.image_outlined
         : Icons.description_outlined;
@@ -1972,21 +2010,21 @@ class _AttachmentChip extends StatelessWidget {
         height: 32,
         padding: const EdgeInsets.only(left: 10, right: 4),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFFE5E5E5)),
+          color: colors.surface,
+          border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 15, color: const Color(0xFF525252)),
+            Icon(icon, size: 15, color: colors.textMuted),
             const SizedBox(width: 6),
             Flexible(
               child: Text(
                 '$typeLabel · ${attachment.name}',
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFF404040),
+                  color: colors.textMuted,
                   fontSize: 12,
                   height: 1.2,
                 ),
@@ -2002,8 +2040,8 @@ class _AttachmentChip extends StatelessWidget {
                   Icons.close,
                   size: 13,
                   color: enabled
-                      ? const Color(0xFF737373)
-                      : const Color(0xFFBDBDBD),
+                      ? colors.textSubtle
+                      : colors.textSubtle.withValues(alpha: 0.48),
                 ),
               ),
             ),
@@ -2038,6 +2076,7 @@ class _ToolIconState extends State<_ToolIcon> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final active = widget.enabled && widget.onTap != null;
     return Tooltip(
       message: widget.tooltip,
@@ -2061,7 +2100,7 @@ class _ToolIconState extends State<_ToolIcon> {
                     opacity: _hovered && active ? 1 : 0,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: colors.surface,
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
@@ -2070,7 +2109,7 @@ class _ToolIconState extends State<_ToolIcon> {
                 _LucideToolbarIcon(
                   type: widget.type,
                   size: 16,
-                  color: _iconColor(active),
+                  color: _iconColor(context, active),
                 ),
               ],
             ),
@@ -2080,14 +2119,15 @@ class _ToolIconState extends State<_ToolIcon> {
     );
   }
 
-  Color _iconColor(bool active) {
+  Color _iconColor(BuildContext context, bool active) {
+    final colors = AppTheme.colors(context);
     if (!widget.enabled) {
-      return const Color(0xFFBDBDBD);
+      return colors.textSubtle.withValues(alpha: 0.48);
     }
     if (_hovered && active) {
-      return const Color(0xFF4F4F4F);
+      return colors.textMuted;
     }
-    return AppTheme.textSubtle;
+    return colors.textSubtle;
   }
 }
 
@@ -2391,22 +2431,24 @@ class _OverviewGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final cards = [
       _OverviewCard(
         eyebrow: 'Completed · 完成事项',
-        accentColor: AppTheme.textSubtle,
+        accentColor: colors.textSubtle,
         items: overview.completed,
         emptyText: '完成事项',
       ),
       _OverviewCard(
         eyebrow: 'Issues · 问题记录',
-        accentColor: const Color(0xFFF87171),
+        accentColor: dark ? const Color(0xFFFCA5A5) : const Color(0xFFF87171),
         items: overview.issues,
         emptyText: '问题记录',
       ),
       _OverviewCard(
         eyebrow: 'Next Steps · 明日计划',
-        accentColor: AppTheme.textSubtle,
+        accentColor: colors.textSubtle,
         items: overview.plans,
         emptyText: '明日计划',
       ),
@@ -2459,6 +2501,7 @@ class _OverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final visibleItems = items.take(2).toList();
     final lineTexts = [
       if (visibleItems.isEmpty) emptyText else visibleItems[0],
@@ -2513,8 +2556,8 @@ class _OverviewCard extends StatelessWidget {
                                         .bodyMedium
                                         ?.copyWith(
                                           color: index == 0
-                                              ? const Color(0xFF4F4F4F)
-                                              : AppTheme.textSubtle,
+                                              ? colors.textMuted
+                                              : colors.textSubtle,
                                           fontSize: 12,
                                           height: 1.333,
                                         ),
@@ -2530,8 +2573,8 @@ class _OverviewCard extends StatelessWidget {
           const SizedBox(width: 18),
           Text(
             items.length.toString().padLeft(2, '0'),
-            style: const TextStyle(
-              color: AppTheme.text,
+            style: TextStyle(
+              color: colors.text,
               fontSize: 36,
               fontWeight: FontWeight.w600,
               letterSpacing: -0.9,
@@ -2553,20 +2596,21 @@ class _SavedPathBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final background = dark ? const Color(0xFF0B3024) : const Color(0xFFECFDF5);
+    final border = dark ? const Color(0xFF14532D) : const Color(0xFFD1FAE5);
+    final accent = dark ? const Color(0xFF34D399) : const Color(0xFF059669);
+    final foreground = dark ? const Color(0xFF86EFAC) : const Color(0xFF047857);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFECFDF5),
-        border: Border.all(color: const Color(0xFFD1FAE5)),
+        color: background,
+        border: Border.all(color: border),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.check_circle_outline_rounded,
-            size: 18,
-            color: Color(0xFF059669),
-          ),
+          Icon(Icons.check_circle_outline_rounded, size: 18, color: accent),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -2575,7 +2619,7 @@ class _SavedPathBanner extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: Theme.of(
                 context,
-              ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF047857)),
+              ).textTheme.bodyMedium?.copyWith(color: foreground),
             ),
           ),
         ],
@@ -2591,27 +2635,28 @@ class _AiNoticeBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final background = dark ? const Color(0xFF3B2714) : const Color(0xFFFFFBEB);
+    final border = dark ? const Color(0xFF78350F) : const Color(0xFFFDE68A);
+    final accent = dark ? const Color(0xFFFBBF24) : const Color(0xFFD97706);
+    final foreground = dark ? const Color(0xFFFCD34D) : const Color(0xFF92400E);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFBEB),
-        border: Border.all(color: const Color(0xFFFDE68A)),
+        color: background,
+        border: Border.all(color: border),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.info_outline_rounded,
-            size: 18,
-            color: Color(0xFFD97706),
-          ),
+          Icon(Icons.info_outline_rounded, size: 18, color: accent),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
               style: Theme.of(
                 context,
-              ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF92400E)),
+              ).textTheme.bodyMedium?.copyWith(color: foreground),
             ),
           ),
         ],
@@ -2627,27 +2672,28 @@ class _CloudSyncIssueBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final background = dark ? const Color(0xFF3B1119) : const Color(0xFFFEF2F2);
+    final border = dark ? const Color(0xFF7F1D1D) : const Color(0xFFFECACA);
+    final accent = dark ? const Color(0xFFFCA5A5) : const Color(0xFFDC2626);
+    final foreground = dark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFEF2F2),
-        border: Border.all(color: const Color(0xFFFECACA)),
+        color: background,
+        border: Border.all(color: border),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.error_outline_rounded,
-            size: 18,
-            color: Color(0xFFDC2626),
-          ),
+          Icon(Icons.error_outline_rounded, size: 18, color: accent),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
               style: Theme.of(
                 context,
-              ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF991B1B)),
+              ).textTheme.bodyMedium?.copyWith(color: foreground),
             ),
           ),
         ],
@@ -2679,6 +2725,7 @@ class _UpdateNoticeBannerState extends State<_UpdateNoticeBanner> {
   @override
   Widget build(BuildContext context) {
     final latest = widget.result.latest;
+    final colors = AppTheme.colors(context);
     final message = switch (widget.result.status) {
       UpdateCheckStatus.updateAvailable =>
         '发现新版本 ${latest?.version ?? ''}，点击查看更新内容',
@@ -2686,8 +2733,8 @@ class _UpdateNoticeBannerState extends State<_UpdateNoticeBanner> {
       UpdateCheckStatus.idle => '',
     };
     final foreground = widget.result.status == UpdateCheckStatus.failed
-        ? const Color(0xFF666666)
-        : const Color(0xFF3A3A3A);
+        ? colors.textSubtle
+        : colors.textMuted;
 
     return MouseRegion(
       cursor: _clickable ? SystemMouseCursors.click : SystemMouseCursors.basic,
@@ -2709,7 +2756,7 @@ class _UpdateNoticeBannerState extends State<_UpdateNoticeBanner> {
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: _hovered ? const Color(0xFFEDEDED) : const Color(0xFFF5F5F5),
+            color: _hovered ? colors.surfaceHover : colors.surfaceMuted,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(

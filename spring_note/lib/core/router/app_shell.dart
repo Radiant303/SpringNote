@@ -160,6 +160,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _runUpdateCheckAfterResume();
   }
 
+  @override
+  void didChangePlatformBrightness() {
+    _syncDesktopWidgetWindow();
+  }
+
   void _openHomeFromDesktopWidget() {
     if (!mounted) {
       return;
@@ -549,9 +554,22 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           fontScaleFactor: AppTheme.fontScaleFactor(config.fontScale),
           position: config.desktopWidgetPosition,
           orbMode: config.desktopWidgetOrbMode,
+          darkMode: _desktopWidgetDarkMode(config),
         ),
       ),
     );
+  }
+
+  bool _desktopWidgetDarkMode(AppConfig config) {
+    switch (config.themeMode) {
+      case AppThemePreference.light:
+        return false;
+      case AppThemePreference.dark:
+        return true;
+      case AppThemePreference.system:
+        return WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+            Brightness.dark;
+    }
   }
 
   @override
@@ -629,9 +647,10 @@ class GlobalSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Container(
       width: 80,
-      color: AppTheme.sidebar,
+      color: colors.sidebar,
       padding: const EdgeInsets.symmetric(vertical: 28),
       child: Column(
         children: [
@@ -690,11 +709,12 @@ class _SidebarButtonState extends State<_SidebarButton> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final active = widget.selected || _hovered;
     final backgroundColor = widget.selected
-        ? const Color(0xFFE2E2E2)
-        : const Color(0xFFF5F5F5);
-    final iconColor = active ? AppTheme.text : AppTheme.textSubtle;
+        ? colors.surfacePressed
+        : colors.surfaceHover;
+    final iconColor = active ? colors.text : colors.textSubtle;
 
     return Tooltip(
       message: widget.tooltip,

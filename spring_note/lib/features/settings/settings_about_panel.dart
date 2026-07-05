@@ -14,14 +14,15 @@ class _AboutPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return _SettingsScrollFrame(
       maxWidth: 1120,
       children: [
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: AppTheme.border),
+            color: colors.surface,
+            border: Border.all(color: colors.border),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(
@@ -129,10 +130,11 @@ class _AboutListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AppTheme.border),
+        color: colors.surface,
+        border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
@@ -145,7 +147,7 @@ class _AboutListCard extends StatelessWidget {
               ],
             ),
           ),
-          const Divider(height: 1, color: Color(0xFFEDEDED)),
+          Divider(height: 1, color: colors.divider),
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 8, 18, 10),
             child: Column(
@@ -153,9 +155,9 @@ class _AboutListCard extends StatelessWidget {
                 for (var index = 0; index < rows.length; index++) ...[
                   rows[index],
                   if (index != rows.length - 1)
-                    const Padding(
-                      padding: EdgeInsets.only(left: 34),
-                      child: Divider(height: 1, color: Color(0xFFEDEDED)),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 34),
+                      child: Divider(height: 1, color: colors.divider),
                     ),
                 ],
               ],
@@ -211,6 +213,12 @@ class _PlatformInfoRow extends StatelessWidget {
     if (Platform.isMacOS) {
       return 'Mac';
     }
+    if (Platform.isAndroid) {
+      return 'Android';
+    }
+    if (Platform.isIOS) {
+      return 'iOS';
+    }
     return '未知';
   }
 
@@ -249,8 +257,9 @@ class _AboutListRowState extends State<_AboutListRow> {
   @override
   Widget build(BuildContext context) {
     final active = _clickable && _hovered;
-    final contentColor = active ? AppTheme.text : const Color(0xFF303030);
-    final trailingColor = active ? AppTheme.textMuted : const Color(0xFF777777);
+    final colors = AppTheme.colors(context);
+    final contentColor = active ? colors.text : colors.textMuted;
+    final trailingColor = active ? colors.textMuted : colors.textSubtle;
 
     return MouseRegion(
       cursor: _clickable ? SystemMouseCursors.click : SystemMouseCursors.basic,
@@ -279,7 +288,7 @@ class _AboutListRowState extends State<_AboutListRow> {
                   opacity: active ? 1 : 0,
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF0F0F0),
+                      color: colors.surfaceHover,
                       borderRadius: BorderRadius.circular(13),
                     ),
                   ),

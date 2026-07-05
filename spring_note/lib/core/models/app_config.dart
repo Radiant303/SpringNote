@@ -2,6 +2,8 @@ import 'cloud_sync_config.dart';
 import 'desktop_widget_position.dart';
 import 'provider_config.dart';
 
+enum AppThemePreference { system, light, dark }
+
 const defaultDailyMergePrompt = '''你是 SpringNote 的日报整理助手。
 你的任务是根据已有日报和新增随手记录，整理生成一篇自然、真实、便于继续编辑的日报。
 
@@ -32,6 +34,7 @@ class AppConfig {
     required this.industry,
     required this.appFont,
     required this.fontScale,
+    required this.themeMode,
     required this.customDataDirectory,
     required this.autoStart,
     required this.showUpdates,
@@ -59,6 +62,7 @@ class AppConfig {
   final String industry;
   final String appFont;
   final double fontScale;
+  final AppThemePreference themeMode;
   final String? customDataDirectory;
   final bool autoStart;
   final bool showUpdates;
@@ -87,6 +91,7 @@ class AppConfig {
       industry: '互联网',
       appFont: 'system',
       fontScale: 100,
+      themeMode: AppThemePreference.system,
       customDataDirectory: null,
       autoStart: false,
       showUpdates: true,
@@ -121,6 +126,7 @@ class AppConfig {
       industry: json['industry'] as String? ?? '互联网',
       appFont: json['appFont'] as String? ?? 'system',
       fontScale: _readDouble(json['fontScale'], 100),
+      themeMode: _readThemePreference(json['themeMode']),
       customDataDirectory: _readOptionalString(json['customDataDirectory']),
       autoStart: json['autoStart'] as bool? ?? false,
       showUpdates: json['showUpdates'] as bool? ?? true,
@@ -176,6 +182,7 @@ class AppConfig {
       'industry': industry,
       'appFont': appFont,
       'fontScale': fontScale,
+      'themeMode': themeMode.name,
       'customDataDirectory': customDataDirectory,
       'autoStart': autoStart,
       'showUpdates': showUpdates,
@@ -205,6 +212,7 @@ class AppConfig {
     String? industry,
     String? appFont,
     double? fontScale,
+    AppThemePreference? themeMode,
     Object? customDataDirectory = _sentinel,
     bool? autoStart,
     bool? showUpdates,
@@ -235,6 +243,7 @@ class AppConfig {
       industry: industry ?? this.industry,
       appFont: appFont ?? this.appFont,
       fontScale: fontScale ?? this.fontScale,
+      themeMode: themeMode ?? this.themeMode,
       customDataDirectory: customDataDirectory == _sentinel
           ? this.customDataDirectory
           : customDataDirectory as String?,
@@ -287,6 +296,19 @@ class AppConfig {
     }
     final trimmed = value.trim();
     return trimmed.isEmpty ? null : trimmed;
+  }
+
+  static AppThemePreference _readThemePreference(Object? value) {
+    if (value is! String) {
+      return AppThemePreference.system;
+    }
+    final normalized = value.trim().toLowerCase();
+    for (final mode in AppThemePreference.values) {
+      if (mode.name.toLowerCase() == normalized) {
+        return mode;
+      }
+    }
+    return AppThemePreference.system;
   }
 
   static List<ProviderConfig> _readProviders(Object? value) {

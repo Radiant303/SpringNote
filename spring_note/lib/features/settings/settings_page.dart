@@ -289,16 +289,17 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Material(
-      color: Colors.white,
+      color: colors.background,
       child: Row(
         children: [
           Container(
             width: 220,
             padding: const EdgeInsets.fromLTRB(18, 28, 18, 18),
-            decoration: const BoxDecoration(
-              color: AppTheme.background,
-              border: Border(right: BorderSide(color: Color(0xFFEEEEEE))),
+            decoration: BoxDecoration(
+              color: colors.background,
+              border: Border(right: BorderSide(color: colors.divider)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -410,11 +411,12 @@ class _SettingsNavItemState extends State<_SettingsNavItem> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final active = widget.selected || _hovered;
-    final contentColor = active ? AppTheme.text : const Color(0xFF6E6E6E);
+    final contentColor = active ? colors.text : colors.textSubtle;
     final backgroundColor = widget.selected
-        ? const Color(0xFFE2E2E2)
-        : const Color(0xFFF5F5F5);
+        ? colors.surfacePressed
+        : colors.surfaceHover;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),

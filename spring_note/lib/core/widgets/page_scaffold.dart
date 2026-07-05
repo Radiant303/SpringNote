@@ -16,8 +16,9 @@ class SpringNotePageScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Material(
-      color: AppTheme.background,
+      color: colors.background,
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1184),
@@ -56,17 +57,18 @@ class SpringNoteIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final button = IconButton(
       tooltip: tooltip,
       onPressed: onPressed,
       icon: Icon(icon, size: 18),
-      color: AppTheme.textSubtle,
+      color: colors.textSubtle,
       style: IconButton.styleFrom(
         fixedSize: const Size(34, 34),
         minimumSize: const Size(34, 34),
         maximumSize: const Size(34, 34),
         backgroundColor: Colors.transparent,
-        hoverColor: const Color(0xFFEDEDED),
+        hoverColor: colors.surfaceMuted,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
@@ -92,21 +94,24 @@ class SoftCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: backgroundColor,
-        border: Border.all(color: const Color(0x99E0E0E0)),
+        color: backgroundColor == AppTheme.surface
+            ? colors.surface
+            : backgroundColor,
+        border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: withShadow
-            ? const [
+            ? [
                 BoxShadow(
-                  color: Color(0x05000000),
+                  color: colors.shadow.withValues(alpha: 0.08),
                   blurRadius: 30,
                   offset: Offset(0, 4),
                 ),
                 BoxShadow(
-                  color: Color(0x05000000),
+                  color: colors.shadow.withValues(alpha: 0.06),
                   blurRadius: 3,
                   offset: Offset(0, 1),
                 ),

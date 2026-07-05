@@ -26,6 +26,7 @@ class _PreferencesPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final windowsOnlyLabel = _platformFeatureMessage();
+    final colors = AppTheme.colors(context);
     return _SettingsScrollFrame(
       maxWidth: 1080,
       children: [
@@ -60,6 +61,11 @@ class _PreferencesPanel extends StatelessWidget {
               label: '应用字体',
               value: config.appFont,
               onChanged: (value) => onChanged(config.copyWith(appFont: value)),
+            ),
+            _ThemeModeSettingRow(
+              value: config.themeMode,
+              onChanged: (value) =>
+                  onChanged(config.copyWith(themeMode: value)),
             ),
             _NumberSettingRow(
               label: '字体大小',
@@ -274,7 +280,7 @@ class _PreferencesPanel extends StatelessWidget {
           '配置文件：$configPath',
           style: Theme.of(
             context,
-          ).textTheme.bodyMedium?.copyWith(color: AppTheme.textSubtle),
+          ).textTheme.bodyMedium?.copyWith(color: colors.textSubtle),
         ),
       ],
     );
@@ -293,9 +299,10 @@ class _DataMigrationCompleteDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Dialog(
       key: const ValueKey('data-migration-complete-dialog'),
-      backgroundColor: Colors.white,
+      backgroundColor: colors.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: SizedBox(
@@ -306,13 +313,13 @@ class _DataMigrationCompleteDialog extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const _DataMigrationSuccessIcon(),
+              _DataMigrationSuccessIcon(colors: colors),
               const SizedBox(height: 10),
               Text(
                 '数据迁移完成',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AppTheme.text,
+                  color: colors.text,
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   height: 1.18,
@@ -323,7 +330,7 @@ class _DataMigrationCompleteDialog extends StatelessWidget {
                 '已成功切换至新的数据目录。\n确认数据正常后，可删除原目录以释放存储空间。',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.textSubtle,
+                  color: colors.textSubtle,
                   fontSize: 12.5,
                   height: 1.45,
                 ),
@@ -342,32 +349,38 @@ class _DataMigrationCompleteDialog extends StatelessWidget {
 }
 
 class _DataMigrationSuccessIcon extends StatelessWidget {
-  const _DataMigrationSuccessIcon();
+  const _DataMigrationSuccessIcon({required this.colors});
+
+  final SpringThemeColors colors;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: 38,
       height: 38,
-      child: CustomPaint(painter: _DataMigrationSuccessIconPainter()),
+      child: CustomPaint(painter: _DataMigrationSuccessIconPainter(colors)),
     );
   }
 }
 
 class _DataMigrationSuccessIconPainter extends CustomPainter {
+  const _DataMigrationSuccessIconPainter(this.colors);
+
+  final SpringThemeColors colors;
+
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.shortestSide / 2;
     final backgroundPaint = Paint()
-      ..color = const Color(0xFFF5F5F5)
+      ..color = colors.inputFill
       ..style = PaintingStyle.fill;
     final ringPaint = Paint()
-      ..color = const Color(0xFFE2E2E2)
+      ..color = colors.border
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.2;
     final checkPaint = Paint()
-      ..color = AppTheme.text
+      ..color = colors.text
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.4
       ..strokeCap = StrokeCap.round
@@ -384,7 +397,9 @@ class _DataMigrationSuccessIconPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _DataMigrationSuccessIconPainter oldDelegate) {
+    return oldDelegate.colors != colors;
+  }
 }
 
 class _DataMigrationDialogButton extends StatefulWidget {
@@ -504,9 +519,10 @@ class _DailyMergePromptDialogState extends State<_DailyMergePromptDialog> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final colors = AppTheme.colors(context);
     return Dialog(
       key: const ValueKey('daily-merge-prompt-dialog'),
-      backgroundColor: Colors.white,
+      backgroundColor: colors.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: SizedBox(
@@ -524,7 +540,7 @@ class _DailyMergePromptDialogState extends State<_DailyMergePromptDialog> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: textTheme.titleMedium?.copyWith(
-                        color: AppTheme.text,
+                        color: colors.text,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -552,7 +568,7 @@ class _DailyMergePromptDialogState extends State<_DailyMergePromptDialog> {
                     Text(
                       'Prompt',
                       style: textTheme.labelLarge?.copyWith(
-                        color: AppTheme.text,
+                        color: colors.text,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -562,16 +578,16 @@ class _DailyMergePromptDialogState extends State<_DailyMergePromptDialog> {
                         borderRadius: BorderRadius.circular(16),
                         child: DecoratedBox(
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFAFAFA),
+                            color: colors.inputFill,
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: TextSelectionTheme(
                             data: TextSelectionTheme.of(context).copyWith(
-                              cursorColor: const Color(0xFF6E6E6E),
-                              selectionColor: const Color(
-                                0xFFBDBDBD,
-                              ).withValues(alpha: 0.34),
-                              selectionHandleColor: const Color(0xFF737373),
+                              cursorColor: colors.textMuted,
+                              selectionColor: colors.textSubtle.withValues(
+                                alpha: 0.34,
+                              ),
+                              selectionHandleColor: colors.textMuted,
                             ),
                             child: ScrollConfiguration(
                               behavior: const _PromptTextFieldScrollBehavior(),
@@ -586,34 +602,34 @@ class _DailyMergePromptDialogState extends State<_DailyMergePromptDialog> {
                                 keyboardType: TextInputType.multiline,
                                 style:
                                     textTheme.bodyLarge?.copyWith(
-                                      color: const Color(0xFF3A3A3A),
+                                      color: colors.text,
                                       fontSize: 14,
                                       height: 1.55,
                                     ) ??
-                                    const TextStyle(
-                                      color: Color(0xFF3A3A3A),
+                                    TextStyle(
+                                      color: colors.text,
                                       fontSize: 14,
                                       height: 1.55,
                                     ),
-                                cursorColor: const Color(0xFF6E6E6E),
+                                cursorColor: colors.textMuted,
                                 cursorWidth: 1.25,
                                 cursorRadius: const Radius.circular(1),
                                 selectionControls:
                                     desktopTextSelectionHandleControls,
                                 enableInteractiveSelection: true,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   hintText: '输入日报整理 Prompt...',
                                   hintStyle: TextStyle(
-                                    color: Color(0xFFCFCFCF),
+                                    color: colors.textSubtle,
                                   ),
                                   filled: true,
-                                  fillColor: Color(0xFFFAFAFA),
-                                  hoverColor: Color(0xFFFAFAFA),
+                                  fillColor: colors.inputFill,
+                                  hoverColor: colors.inputFill,
                                   border: InputBorder.none,
                                   enabledBorder: InputBorder.none,
                                   focusedBorder: InputBorder.none,
                                   disabledBorder: InputBorder.none,
-                                  contentPadding: EdgeInsets.fromLTRB(
+                                  contentPadding: const EdgeInsets.fromLTRB(
                                     16,
                                     0,
                                     16,
@@ -631,12 +647,12 @@ class _DailyMergePromptDialogState extends State<_DailyMergePromptDialog> {
                 ),
               ),
             ),
-            const Divider(height: 1, color: Color(0xFFEDEDED)),
+            Divider(height: 1, color: colors.divider),
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 14, 24, 12),
               child: _PromptVariablesHint(textTheme: textTheme),
             ),
-            const Divider(height: 1, color: Color(0xFFEDEDED)),
+            Divider(height: 1, color: colors.divider),
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 14, 24, 18),
               child: Row(
@@ -925,12 +941,14 @@ class _PromptFimStatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final foreground = active
-        ? const Color(0xFF10B981)
-        : const Color(0xFF666666);
+        ? (dark ? const Color(0xFF34D399) : const Color(0xFF10B981))
+        : colors.textSubtle;
     final background = active
-        ? const Color(0xFFECFDF5)
-        : const Color(0xFFF5F5F5);
+        ? (dark ? const Color(0xFF0B3024) : const Color(0xFFECFDF5))
+        : colors.surfaceHover;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
@@ -1088,18 +1106,19 @@ class _PromptVariableChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     return Container(
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F7F7),
+        color: colors.surfaceHover,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFEDEDED)),
+        border: Border.all(color: colors.divider),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 15, color: AppTheme.textMuted),
+          Icon(icon, size: 15, color: colors.textMuted),
           const SizedBox(width: 7),
           Column(
             mainAxisSize: MainAxisSize.min,
@@ -1110,7 +1129,7 @@ class _PromptVariableChip extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTheme.text,
+                  color: colors.text,
                   fontSize: 11.5,
                   fontWeight: FontWeight.w500,
                   height: 1,
@@ -1122,7 +1141,7 @@ class _PromptVariableChip extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTheme.textSubtle,
+                  color: colors.textSubtle,
                   fontSize: 10.5,
                   fontWeight: FontWeight.w400,
                   height: 1,
@@ -1268,10 +1287,11 @@ class _DataDirectoryActionButtonState
   Widget build(BuildContext context) {
     final enabled = widget.onPressed != null;
     final active = enabled && _hovered;
-    const backgroundColor = Color(0xFFF5F5F5);
+    final colors = AppTheme.colors(context);
+    final backgroundColor = colors.surfaceHover;
     final iconColor = !enabled
-        ? const Color(0xFFBDBDBD)
-        : (active ? AppTheme.text : AppTheme.textSubtle);
+        ? colors.textSubtle.withValues(alpha: 0.56)
+        : (active ? colors.text : colors.textSubtle);
 
     return Tooltip(
       message: widget.tooltip,
@@ -1509,6 +1529,7 @@ class _FontPickerButtonState extends State<_FontPickerButton> {
   @override
   Widget build(BuildContext context) {
     final active = _hovered || widget.loading;
+    final colors = AppTheme.colors(context);
     return MouseRegion(
       cursor: widget.loading
           ? SystemMouseCursors.basic
@@ -1525,9 +1546,9 @@ class _FontPickerButtonState extends State<_FontPickerButton> {
           height: 42,
           padding: const EdgeInsets.symmetric(horizontal: 13),
           decoration: BoxDecoration(
-            color: active ? const Color(0xFFEDEDED) : const Color(0xFFF5F5F5),
+            color: active ? colors.inputFocusedFill : colors.inputFill,
             border: Border.all(
-              color: active ? const Color(0xFFCFCFCF) : const Color(0xFFE5E5E5),
+              color: active ? colors.textSubtle : colors.border,
             ),
             borderRadius: BorderRadius.circular(14),
           ),
@@ -1539,7 +1560,7 @@ class _FontPickerButtonState extends State<_FontPickerButton> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.text,
+                    color: colors.text,
                     height: 1.2,
                   ),
                 ),
@@ -1552,10 +1573,10 @@ class _FontPickerButtonState extends State<_FontPickerButton> {
                   child: CircularProgressIndicator(strokeWidth: 1.7),
                 )
               else
-                const Icon(
+                Icon(
                   Icons.expand_more_rounded,
                   size: 18,
-                  color: AppTheme.textSubtle,
+                  color: colors.textSubtle,
                 ),
             ],
           ),
@@ -1602,8 +1623,9 @@ class _FontPickerDialogState extends State<_FontPickerDialog> {
   @override
   Widget build(BuildContext context) {
     final fonts = _fonts;
+    final colors = AppTheme.colors(context);
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       child: SizedBox(
@@ -1615,7 +1637,12 @@ class _FontPickerDialogState extends State<_FontPickerDialog> {
               padding: const EdgeInsets.fromLTRB(22, 20, 14, 14),
               child: Row(
                 children: [
-                  Text('选择字体', style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    '选择字体',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleMedium?.copyWith(color: colors.text),
+                  ),
                   const Spacer(),
                   IconButton(
                     tooltip: '关闭',
@@ -1690,11 +1717,12 @@ class _FontOptionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = selected || hovered;
+    final colors = AppTheme.colors(context);
     final fontFamily = font == 'system' ? null : font;
     final backgroundColor = selected
-        ? const Color(0xFFE2E2E2)
-        : const Color(0xFFF5F5F5);
-    final contentColor = active ? AppTheme.text : AppTheme.textMuted;
+        ? colors.surfacePressed
+        : colors.surfaceHover;
+    final contentColor = active ? colors.text : colors.textMuted;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -1746,11 +1774,7 @@ class _FontOptionTile extends StatelessWidget {
                         ),
                       ),
                       if (selected)
-                        const Icon(
-                          Icons.check_rounded,
-                          size: 17,
-                          color: AppTheme.text,
-                        ),
+                        Icon(Icons.check_rounded, size: 17, color: colors.text),
                     ],
                   ),
                 ),
@@ -1783,10 +1807,11 @@ class _FontResetButtonState extends State<_FontResetButton> {
   Widget build(BuildContext context) {
     final enabled = widget.onPressed != null;
     final active = enabled && _hovered;
-    const backgroundColor = Color(0xFFF5F5F5);
+    final colors = AppTheme.colors(context);
+    final backgroundColor = colors.surfaceHover;
     final iconColor = !enabled
-        ? const Color(0xFFBDBDBD)
-        : (active ? AppTheme.text : AppTheme.textSubtle);
+        ? colors.textSubtle.withValues(alpha: 0.56)
+        : (active ? colors.text : colors.textSubtle);
 
     return Tooltip(
       message: '重置字体',
@@ -1825,11 +1850,7 @@ class _FontResetButtonState extends State<_FontResetButton> {
                     ),
                   ),
                 ),
-                Icon(
-                  Icons.restart_alt_rounded,
-                  size: 16,
-                  color: iconColor,
-                ),
+                Icon(Icons.restart_alt_rounded, size: 16, color: iconColor),
               ],
             ),
           ),

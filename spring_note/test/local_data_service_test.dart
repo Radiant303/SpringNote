@@ -50,6 +50,25 @@ void main() {
     expect(AppConfig.fromJson({}).desktopWidgetOrbMode, isFalse);
   });
 
+  test('app config round trips theme mode preference', () {
+    final config = AppConfig.defaults().copyWith(
+      themeMode: AppThemePreference.dark,
+    );
+
+    final reloaded = AppConfig.fromJson(config.toJson());
+
+    expect(reloaded.themeMode, AppThemePreference.dark);
+    expect(
+      AppConfig.fromJson({'themeMode': 'Dark'}).themeMode,
+      AppThemePreference.dark,
+    );
+    expect(AppConfig.fromJson({}).themeMode, AppThemePreference.system);
+    expect(
+      AppConfig.fromJson({'themeMode': 'invalid'}).themeMode,
+      AppThemePreference.system,
+    );
+  });
+
   test('app config round trips cloud sync config', () {
     final syncedAt = DateTime.utc(2026, 6, 28, 12, 40);
     final config = AppConfig.defaults().copyWith(
