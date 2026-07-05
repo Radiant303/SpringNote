@@ -737,9 +737,33 @@ struct DesktopWidgetState {
   var fontScaleFactor = 1.0
   var orbMode = false
   var darkMode = false
+
+  mutating func update(with arguments: [String: Any]) {
+    running = boolValue(arguments, "running", fallback: running)
+    workSeconds = intValue(arguments, "workSeconds", fallback: workSeconds)
+    coins = doubleValue(arguments, "coins", fallback: coins)
+    coinRatePerSecond = doubleValue(
+      arguments,
+      "coinRatePerSecond",
+      fallback: coinRatePerSecond
+    )
+    level = max(1, intValue(arguments, "level", fallback: level))
+    experiencePercent = min(
+      99,
+      max(0, intValue(arguments, "experiencePercent", fallback: experiencePercent))
+    )
+    progress = min(1, max(0, doubleValue(arguments, "progress", fallback: progress)))
+    fontFamily = stringValue(arguments, "appFont", fallback: fontFamily)
+    fontScaleFactor = min(
+      1.4,
+      max(0.8, doubleValue(arguments, "fontScaleFactor", fallback: fontScaleFactor))
+    )
+    orbMode = boolValue(arguments, "orbMode", fallback: orbMode)
+    darkMode = boolValue(arguments, "darkMode", fallback: darkMode)
+  }
 }
 
-private struct DesktopWidgetColors {
+struct DesktopWidgetColors {
   let surface: NSColor
   let surfaceMuted: NSColor
   let surfacePressed: NSColor
@@ -747,8 +771,9 @@ private struct DesktopWidgetColors {
   let text: NSColor
   let textSubtle: NSColor
   let stopped: NSColor
+  let accent: NSColor
 
-  static let accent = NSColor(
+  private static let defaultAccent = NSColor(
     calibratedRed: 0.06,
     green: 0.73,
     blue: 0.51,
@@ -761,7 +786,8 @@ private struct DesktopWidgetColors {
     border: rgb(51, 51, 51),
     text: rgb(242, 242, 242),
     textSubtle: rgb(154, 154, 154),
-    stopped: rgb(154, 154, 154)
+    stopped: rgb(154, 154, 154),
+    accent: defaultAccent
   )
   static let light = DesktopWidgetColors(
     surface: .white,
@@ -770,7 +796,8 @@ private struct DesktopWidgetColors {
     border: white(0.9),
     text: white(0.09),
     textSubtle: white(0.4),
-    stopped: white(0.81)
+    stopped: white(0.81),
+    accent: defaultAccent
   )
 
   static func palette(darkMode: Bool) -> DesktopWidgetColors {
@@ -828,27 +855,7 @@ final class DesktopWidgetWindowController: NSObject {
 
   private func showOrUpdate(_ arguments: [String: Any]) {
     let wasOrbMode = state.orbMode
-    state.running = boolValue(arguments, "running", fallback: state.running)
-    state.workSeconds = intValue(arguments, "workSeconds", fallback: state.workSeconds)
-    state.coins = doubleValue(arguments, "coins", fallback: state.coins)
-    state.coinRatePerSecond = doubleValue(
-      arguments,
-      "coinRatePerSecond",
-      fallback: state.coinRatePerSecond
-    )
-    state.level = max(1, intValue(arguments, "level", fallback: state.level))
-    state.experiencePercent = min(
-      99,
-      max(0, intValue(arguments, "experiencePercent", fallback: state.experiencePercent))
-    )
-    state.progress = min(1, max(0, doubleValue(arguments, "progress", fallback: state.progress)))
-    state.fontFamily = stringValue(arguments, "appFont", fallback: state.fontFamily)
-    state.fontScaleFactor = min(
-      1.4,
-      max(0.8, doubleValue(arguments, "fontScaleFactor", fallback: state.fontScaleFactor))
-    )
-    state.orbMode = boolValue(arguments, "orbMode", fallback: state.orbMode)
-    state.darkMode = boolValue(arguments, "darkMode", fallback: state.darkMode)
+    state.update(with: arguments)
     if !state.orbMode {
       expanded = true
     } else if !wasOrbMode || panel == nil {
@@ -1084,8 +1091,16 @@ final class DesktopWidgetPanel: NSPanel {
 }
 
 final class DesktopWidgetView: NSView {
-  var state = DesktopWidgetState()
-  var expanded = true
+  var state = DesktopWidgetState() {
+    didSet {
+      needsDisplay = true
+    }
+  }
+  var expanded = true {
+    didSet {
+      needsDisplay = true
+    }
+  }
   private weak var controller: DesktopWidgetWindowController?
   private var mouseDownLocation: NSPoint?
   private var windowStartOrigin: NSPoint?
@@ -1155,7 +1170,7 @@ final class DesktopWidgetView: NSView {
       context.strokePath()
 
       let dotColor = state.running
-        ? DesktopWidgetColors.accent
+        ? colors.accent
         : colors.stopped
       context.setFillColor(dotColor.cgColor)
       context.fillEllipse(in: NSRect(x: bounds.width - 18, y: 12, width: 8, height: 8))
@@ -1230,12 +1245,12 @@ final class DesktopWidgetView: NSView {
       rect: NSRect(x: 16, y: 111, width: 130, height: 20),
       size: scaled(14),
       weight: .bold,
-      color: DesktopWidgetColors.accent,
+      color: colors.accent,
       alignment: .left
     )
 
     let dotColor = state.running
-      ? DesktopWidgetColors.accent
+      ? colors.accent
       : colors.stopped
     context.setFillColor(dotColor.cgColor)
     context.fillEllipse(in: NSRect(x: bounds.width - 96, y: 118, width: 6, height: 6))
