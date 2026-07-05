@@ -583,26 +583,57 @@ class _ThemeModeSegmentedControl extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
-    return Container(
-      height: 38,
+    final selectedIndex = _options.indexOf(value);
+
+    return SizedBox(
       width: 246,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: colors.surfaceHover,
-        border: Border.all(color: colors.border),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          for (final option in _options)
-            Expanded(
-              child: _ThemeModeSegment(
-                label: _labels[option]!,
-                selected: option == value,
-                onTap: () => onChanged(option),
-              ),
+      height: 42,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final segmentWidth = constraints.maxWidth / 3;
+          return Container(
+            decoration: BoxDecoration(
+              color: colors.surfaceMuted,
+              border: Border.all(color: colors.border),
+              borderRadius: BorderRadius.circular(14),
             ),
-        ],
+            child: Stack(
+              children: [
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutCubic,
+                  left: selectedIndex * segmentWidth + 3,
+                  top: 3,
+                  width: segmentWidth - 6,
+                  height: 36,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(11),
+                      boxShadow: [
+                        BoxShadow(
+                          color: colors.shadow.withValues(alpha: 0.12),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    for (final (index, option) in _options.indexed)
+                      _ThemeModeSegment(
+                        label: _labels[option]!,
+                        selected: index == selectedIndex,
+                        onTap: () => onChanged(option),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -622,31 +653,27 @@ class _ThemeModeSegment extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
-    final backgroundColor = selected
-        ? colors.surfacePressed
-        : Colors.transparent;
-    final foreground = selected ? colors.text : colors.textMuted;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
+    return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          curve: Curves.easeOutCubic,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            borderRadius: BorderRadius.circular(11),
-          ),
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+        child: Center(
+          child: AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 140),
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: foreground,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              height: 1.2,
+                  color: selected ? colors.text : colors.textSubtle,
+                  fontWeight: FontWeight.w400,
+                  height: 1.2,
+                ) ??
+                TextStyle(
+                  color: selected ? colors.text : colors.textSubtle,
+                  fontWeight: FontWeight.w400,
+                  height: 1.2,
+                ),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ),
