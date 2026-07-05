@@ -1093,14 +1093,17 @@ final class DesktopWidgetPanel: NSPanel {
 final class DesktopWidgetView: NSView {
   var state = DesktopWidgetState() {
     didSet {
-      needsDisplay = true
+      invalidateDisplay()
     }
   }
   var expanded = true {
     didSet {
-      needsDisplay = true
+      invalidateDisplay()
     }
   }
+  #if DEBUG
+  var onDisplayInvalidated: (() -> Void)?
+  #endif
   private weak var controller: DesktopWidgetWindowController?
   private var mouseDownLocation: NSPoint?
   private var windowStartOrigin: NSPoint?
@@ -1324,6 +1327,13 @@ final class DesktopWidgetView: NSView {
   private func drawRoundedRect(_ rect: NSRect, radius: CGFloat, color: NSColor) {
     color.setFill()
     NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius).fill()
+  }
+
+  private func invalidateDisplay() {
+    needsDisplay = true
+    #if DEBUG
+    onDisplayInvalidated?()
+    #endif
   }
 
   private func drawText(

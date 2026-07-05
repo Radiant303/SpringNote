@@ -50,16 +50,18 @@ final class RunnerTests: XCTestCase {
     )
     var nextState = view.state
     nextState.darkMode = true
+    var invalidations = 0
+    view.onDisplayInvalidated = {
+      invalidations += 1
+    }
 
-    view.needsDisplay = false
     view.state = nextState
 
-    XCTAssertTrue(view.needsDisplay)
+    XCTAssertEqual(invalidations, 1)
 
-    view.needsDisplay = false
     view.expanded.toggle()
 
-    XCTAssertTrue(view.needsDisplay)
+    XCTAssertEqual(invalidations, 2)
   }
 
   private func assertColor(
