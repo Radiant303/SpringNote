@@ -2,30 +2,61 @@
   --vp-c-brand-1: #109b73;
   --vp-c-brand-2: #16b981;
   --vp-c-brand-3: #63d7b7;
-  --vp-home-hero-name-color: #151515;
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, #059669 30%, #10b981);
   --vp-home-hero-image-background-image: none;
   --vp-home-hero-image-filter: none;
 }
 
 .dark {
-  --vp-home-hero-name-color: #f5f5f5;
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, #34d399 30%, #6ee7b7);
   --vp-home-hero-image-background-image: none;
 }
 
-/* --- Hero 区域基底 --- */
-.VPHomeHero .image-src {
-  width: 160px;
-  height: 160px;
-  animation: float-mark 5s ease-in-out infinite;
-  filter: drop-shadow(0 18px 36px rgba(16, 155, 115, 0.2));
+/* --- Hero 区域 - Zed 风格 --- */
+.VPHome .VPHomeHero {
+  padding-top: 120px !important;
+  padding-bottom: 80px !important;
 }
 
-.VPHome .VPHomeHero {
-  padding-bottom: 34px;
+.VPHomeHero .container {
+  text-align: center;
 }
 
 .VPHomeHero .main {
-  max-width: 760px;
+  max-width: 880px;
+  margin: 0 auto;
+}
+
+.VPHomeHero .name {
+  font-size: 64px !important;
+  font-weight: 500 !important;
+  line-height: 1.2 !important;
+  font-style: italic !important;
+  letter-spacing: -0.02em;
+  background: var(--vp-home-hero-name-background);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.VPHomeHero .text {
+  font-size: 18px !important;
+  line-height: 1.6 !important;
+  color: var(--vp-c-text-2) !important;
+  max-width: 640px;
+  margin: 24px auto 0 !important;
+  font-weight: 400;
+}
+
+.VPHomeHero .tagline {
+  display: none;
+}
+
+/* 隐藏默认的 actions */
+.VPHomeHero .actions {
+  display: none;
 }
 
 /* --- 按钮样式（完全对齐第二版高级工作台规范） --- */
@@ -355,5 +386,597 @@
 @media (prefers-reduced-motion: reduce) {
   .home-preview, .status-dot, .VPHomeHero .image-src {
     animation: none;
+  }
+}
+/* ========================================
+   Zed 风格覆盖 - 极简主义设计
+   ======================================== */
+
+/* 按钮样式重置 */
+.hero-actions {
+  display: flex !important;
+  justify-content: center !important;
+  gap: 12px !important;
+  margin: 40px auto 0 !important;
+  max-width: 880px !important;
+  flex-wrap: wrap !important;
+}
+
+.hero-actions a {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 12px 24px !important;
+  border-radius: 8px !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  text-decoration: none !important;
+  transition: all 0.2s ease !important;
+  white-space: nowrap !important;
+  box-shadow: none !important;
+}
+
+.hero-actions a.primary {
+  background: var(--vp-c-brand-1) !important;
+  color: white !important;
+  border: none !important;
+}
+
+.hero-actions a.primary:hover {
+  background: var(--vp-c-brand-2) !important;
+  transform: translateY(-1px) !important;
+}
+
+.hero-actions a:not(.primary) {
+  background: transparent !important;
+  color: var(--vp-c-text-1) !important;
+  border: 1px solid var(--vp-c-divider) !important;
+}
+
+.hero-actions a:not(.primary):hover {
+  border-color: var(--vp-c-brand-1) !important;
+  color: var(--vp-c-brand-1) !important;
+  background: transparent !important;
+}
+
+.hero-actions svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+/* 平台信息 */
+.platform-info {
+  text-align: center;
+  margin: 24px auto 0;
+  font-size: 14px;
+  color: var(--vp-c-text-3);
+  font-weight: 400;
+}
+
+/* 特性卡片 - 极简三栏 */
+.feature-showcase {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 48px;
+  max-width: 1000px;
+  margin: 120px auto 80px;
+  padding: 0 24px;
+}
+
+.feature-card-minimal {
+  text-align: center;
+}
+
+.feature-card-minimal h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+  margin: 0 0 12px;
+}
+
+.feature-card-minimal p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--vp-c-text-2);
+  margin: 0;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .VPHomeHero .name {
+    font-size: 48px !important;
+  }
+
+  .VPHomeHero .text {
+    font-size: 16px !important;
+  }
+
+  .hero-actions {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .feature-showcase {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    margin: 80px auto 60px;
+  }
+}
+
+/* ========================================
+   高级特性卡片 - 更精致的设计
+   ======================================== */
+
+.features-grid-premium {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+  max-width: 1100px;
+  margin: 80px auto;
+  padding: 0 24px;
+}
+
+.feature-item-premium {
+  background: var(--vp-c-bg-soft);
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  padding: 32px 24px;
+  text-align: left;
+  transition: all 0.3s ease;
+}
+
+.feature-item-premium:hover {
+  border-color: var(--vp-c-brand-1);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+}
+
+.dark .feature-item-premium:hover {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+}
+
+.feature-icon {
+  font-size: 32px;
+  margin-bottom: 16px;
+  display: inline-block;
+}
+
+.feature-item-premium h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+  margin: 0 0 12px;
+  line-height: 1.4;
+}
+
+.feature-item-premium p {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--vp-c-text-2);
+  margin: 0;
+}
+
+/* 保留可交互演示区域样式 */
+.home-showcase {
+  max-width: 1200px;
+  margin: 60px auto;
+  padding: 0 24px;
+}
+
+.home-preview {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--vp-c-divider);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.dark .home-preview {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* 响应式 */
+@media (max-width: 960px) {
+  .features-grid-premium {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    margin: 60px auto;
+  }
+
+  .feature-item-premium {
+    padding: 24px 20px;
+  }
+}
+
+/* ========================================
+   完全极简风格 - Zed 风格
+   ======================================== */
+
+/* 覆盖标题样式 - 纯色，无渐变 */
+.VPHomeHero .name {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: unset !important;
+  color: var(--vp-c-text-1) !important;
+  font-size: 72px !important;
+  font-weight: 450 !important;
+  line-height: 1.1 !important;
+  font-style: italic !important;
+  letter-spacing: -0.03em !important;
+}
+
+.VPHomeHero .text {
+  font-size: 17px !important;
+  line-height: 1.65 !important;
+  color: var(--vp-c-text-2) !important;
+  max-width: 580px !important;
+  margin: 20px auto 0 !important;
+  font-weight: 400 !important;
+}
+
+/* 极简特性区域 - 纯文字，无装饰 */
+.features-minimal {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 64px;
+  max-width: 1080px;
+  margin: 100px auto 120px;
+  padding: 0 32px;
+}
+
+.feature-minimal-item {
+  text-align: left;
+}
+
+.feature-minimal-item h3 {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+  margin: 0 0 8px;
+  letter-spacing: -0.01em;
+}
+
+.feature-minimal-item p {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--vp-c-text-2);
+  margin: 0;
+}
+
+/* 隐藏之前的卡片样式 */
+.features-grid-premium,
+.feature-showcase {
+  display: none !important;
+}
+
+/* 响应式 */
+@media (max-width: 960px) {
+  .VPHomeHero .name {
+    font-size: 52px !important;
+  }
+
+  .VPHomeHero .text {
+    font-size: 16px !important;
+  }
+
+  .features-minimal {
+    grid-template-columns: 1fr;
+    gap: 48px;
+    margin: 80px auto 100px;
+  }
+}
+
+/* ========================================
+   Zed reference homepage treatment
+   ======================================== */
+
+:root {
+  --spring-zed-blue: #10b981;
+  --spring-zed-line: rgba(16, 185, 129, 0.14);
+  --spring-zed-line-strong: rgba(16, 185, 129, 0.2);
+  --spring-zed-paper: #fbfcfb;
+}
+
+.VPNav {
+  border-bottom: 1px solid var(--spring-zed-line) !important;
+  background: rgba(255, 255, 255, 0.86) !important;
+  backdrop-filter: blur(18px);
+}
+
+.dark .VPNav {
+  background: rgba(12, 14, 18, 0.84) !important;
+}
+
+.VPHome {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, var(--spring-zed-line) 1px, transparent 1px) calc(50% - 610px) 0 / 220px 100%,
+    linear-gradient(0deg, var(--spring-zed-line) 1px, transparent 1px) 0 0 / 100% 96px,
+    radial-gradient(circle at 50% 33%, rgba(16, 185, 129, 0.09), transparent 25%),
+    var(--spring-zed-paper);
+}
+
+.VPHome::after {
+  content: "";
+  position: absolute;
+  top: 104px;
+  left: 50%;
+  width: min(58vw, 720px);
+  aspect-ratio: 1;
+  transform: translateX(-50%) rotate(45deg);
+  border: 1px solid rgba(16, 185, 129, 0.08);
+  box-shadow:
+    0 0 0 52px rgba(16, 185, 129, 0.03),
+    0 0 0 104px rgba(16, 185, 129, 0.02);
+  pointer-events: none;
+}
+
+.dark .VPHome {
+  --spring-zed-line: rgba(16, 185, 129, 0.18);
+  --spring-zed-line-strong: rgba(16, 185, 129, 0.28);
+  --spring-zed-paper: #0b0f14;
+  background:
+    linear-gradient(90deg, var(--spring-zed-line) 1px, transparent 1px) calc(50% - 610px) 0 / 220px 100%,
+    linear-gradient(0deg, var(--spring-zed-line) 1px, transparent 1px) 0 0 / 100% 96px,
+    radial-gradient(circle at 50% 33%, rgba(16, 185, 129, 0.16), transparent 25%),
+    var(--spring-zed-paper);
+}
+
+.VPHome .VPHomeHero {
+  position: relative;
+  z-index: 2;
+  padding-top: 214px !important;
+  padding-bottom: 18px !important;
+}
+
+.VPHomeHero .container {
+  display: block !important;
+}
+
+.VPHomeHero .main {
+  max-width: 680px !important;
+}
+
+.VPHomeHero .name {
+  color: var(--spring-zed-blue) !important;
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-size: 56px !important;
+  font-weight: 400 !important;
+  line-height: 1.04 !important;
+  letter-spacing: -0.045em !important;
+}
+
+.VPHomeHero .text {
+  max-width: 500px !important;
+  margin-top: 18px !important;
+  color: #4b5563 !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 15px !important;
+  line-height: 1.55 !important;
+}
+
+.dark .VPHomeHero .text {
+  color: #cbd5e1 !important;
+}
+
+.VPHome .vp-doc {
+  position: relative;
+  z-index: 2;
+  max-width: 1040px !important;
+  padding: 0 24px 96px !important;
+}
+
+.home-announcement {
+  position: absolute;
+  top: 64px;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-top: 1px solid var(--spring-zed-line);
+  border-bottom: 1px solid var(--spring-zed-line);
+  background: rgba(255, 255, 255, 0.42);
+  color: #344054;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 15px;
+  text-decoration: none !important;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.home-announcement:hover {
+  background: rgba(255, 255, 255, 0.68);
+  color: var(--spring-zed-blue);
+}
+
+.home-announcement strong {
+  color: var(--spring-zed-blue);
+  font-weight: 500;
+}
+
+.dark .home-announcement {
+  background: rgba(11, 15, 20, 0.48);
+  color: #cbd5e1;
+}
+
+.dark .home-announcement:hover {
+  background: rgba(15, 23, 42, 0.72);
+  color: #6ee7b7;
+}
+
+.hero-actions {
+  margin-top: 26px !important;
+}
+
+.hero-actions a {
+  min-height: 42px;
+  padding: 0 12px 0 14px !important;
+  border-radius: 5px !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 14px !important;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06) !important;
+  white-space: nowrap !important;
+}
+
+.hero-actions a.primary {
+  background: var(--spring-zed-blue) !important;
+  border: 1px solid #059669 !important;
+}
+
+.shortcut-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 20px;
+  margin-left: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.hero-actions a:not(.primary) .shortcut-key {
+  border-color: var(--vp-c-divider);
+  background: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-3);
+}
+
+.platform-info {
+  margin-top: 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+}
+
+.zed-feature-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 11px auto;
+  border-top: 1px solid var(--spring-zed-line-strong);
+  border-bottom: 1px solid var(--spring-zed-line-strong);
+}
+
+.zed-feature-strip section {
+  min-height: 106px;
+  padding: 18px 24px 16px;
+  border-right: 1px solid var(--spring-zed-line-strong);
+  background: rgba(255, 255, 255, 0.34);
+}
+
+.zed-feature-strip section:first-child {
+  border-left: 1px solid var(--spring-zed-line-strong);
+}
+
+.zed-feature-strip h3 {
+  margin: 0 0 8px;
+  color: #111827;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.zed-feature-strip p {
+  margin: 0;
+  color: #4b5563;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.62;
+}
+
+.dark .zed-feature-strip section {
+  background: rgba(15, 23, 42, 0.24);
+}
+
+.dark .zed-feature-strip h3 {
+  color: #f8fafc;
+}
+
+.dark .zed-feature-strip p {
+  color: #cbd5e1;
+}
+
+.home-showcase {
+  max-width: 1040px !important;
+  margin: 0 auto !important;
+  padding: 0 24px !important;
+  position: relative;
+  transform: translateY(-1px);
+}
+
+.home-preview {
+  border-color: var(--spring-zed-line-strong) !important;
+  border-radius: 8px !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.65),
+    0 24px 80px rgba(16, 185, 129, 0.13) !important;
+}
+
+.home-showcase:hover .home-preview {
+  border-color: rgba(16, 185, 129, 0.42) !important;
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.75),
+    0 28px 90px rgba(16, 185, 129, 0.18) !important;
+}
+
+html[lang="en-US"] .VPHomeHero .main {
+  max-width: 760px !important;
+}
+
+html[lang="en-US"] .VPHomeHero .name {
+  font-size: 50px !important;
+  letter-spacing: -0.055em !important;
+  white-space: nowrap;
+}
+
+html[lang="en-US"] .VPHomeHero .text {
+  max-width: 620px !important;
+}
+
+html[lang="en-US"] .zed-feature-strip p {
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.features-minimal {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .home-announcement {
+    top: 56px;
+    padding: 0 18px;
+    text-align: center;
+    font-size: 13px;
+  }
+
+  .VPHome .VPHomeHero {
+    padding-top: 176px !important;
+  }
+
+  .VPHomeHero .name {
+    font-size: 42px !important;
+  }
+
+  .zed-feature-strip {
+    grid-template-columns: 1fr;
+    margin: 7px auto;
+  }
+
+  .zed-feature-strip section,
+  .zed-feature-strip section:first-child {
+    border-left: 1px solid var(--spring-zed-line-strong);
+    border-right: 1px solid var(--spring-zed-line-strong);
+    border-bottom: 1px solid var(--spring-zed-line-strong);
+  }
+
+  .home-showcase {
+    padding: 0 16px !important;
   }
 }

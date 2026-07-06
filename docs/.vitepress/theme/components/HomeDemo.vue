@@ -1,11 +1,113 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useData } from 'vitepress'
 
 interface OverviewCard {
   eyebrow: string
   accentColor: string
   count: number
   items: string[]
+}
+
+const { lang } = useData()
+const isZh = computed(() => lang.value.startsWith('zh'))
+
+const copy = computed(() => {
+  if (isZh.value) {
+    return {
+      home: '首页',
+      notes: '便签',
+      memoryBook: '回忆书',
+      settings: '设置',
+      more: '更多',
+      totalIncome: '累计总收益',
+      recentActivity: '最近活跃',
+      weekAdded: '本周新增',
+      articlesUnit: '篇',
+      streak: '连续记录',
+      daysUnit: '天',
+      lastSync: '上次同步',
+      justNow: '刚刚',
+      placeholder: '写下你的想法，AI 将自动整理并生成结构化内容...',
+      uploadImage: '上传图片',
+      addFile: '添加文件',
+      mention: '提及功能',
+      charUnit: '字',
+      submitting: '整理中',
+      generate: '智能生成',
+      savedPrefix: '已写入当日日报：'
+    }
+  }
+
+  return {
+    home: 'Home',
+    notes: 'Notes',
+    memoryBook: 'Memory Book',
+    settings: 'Settings',
+    more: 'More',
+    totalIncome: 'Total earnings',
+    recentActivity: 'Recently active',
+    weekAdded: 'Week',
+    articlesUnit: 'notes',
+    streak: 'Streak',
+    daysUnit: 'days',
+    lastSync: 'Sync',
+    justNow: 'Just now',
+    placeholder: 'Write a thought. AI will organize it...',
+    uploadImage: 'Upload image',
+    addFile: 'Add file',
+    mention: 'Mention tools',
+    charUnit: 'chars',
+    submitting: 'Organizing',
+    generate: 'Generate',
+    savedPrefix: 'Saved to daily report:'
+  }
+})
+
+function createOverview(zh: boolean): OverviewCard[] {
+  if (zh) {
+    return [
+      {
+        eyebrow: 'Completed · 完成事项',
+        accentColor: '#666666',
+        count: 6,
+        items: ['重构微服务网关架构路由配置', '整理工程思维决策分析大纲']
+      },
+      {
+        eyebrow: 'Issues · 问题记录',
+        accentColor: '#f87171',
+        count: 2,
+        items: ['Nacos Environment Heartbeat Timeout...', 'Conda Cross-Platform Build Dependency...']
+      },
+      {
+        eyebrow: 'Next Steps · 明日计划',
+        accentColor: '#666666',
+        count: 4,
+        items: ['联调 Cocos 自动化场景切换器', 'Rust Axum 图片渲染服务压测']
+      }
+    ]
+  }
+
+  return [
+    {
+      eyebrow: 'Completed',
+      accentColor: '#666666',
+      count: 6,
+      items: ['Refactor gateway routing configuration', 'Draft engineering decision outline']
+    },
+    {
+      eyebrow: 'Issues',
+      accentColor: '#f87171',
+      count: 2,
+      items: ['Nacos environment heartbeat timeout...', 'Conda cross-platform dependency...']
+    },
+    {
+      eyebrow: 'Next Steps',
+      accentColor: '#666666',
+      count: 4,
+      items: ['Integrate Cocos scene automation', 'Load test Rust Axum image rendering']
+    }
+  ]
 }
 
 const level = ref(4)
@@ -24,28 +126,9 @@ const ringProgress = ref(0)
 
 const weekCount = ref(18)
 const streak = ref(12)
-const lastSync = ref('刚刚')
+const lastSync = ref(copy.value.justNow)
 
-const overview = ref<OverviewCard[]>([
-  {
-    eyebrow: 'Completed · 完成事项',
-    accentColor: '#666666',
-    count: 6,
-    items: ['重构微服务网关架构路由配置', '整理工程思维决策分析大纲']
-  },
-  {
-    eyebrow: 'Issues · 问题记录',
-    accentColor: '#f87171',
-    count: 2,
-    items: ['Nacos Environment Heartbeat Timeout...', 'Conda Cross-Platform Build Dependency...']
-  },
-  {
-    eyebrow: 'Next Steps · 明日计划',
-    accentColor: '#666666',
-    count: 4,
-    items: ['联调 Cocos 自动化场景切换器', 'Rust Axum 图片渲染服务压测']
-  }
-])
+const overview = ref<OverviewCard[]>(createOverview(isZh.value))
 
 const heatmapDays = 140
 const heatmapRows = 7
@@ -201,7 +284,7 @@ async function onSubmit() {
   const now = new Date()
   const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   lastSaved.value = `daily_notes/${dateStr}.md`
-  lastSync.value = '刚刚'
+  lastSync.value = copy.value.justNow
   showNotice.value = true
 
   inputText.value = ''
@@ -217,7 +300,7 @@ async function onSubmit() {
   <div class="home-demo">
     <aside class="app-sidebar">
       <nav class="sidebar-top">
-        <a href="#" class="sidebar-item active" aria-label="首页" title="首页">
+        <a href="#" class="sidebar-item active" :aria-label="copy.home" :title="copy.home">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect width="7" height="9" x="3" y="3" rx="1" />
             <rect width="7" height="5" x="14" y="3" rx="1" />
@@ -225,21 +308,21 @@ async function onSubmit() {
             <rect width="7" height="5" x="3" y="16" rx="1" />
           </svg>
         </a>
-        <a href="#" class="sidebar-item" aria-label="便签" title="便签">
+        <a href="#" class="sidebar-item" :aria-label="copy.notes" :title="copy.notes">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z" />
             <path d="M15 3v4" />
             <path d="M15 21h6" />
           </svg>
         </a>
-        <a href="#" class="sidebar-item" aria-label="回忆书" title="回忆书">
+        <a href="#" class="sidebar-item" :aria-label="copy.memoryBook" :title="copy.memoryBook">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 7v14" />
             <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" />
           </svg>
         </a>
       </nav>
-      <a href="#" class="sidebar-item" aria-label="设置" title="设置">
+      <a href="#" class="sidebar-item" :aria-label="copy.settings" :title="copy.settings">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" />
           <circle cx="12" cy="12" r="3" />
@@ -249,8 +332,8 @@ async function onSubmit() {
 
     <main class="app-main">
       <header class="app-header">
-        <h1>首页</h1>
-        <button class="icon-button" aria-label="更多">
+        <h1>{{ copy.home }}</h1>
+        <button class="icon-button" :aria-label="copy.more">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="1" />
             <circle cx="19" cy="12" r="1" />
@@ -299,7 +382,7 @@ async function onSubmit() {
               </span>
             </div>
             <span class="income-total">
-              累计总收益 <strong>{{ formatCoins(totalCoins) }}</strong> coins
+              {{ copy.totalIncome }} <strong>{{ formatCoins(totalCoins) }}</strong> coins
             </span>
           </div>
         </div>
@@ -307,7 +390,7 @@ async function onSubmit() {
         <div class="hero-right">
           <div class="activity-header">
             <span>Activity Input</span>
-            <span class="activity-status">最近活跃</span>
+            <span class="activity-status">{{ copy.recentActivity }}</span>
           </div>
           <div ref="heatmapWrapRef" class="heatmap">
             <div
@@ -341,9 +424,9 @@ async function onSubmit() {
             </div>
           </div>
           <div class="activity-metrics">
-            <span>本周新增: <strong class="metric-primary">{{ weekCount }} 篇</strong></span>
-            <span>连续记录: <strong class="metric-primary">{{ streak }} 天</strong></span>
-            <span>上次同步: <strong class="metric-muted">{{ lastSync }}</strong></span>
+            <span>{{ copy.weekAdded }}: <strong class="metric-primary">{{ weekCount }} {{ copy.articlesUnit }}</strong></span>
+            <span>{{ copy.streak }}: <strong class="metric-primary">{{ streak }} {{ copy.daysUnit }}</strong></span>
+            <span>{{ copy.lastSync }}: <strong class="metric-muted">{{ lastSync }}</strong></span>
           </div>
         </div>
       </section>
@@ -351,7 +434,7 @@ async function onSubmit() {
       <section class="capture-card" :class="{ focused: isFocused }">
         <textarea
           v-model="inputText"
-          placeholder="写下你的想法，AI 将自动整理并生成结构化内容..."
+          :placeholder="copy.placeholder"
           rows="4"
           @focus="isFocused = true"
           @blur="isFocused = false"
@@ -360,19 +443,19 @@ async function onSubmit() {
         />
         <div class="capture-toolbar">
           <div class="toolbar-tools">
-            <button class="tool-button" title="上传图片">
+            <button class="tool-button" :title="copy.uploadImage">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect width="18" height="18" x="3" y="3" rx="2" />
                 <circle cx="9" cy="9" r="2" />
                 <path d="M21 15 17.914 11.914C17.133 11.133 15.867 11.133 15.086 11.914L6 21" />
               </svg>
             </button>
-            <button class="tool-button" title="添加文件">
+            <button class="tool-button" :title="copy.addFile">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M16 6 7.586 14.586C6.805 15.367 6.805 16.633 7.586 17.414C8.367 18.195 9.633 18.195 10.414 17.414L18.828 8.828C20.39 7.266 20.39 4.734 18.828 3.172C17.266 1.61 14.734 1.61 13.172 3.172L4.793 11.723C2.45 14.066 2.45 17.864 4.793 20.207C7.136 22.55 10.934 22.55 13.277 20.207L21.656 11.656" />
               </svg>
             </button>
-            <button class="tool-button" title="提及功能">
+            <button class="tool-button" :title="copy.mention">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="4" />
                 <path d="M16 8 16 13C16 14.657 17.343 16 19 16C20.657 16 22 14.657 22 13L22 12C22 6.477 17.523 2 12 2C6.477 2 2 6.477 2 12C2 17.523 6.477 22 12 22C14.197 22 16.224 21.294 17.875 20.097" />
@@ -380,9 +463,9 @@ async function onSubmit() {
             </button>
           </div>
           <div class="toolbar-actions">
-            <span class="char-count">{{ charCount }} 字</span>
+            <span class="char-count">{{ charCount }} {{ copy.charUnit }}</span>
             <button class="generate-button" :class="{ inactive: !canSubmit && !isSubmitting }" @click="onSubmit">
-              <span>{{ isSubmitting ? '整理中' : '智能生成' }}</span>
+              <span>{{ isSubmitting ? copy.submitting : copy.generate }}</span>
               <svg v-if="!isSubmitting" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
                 <path d="M5 3v4" />
@@ -403,7 +486,7 @@ async function onSubmit() {
           <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
           <polyline points="22 4 12 14.01 9 11.01" />
         </svg>
-        <span>已写入当日日报：{{ lastSaved }}</span>
+        <span>{{ copy.savedPrefix }} {{ lastSaved }}</span>
       </div>
 
       <section class="overview-grid">
@@ -769,10 +852,14 @@ async function onSubmit() {
   display: flex;
   flex-wrap: wrap;
   font-size: 12px;
-  gap: 24px;
+  gap: 18px;
   line-height: 1.55;
   margin-top: 4px;
   user-select: none;
+}
+
+.activity-metrics span {
+  white-space: nowrap;
 }
 
 .activity-metrics strong {
