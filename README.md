@@ -72,7 +72,7 @@ Instead of static records, we model a living system:
 
   ![第一步](./snapshots/configone.png)
 
-#### ② 添加模型 deepseek-v4-flash
+#### ② 手动添加模型 deepseek-v4-flash
 
   ![第二步](./snapshots/configtwo.png)
 
