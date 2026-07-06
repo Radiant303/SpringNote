@@ -292,7 +292,12 @@ class AppTheme {
           }
           return colors.surfaceMuted;
         }),
-        trackOutlineColor: WidgetStatePropertyAll(colors.border),
+        trackOutlineColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return Colors.transparent;  // 开启时无边框
+          }
+          return colors.border;  // 关闭时显示边框
+        }),
         overlayColor: const WidgetStatePropertyAll(Colors.transparent),
         splashRadius: 0,
       ),
