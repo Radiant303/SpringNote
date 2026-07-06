@@ -1216,7 +1216,11 @@ class _FimTextEditingController extends TextEditingController {
         TextSpan(text: text.substring(0, offset)),
         TextSpan(
           text: prediction,
-          style: effectiveStyle.copyWith(color: const Color(0xFF9AA0A6)),
+          style: effectiveStyle.copyWith(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xFF7B92A8)  // 深色模式：优雅的灰蓝色，与微暖文字完美搭配
+                : const Color(0xFF9AA0A6),  // 浅色模式：保持原有灰色
+          ),
         ),
         TextSpan(text: text.substring(offset)),
         _bottomSpacer(effectiveStyle),

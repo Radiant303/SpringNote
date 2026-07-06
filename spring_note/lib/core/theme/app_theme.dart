@@ -62,9 +62,9 @@ class SpringThemeColors extends ThemeExtension<SpringThemeColors> {
     surfacePressed: Color(0xFF303030),
     border: Color(0xFF333333),
     divider: Color(0xFF2C2C2C),
-    text: Color(0xFFF2F2F2),
-    textMuted: Color(0xFFC7C7C7),
-    textSubtle: Color(0xFF9A9A9A),
+    text: Color(0xFFE5E1DA),
+    textMuted: Color(0xFFB5B1A8),
+    textSubtle: Color(0xFF928F87),
     onAccent: Color(0xFF111111),
     inputFill: Color(0xFF252525),
     inputFocusedFill: Color(0xFF303030),
@@ -198,6 +198,16 @@ class AppTheme {
     final fontFamily = appFont.trim().isEmpty || appFont == 'system'
         ? 'Segoe UI'
         : appFont.trim();
+
+    // 为深色模式定制柔和的强调色
+    final isDark = brightness == Brightness.dark;
+    final linkColor = isDark
+        ? const Color(0xFF6BA4E7)  // 柔和的蓝色链接（降低饱和度和亮度）
+        : const Color(0xFF1E88E5);  // 浅色模式保持鲜艳
+    final accentColor = isDark
+        ? const Color(0xFF5FB878)  // 柔和的绿色（降低饱和度）
+        : const Color(0xFF4CAF50);  // 浅色模式保持鲜艳
+
     final colorScheme = ColorScheme.fromSeed(
       seedColor: colors.text,
       brightness: brightness,
@@ -207,10 +217,11 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme.copyWith(
-        primary: colors.text,
+        primary: linkColor,
         secondary: colors.textMuted,
         surface: colors.surface,
         onSurface: colors.text,
+        tertiary: accentColor,
       ),
       extensions: <ThemeExtension<dynamic>>[colors],
       scaffoldBackgroundColor: colors.background,
