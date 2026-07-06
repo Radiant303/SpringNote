@@ -204,9 +204,6 @@ class AppTheme {
     final linkColor = isDark
         ? const Color(0xFF6BA4E7)  // 柔和的蓝色链接（降低饱和度和亮度）
         : const Color(0xFF1E88E5);  // 浅色模式保持鲜艳
-    final accentColor = isDark
-        ? const Color(0xFF5FB878)  // 柔和的绿色（降低饱和度）
-        : const Color(0xFF4CAF50);  // 浅色模式保持鲜艳
 
     final colorScheme = ColorScheme.fromSeed(
       seedColor: colors.text,
@@ -217,11 +214,11 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme.copyWith(
-        primary: linkColor,
+        primary: colors.text,
         secondary: colors.textMuted,
         surface: colors.surface,
         onSurface: colors.text,
-        tertiary: accentColor,
+        tertiary: linkColor,
       ),
       extensions: <ThemeExtension<dynamic>>[colors],
       scaffoldBackgroundColor: colors.background,
@@ -323,6 +320,14 @@ class AppTheme {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(color: colors.textSubtle),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: linkColor,
+          textStyle: const TextStyle(
+            decoration: TextDecoration.underline,
+          ),
         ),
       ),
     );
