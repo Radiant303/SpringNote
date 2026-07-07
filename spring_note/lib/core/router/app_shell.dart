@@ -9,9 +9,11 @@ import '../../features/settings/settings_page.dart';
 import '../../features/widget/desktop_status_widget.dart';
 import '../models/app_config.dart';
 import '../models/desktop_widget_position.dart';
+import '../models/desktop_widget_wallpaper_settings.dart';
 import '../models/local_data_state.dart';
 import '../models/note_external_update.dart';
 import '../models/note_file.dart';
+import '../models/wallpaper_settings.dart';
 import '../services/auto_start_service.dart';
 import '../services/cloud_sync_service.dart';
 import '../services/desktop_widget_controller.dart';
@@ -23,7 +25,9 @@ import '../services/note_upload_queue.dart';
 import '../services/startup_report_generation_service.dart';
 import '../services/tray_service.dart';
 import '../services/update_check_service.dart';
+import '../services/wallpaper_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/wallpaper_layer.dart';
 
 enum AppSection { home, notes, memory, settings }
 
@@ -115,6 +119,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       unawaited(_runStartupCloudSync(_localDataState));
       unawaited(_runStartupReportGeneration(_localDataState));
       unawaited(_runUpdateCheck(_localDataState.config, resetRetry: true));
+      unawaited(_validateWallpaperOnStartup());
     });
   }
 
@@ -268,6 +273,25 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         revision: ++_noteExternalUpdateRevision,
       );
     }
+  }
+
+  Future<void> _validateWallpaperOnStartup() async {
+    final settings = _localDataState.config.wallpaperSettings;
+    if (settings.mode != WallpaperMode.image) {
+      return;
+    }
+    final validated = await WallpaperService.validateOnLoad(
+      settings: settings,
+      dataDirectory: _localDataState.dataDirectory,
+    );
+    if (validated == settings || !mounted) {
+      return;
+    }
+    _handleLocalDataStateChanged(
+      _localDataState.copyWith(
+        config: _localDataState.config.copyWith(wallpaperSettings: validated),
+      ),
+    );
   }
 
   void _syncGlobalHotkey(AppConfig config) {
@@ -540,6 +564,27 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     final config = _localDataState.config;
     final progress = (_levelProgressController.state.experiencePercent / 100)
         .clamp(0.0, 1.0);
+    final widgetWallpaper = config.desktopWidgetWallpaperSettings;
+    final widgetWallpaperMode = switch (widgetWallpaper.mode) {
+      DesktopWidgetWallpaperMode.defaultWhite => 0,
+      DesktopWidgetWallpaperMode.solid => 1,
+      DesktopWidgetWallpaperMode.image => 2,
+    };
+    final widgetWallpaperImagePath =
+        widgetWallpaper.mode == DesktopWidgetWallpaperMode.image
+        ? WallpaperService.resolveAbsolutePath(
+            settings: WallpaperSettings(
+              mode: WallpaperMode.image,
+              imagePath: widgetWallpaper.imagePath,
+              fillMode: WallpaperFillMode.cover,
+              opacity: 1.0,
+              blur: 0.0,
+              maskOpacity: 0.0,
+              solidColorArgb: 0xFFFFFFFF,
+            ),
+            dataDirectory: _localDataState.dataDirectory,
+          )
+        : null;
     unawaited(
       _desktopWidgetWindow.showOrUpdate(
         DesktopWidgetWindowSnapshot(
@@ -555,6 +600,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           position: config.desktopWidgetPosition,
           orbMode: config.desktopWidgetOrbMode,
           darkMode: _desktopWidgetDarkMode(config),
+          widgetWallpaperMode: widgetWallpaperMode,
+          widgetWallpaperColor: widgetWallpaper.solidColorArgb,
+          widgetWallpaperImagePath: widgetWallpaperImagePath,
+          widgetWallpaperOpacity: widgetWallpaper.opacity,
         ),
       ),
     );
@@ -574,64 +623,133 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          Row(
-            children: [
-              GlobalSidebar(
-                selectedSection: _section,
-                onSectionSelected: _selectSection,
-              ),
-              Expanded(
-                child: IndexedStack(
-                  index: _section.index,
+    final theme = Theme.of(context);
+    final colors = AppTheme.colors(context);
+    final wallpaperColors = _colorsForWallpaper(
+      colors: colors,
+      settings: _localDataState.config.wallpaperSettings,
+      brightness: theme.brightness,
+    );
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        WallpaperLayer(
+          settings: _localDataState.config.wallpaperSettings,
+          dataDirectory: _localDataState.dataDirectory,
+        ),
+        Theme(
+          data: theme.copyWith(
+            extensions: <ThemeExtension<dynamic>>[wallpaperColors],
+          ),
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            body: Stack(
+              children: [
+                Row(
                   children: [
-                    HomePage(
-                      localDataState: _localDataState,
-                      desktopWidgetController: _desktopWidgetController,
-                      levelProgressController: _levelProgressController,
-                      updateCheckResult: _updateCheckResult,
-                      updateCheckService: widget.updateCheckService,
-                      startupCloudSyncMessage: _startupCloudSyncMessage,
-                      onDailyNoteSaved: (path) =>
-                          _notifyNoteSaved(NoteKind.daily, path),
+                    GlobalSidebar(
+                      selectedSection: _section,
+                      onSectionSelected: _selectSection,
                     ),
-                    NotesPage(
-                      localDataState: _localDataState,
-                      externalNoteUpdate: _noteExternalUpdate,
-                      noteUploadQueue: _noteUploadQueue,
-                    ),
-                    MemoryPage(localDataState: _localDataState),
-                    SettingsPage(
-                      localDataState: _localDataState,
-                      updateCheckService: widget.updateCheckService,
-                      onConfigChanged: (config) {
-                        final state = _localDataState.copyWith(config: config);
-                        _handleLocalDataStateChanged(state);
-                      },
-                      onLocalDataStateChanged: _handleLocalDataStateChanged,
-                      onCloudSyncCompleted: _handleCloudSyncCompleted,
+                    Expanded(
+                      child: IndexedStack(
+                        index: _section.index,
+                        children: [
+                          HomePage(
+                            localDataState: _localDataState,
+                            desktopWidgetController: _desktopWidgetController,
+                            levelProgressController: _levelProgressController,
+                            updateCheckResult: _updateCheckResult,
+                            updateCheckService: widget.updateCheckService,
+                            startupCloudSyncMessage: _startupCloudSyncMessage,
+                            onDailyNoteSaved: (path) =>
+                                _notifyNoteSaved(NoteKind.daily, path),
+                          ),
+                          NotesPage(
+                            localDataState: _localDataState,
+                            externalNoteUpdate: _noteExternalUpdate,
+                            noteUploadQueue: _noteUploadQueue,
+                          ),
+                          MemoryPage(localDataState: _localDataState),
+                          SettingsPage(
+                            localDataState: _localDataState,
+                            updateCheckService: widget.updateCheckService,
+                            onConfigChanged: (config) {
+                              final state = _localDataState.copyWith(
+                                config: config,
+                              );
+                              _handleLocalDataStateChanged(state);
+                            },
+                            onLocalDataStateChanged:
+                                _handleLocalDataStateChanged,
+                            onCloudSyncCompleted: _handleCloudSyncCompleted,
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          if (_localDataState.config.showDesktopWidget &&
-              !_desktopWidgetWindow.isSupported)
-            Positioned(
-              right: 26,
-              bottom: 24,
-              child: DesktopStatusWidget(
-                controller: _desktopWidgetController,
-                levelProgressState: _levelProgressController.state,
-                onOpenHome: _openHomeFromDesktopWidget,
-              ),
+                if (_localDataState.config.showDesktopWidget &&
+                    !_desktopWidgetWindow.isSupported)
+                  Positioned(
+                    right: 26,
+                    bottom: 24,
+                    child: DesktopStatusWidget(
+                      controller: _desktopWidgetController,
+                      levelProgressState: _levelProgressController.state,
+                      onOpenHome: _openHomeFromDesktopWidget,
+                    ),
+                  ),
+              ],
             ),
-        ],
-      ),
+          ),
+        ),
+      ],
     );
+  }
+
+  SpringThemeColors _colorsForWallpaper({
+    required SpringThemeColors colors,
+    required WallpaperSettings settings,
+    required Brightness brightness,
+  }) {
+    final base = colors.copyWith(background: Colors.transparent);
+    if (!settings.transparentControls) {
+      return base;
+    }
+
+    final alpha = settings.controlAlpha.clamp(0.0, 1.0).toDouble();
+    final text = _contrastText(colors.text, settings.textContrast, brightness);
+    final textMuted =
+        Color.lerp(colors.textMuted, text, 0.15) ?? colors.textMuted;
+    final textSubtle =
+        Color.lerp(colors.textSubtle, text, 0.10) ?? colors.textSubtle;
+
+    return base.copyWith(
+      sidebar: colors.sidebar.withValues(alpha: alpha),
+      surface: colors.surface.withValues(alpha: alpha),
+      surfaceMuted: colors.surfaceMuted.withValues(alpha: alpha),
+      surfaceHover: colors.surfaceHover.withValues(alpha: alpha),
+      surfacePressed: colors.surfacePressed.withValues(alpha: alpha),
+      border: settings.showBorders ? colors.border : Colors.transparent,
+      divider: settings.showBorders ? colors.divider : Colors.transparent,
+      text: text,
+      textMuted: textMuted,
+      textSubtle: textSubtle,
+      inputFill: colors.inputFill.withValues(alpha: alpha),
+      inputFocusedFill: colors.inputFocusedFill.withValues(alpha: alpha),
+    );
+  }
+
+  Color _contrastText(Color color, double contrast, Brightness brightness) {
+    final amount = contrast.clamp(0.0, 1.0).toDouble();
+    if (amount == 0) {
+      return color;
+    }
+    final target = brightness == Brightness.dark ? Colors.white : Colors.black;
+    final factor = brightness == Brightness.dark ? 0.5 : 0.3;
+    return Color.lerp(color, target, amount * factor) ?? color;
   }
 }
 

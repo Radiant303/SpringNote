@@ -660,7 +660,8 @@ class _ThemeModeSegment extends StatelessWidget {
         child: Center(
           child: AnimatedDefaultTextStyle(
             duration: const Duration(milliseconds: 140),
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            style:
+                Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: selected ? colors.text : colors.textSubtle,
                   fontWeight: FontWeight.w400,
                   height: 1.2,
@@ -670,11 +671,7 @@ class _ThemeModeSegment extends StatelessWidget {
                   fontWeight: FontWeight.w400,
                   height: 1.2,
                 ),
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ),
       ),
@@ -1395,5 +1392,372 @@ class _DialogSwitchRow extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _ChoiceSettingRow<T> extends StatelessWidget {
+  const _ChoiceSettingRow({
+    required this.label,
+    required this.value,
+    required this.options,
+    required this.labels,
+    required this.onChanged,
+    this.description,
+  });
+
+  final String label;
+  final T value;
+  final List<T> options;
+  final List<String> labels;
+  final ValueChanged<T> onChanged;
+  final String? description;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    return _SettingRowShell(
+      label: label,
+      description: description,
+      child: Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: colors.surfaceMuted,
+          border: Border.all(color: colors.border),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var index = 0; index < options.length; index++)
+              _ChoicePill(
+                label: labels[index],
+                selected: options[index] == value,
+                onTap: () => onChanged(options[index]),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChoicePill extends StatelessWidget {
+  const _ChoicePill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected ? colors.surface : Colors.transparent,
+            borderRadius: BorderRadius.circular(11),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: colors.shadow.withValues(alpha: 0.12),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: selected ? colors.text : colors.textSubtle,
+              fontWeight: FontWeight.w400,
+              height: 1.2,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SliderSettingRow extends StatelessWidget {
+  const _SliderSettingRow({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    this.max = 1,
+    this.enabled = true,
+    this.valueFormatter,
+  });
+
+  final String label;
+  final double value;
+  final double max;
+  final bool enabled;
+  final ValueChanged<double> onChanged;
+  final String Function(double value)? valueFormatter;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    final displayValue =
+        valueFormatter?.call(value) ?? '${(value * 100).round()}%';
+    return _SettingRowShell(
+      label: label,
+      enabled: enabled,
+      child: SizedBox(
+        width: 260,
+        child: Row(
+          children: [
+            Expanded(
+              child: SliderTheme(
+                data: SliderThemeData(
+                  activeTrackColor: colors.text,
+                  inactiveTrackColor: colors.border,
+                  thumbColor: colors.text,
+                  overlayColor: colors.text.withValues(alpha: 0.08),
+                  trackHeight: 3,
+                ),
+                child: Slider(
+                  value: value.clamp(0, max).toDouble(),
+                  min: 0,
+                  max: max,
+                  onChanged: enabled ? onChanged : null,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 56,
+              child: Text(
+                displayValue,
+                textAlign: TextAlign.right,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colors.textMuted,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ColorSettingRow extends StatelessWidget {
+  const _ColorSettingRow({
+    required this.label,
+    required this.color,
+    required this.onChanged,
+  });
+
+  final String label;
+  final Color color;
+  final ValueChanged<Color> onChanged;
+
+  Future<void> _pickColor(BuildContext context) async {
+    final colors = AppTheme.colors(context);
+    final result = await showModalBottomSheet<Color>(
+      context: context,
+      backgroundColor: colors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (_) => _ColorPickerSheet(current: color),
+    );
+    if (result != null) {
+      onChanged(result);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    return _SettingRowShell(
+      label: label,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _pickColor(context),
+          child: Container(
+            width: 44,
+            height: 28,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: colors.border),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ColorPickerSheet extends StatelessWidget {
+  const _ColorPickerSheet({required this.current});
+
+  final Color current;
+
+  static const _palette = [
+    Color(0xFFF1FAEF),
+    Color(0xFFFFFFFF),
+    Color(0xFFEDEDED),
+    Color(0xFFE2E8F0),
+    Color(0xFFFCE7F3),
+    Color(0xFFFEF3C7),
+    Color(0xFFDCFCE7),
+    Color(0xFFE0E7FF),
+    Color(0xFFFEE2E2),
+    Color(0xFF111111),
+    Color(0xFF1B1B1B),
+    Color(0xFF0F172A),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('选择颜色', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final item in _palette)
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(item),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: item,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: _sameColor(item, current)
+                              ? colors.text
+                              : colors.border,
+                          width: _sameColor(item, current) ? 2 : 1,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static bool _sameColor(Color a, Color b) {
+    return a.a == b.a && a.r == b.r && a.g == b.g && a.b == b.b;
+  }
+}
+
+class _WallpaperPreview extends StatelessWidget {
+  const _WallpaperPreview({
+    required this.settings,
+    required this.dataDirectory,
+  });
+
+  final WallpaperSettings settings;
+  final String dataDirectory;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    return Container(
+      height: 96,
+      margin: const EdgeInsets.fromLTRB(18, 0, 18, 0),
+      decoration: BoxDecoration(
+        color: colors.surfaceMuted,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          _previewSource(context),
+          if (settings.maskOpacity > 0)
+            Container(
+              color: colors.background.withValues(
+                alpha: settings.maskOpacity.clamp(0.0, 1.0).toDouble(),
+              ),
+            ),
+          Align(
+            alignment: Alignment.bottomLeft,
+            child: Container(
+              margin: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: colors.surface.withValues(alpha: 0.88),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: colors.border),
+              ),
+              child: Text(
+                '预览 · ${_modeLabel(settings.mode)}',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: colors.textMuted),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _previewSource(BuildContext context) {
+    switch (settings.mode) {
+      case WallpaperMode.defaultBg:
+        return DefaultGreenWallpaper(
+          showLeaves: Theme.of(context).brightness != Brightness.dark,
+        );
+      case WallpaperMode.image:
+        final path = WallpaperService.resolveAbsolutePath(
+          settings: settings,
+          dataDirectory: dataDirectory,
+        );
+        if (path == null) {
+          return const DefaultGreenWallpaper();
+        }
+        return Image.file(
+          File(path),
+          fit: WallpaperService.toBoxFit(settings.fillMode),
+          gaplessPlayback: true,
+          errorBuilder: (_, _, _) => const DefaultGreenWallpaper(),
+        );
+      case WallpaperMode.solid:
+        return ColoredBox(color: Color(settings.solidColorArgb));
+    }
+  }
+
+  static String _modeLabel(WallpaperMode mode) {
+    return switch (mode) {
+      WallpaperMode.defaultBg => '默认背景',
+      WallpaperMode.image => '本地图片',
+      WallpaperMode.solid => '纯色',
+    };
   }
 }

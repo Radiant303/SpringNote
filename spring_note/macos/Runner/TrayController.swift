@@ -737,6 +737,10 @@ struct DesktopWidgetState {
   var fontScaleFactor = 1.0
   var orbMode = false
   var darkMode = false
+  var wallpaperMode = 0          // 0=defaultWhite, 1=solid, 2=image
+  var wallpaperColor: Int = -1   // ARGB int, -1 means unset
+  var wallpaperImagePath: String? = nil
+  var wallpaperOpacity: CGFloat = 1.0
 
   mutating func update(with arguments: [String: Any]) {
     running = boolValue(arguments, "running", fallback: running)
@@ -760,6 +764,14 @@ struct DesktopWidgetState {
     )
     orbMode = boolValue(arguments, "orbMode", fallback: orbMode)
     darkMode = boolValue(arguments, "darkMode", fallback: darkMode)
+    wallpaperMode = min(2, max(0, intValue(arguments, "widgetWallpaperMode", fallback: wallpaperMode)))
+    let wpColor = intValue(arguments, "widgetWallpaperColor", fallback: -1)
+    if wpColor >= 0 {
+      wallpaperColor = wpColor
+    }
+    let wpPath = stringValue(arguments, "widgetWallpaperImagePath", fallback: "")
+    wallpaperImagePath = wpPath.isEmpty ? nil : wpPath
+    wallpaperOpacity = min(1.0, max(0.0, CGFloat(doubleValue(arguments, "widgetWallpaperOpacity", fallback: Double(wallpaperOpacity)))))
   }
 }
 
@@ -1109,6 +1121,10 @@ final class DesktopWidgetView: NSView {
   private var windowStartOrigin: NSPoint?
   private var movedWhilePressed = false
   private var trackingArea: NSTrackingArea?
+  private var cachedWallpaperImage: NSImage?
+  private var cachedWallpaperPath: String?
+  /// 修改时间与路径一起作为缓存 key，路径未变但文件被覆盖时也能重新加载
+  private var cachedWallpaperModifiedAt: Date?
 
   init(controller: DesktopWidgetWindowController, frame: NSRect) {
     self.controller = controller
@@ -1163,9 +1179,9 @@ final class DesktopWidgetView: NSView {
         ellipseIn: bounds.insetBy(dx: 0.5, dy: 0.5),
         transform: nil
       )
-      context.setFillColor(colors.surface.cgColor)
-      context.addPath(orbPath)
-      context.fillPath()
+
+      // Wallpaper background (clipped to orb circle)
+      drawWallpaper(context: context, bounds: bounds, clipPath: orbPath)
 
       context.setStrokeColor(colors.border.cgColor)
       context.setLineWidth(1)
@@ -1204,9 +1220,9 @@ final class DesktopWidgetView: NSView {
       cornerHeight: 16,
       transform: nil
     )
-    context.setFillColor(colors.surface.cgColor)
-    context.addPath(cardPath)
-    context.fillPath()
+
+    // Wallpaper background (clipped to rounded rect)
+    drawWallpaper(context: context, bounds: bounds, clipPath: cardPath)
 
     context.setStrokeColor(colors.border.cgColor)
     context.setLineWidth(1)
@@ -1363,6 +1379,85 @@ final class DesktopWidgetView: NSView {
     let minutes = (seconds % 3600) / 60
     let remainingSeconds = seconds % 60
     return String(format: "%02d:%02d:%02d", hours, minutes, remainingSeconds)
+  }
+
+  /// 在裁剪路径内绘制壁纸背景。
+  ///
+  /// - mode 0 (defaultWhite): 填充主题 surface 色（原有行为）
+  /// - mode 1 (solid): 填充用户自选纯色
+  /// - mode 2 (image): 加载本地图片，等比覆盖，支持透明度
+  private func drawWallpaper(context: CGContext, bounds: NSRect, clipPath: CGPath) {
+    let colors = DesktopWidgetColors.palette(darkMode: state.darkMode)
+
+    context.saveGState()
+    context.addPath(clipPath)
+    context.clip()
+
+    switch state.wallpaperMode {
+    case 1:
+      // 纯色模式：从 ARGB int 提取 RGB
+      let argb = state.wallpaperColor >= 0 ? state.wallpaperColor : 0xFFFFFF
+      let r = CGFloat((argb >> 16) & 0xFF) / 255.0
+      let g = CGFloat((argb >> 8) & 0xFF) / 255.0
+      let b = CGFloat(argb & 0xFF) / 255.0
+      context.setFillColor(red: r, green: g, blue: b, alpha: state.wallpaperOpacity)
+      context.fill(bounds)
+
+    case 2:
+      // 图片模式：加载并绘制壁纸
+      if let imagePath = state.wallpaperImagePath {
+        // 读 modificationDate 参与缓存 key：同路径覆盖文件时也能感知
+        let modifiedAt = wallpaperModifiedDate(for: imagePath)
+        if cachedWallpaperPath != imagePath
+            || cachedWallpaperModifiedAt != modifiedAt {
+          cachedWallpaperImage = NSImage(contentsOfFile: imagePath)
+          cachedWallpaperPath = imagePath
+          cachedWallpaperModifiedAt = modifiedAt
+        }
+        if let image = cachedWallpaperImage {
+          context.saveGState()
+          context.setAlpha(state.wallpaperOpacity)
+          // 等比覆盖：计算缩放比例，居中裁剪
+          let imgSize = image.size
+          if imgSize.width > 0 && imgSize.height > 0 {
+            let scaleX = bounds.width / imgSize.width
+            let scaleY = bounds.height / imgSize.height
+            let scale = max(scaleX, scaleY)
+            let drawW = imgSize.width * scale
+            let drawH = imgSize.height * scale
+            let drawX = bounds.origin.x + (bounds.width - drawW) / 2
+            let drawY = bounds.origin.y + (bounds.height - drawH) / 2
+            image.draw(in: NSRect(x: drawX, y: drawY, width: drawW, height: drawH))
+          }
+          context.restoreGState()
+        } else {
+          // 图片加载失败，回退白色
+          context.setFillColor(red: 1, green: 1, blue: 1, alpha: 1)
+          context.fill(bounds)
+        }
+      } else {
+        // 无路径，回退白色
+        context.setFillColor(red: 1, green: 1, blue: 1, alpha: 1)
+        context.fill(bounds)
+      }
+
+    default:
+      // mode 0: 默认主题背景色
+      context.setFillColor(colors.surface.cgColor)
+      context.fill(bounds)
+    }
+
+    context.restoreGState()
+  }
+
+  /// 读取指定路径的修改时间。失败时返回 nil，调用方会保守地重新加载。
+  private func wallpaperModifiedDate(for path: String) -> Date? {
+    do {
+      let attrs = try FileManager.default.attributesOfItem(atPath: path)
+      return attrs[.modificationDate] as? Date
+    } catch {
+      return nil
+    }
   }
 }
 

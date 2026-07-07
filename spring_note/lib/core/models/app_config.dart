@@ -1,6 +1,8 @@
 import 'cloud_sync_config.dart';
 import 'desktop_widget_position.dart';
+import 'desktop_widget_wallpaper_settings.dart';
 import 'provider_config.dart';
+import 'wallpaper_settings.dart';
 
 enum AppThemePreference { system, light, dark }
 
@@ -29,6 +31,7 @@ const defaultDailyMergePrompt = '''你是 SpringNote 的日报整理助手。
 
 class AppConfig {
   const AppConfig({
+    required this.wallpaperSettings,
     required this.dailyWorkHours,
     required this.dailySalary,
     required this.industry,
@@ -41,6 +44,7 @@ class AppConfig {
     required this.showDesktopWidget,
     required this.desktopWidgetPosition,
     required this.desktopWidgetOrbMode,
+    required this.desktopWidgetWallpaperSettings,
     required this.showTrayIcon,
     required this.closeToTray,
     required this.memorySearchLimit,
@@ -57,6 +61,8 @@ class AppConfig {
     required this.hotkeys,
   });
 
+  final WallpaperSettings wallpaperSettings;
+
   final double dailyWorkHours;
   final double dailySalary;
   final String industry;
@@ -69,6 +75,7 @@ class AppConfig {
   final bool showDesktopWidget;
   final DesktopWidgetPosition? desktopWidgetPosition;
   final bool desktopWidgetOrbMode;
+  final DesktopWidgetWallpaperSettings desktopWidgetWallpaperSettings;
   final bool showTrayIcon;
   final bool closeToTray;
   final double memorySearchLimit;
@@ -86,6 +93,7 @@ class AppConfig {
 
   factory AppConfig.defaults() {
     return const AppConfig(
+      wallpaperSettings: WallpaperSettings.defaults,
       dailyWorkHours: 8,
       dailySalary: 200,
       industry: '互联网',
@@ -98,6 +106,7 @@ class AppConfig {
       showDesktopWidget: true,
       desktopWidgetPosition: null,
       desktopWidgetOrbMode: false,
+      desktopWidgetWallpaperSettings: DesktopWidgetWallpaperSettings.defaults,
       showTrayIcon: true,
       closeToTray: true,
       memorySearchLimit: 12,
@@ -121,6 +130,11 @@ class AppConfig {
 
   factory AppConfig.fromJson(Map<String, Object?> json) {
     return AppConfig(
+      wallpaperSettings: json['wallpaperSettings'] != null
+          ? WallpaperSettings.fromJson(
+              (json['wallpaperSettings'] as Map).cast<String, dynamic>(),
+            )
+          : WallpaperSettings.defaults,
       dailyWorkHours: _readDouble(json['dailyWorkHours'], 8),
       dailySalary: _readDouble(json['dailySalary'], 200),
       industry: json['industry'] as String? ?? '互联网',
@@ -135,6 +149,13 @@ class AppConfig {
         json['desktopWidgetPosition'],
       ),
       desktopWidgetOrbMode: json['desktopWidgetOrbMode'] as bool? ?? false,
+      desktopWidgetWallpaperSettings:
+          json['desktopWidgetWallpaperSettings'] != null
+          ? DesktopWidgetWallpaperSettings.fromJson(
+              (json['desktopWidgetWallpaperSettings'] as Map)
+                  .cast<String, dynamic>(),
+            )
+          : DesktopWidgetWallpaperSettings.defaults,
       showTrayIcon: json['showTrayIcon'] as bool? ?? true,
       closeToTray:
           (json['showTrayIcon'] as bool? ?? true) &&
@@ -177,6 +198,7 @@ class AppConfig {
 
   Map<String, Object?> toJson() {
     return {
+      'wallpaperSettings': wallpaperSettings.toJson(),
       'dailyWorkHours': dailyWorkHours,
       'dailySalary': dailySalary,
       'industry': industry,
@@ -189,6 +211,7 @@ class AppConfig {
       'showDesktopWidget': showDesktopWidget,
       'desktopWidgetPosition': desktopWidgetPosition?.toJson(),
       'desktopWidgetOrbMode': desktopWidgetOrbMode,
+      'desktopWidgetWallpaperSettings': desktopWidgetWallpaperSettings.toJson(),
       'showTrayIcon': showTrayIcon,
       'closeToTray': closeToTray,
       'memorySearchLimit': memorySearchLimit,
@@ -207,6 +230,7 @@ class AppConfig {
   }
 
   AppConfig copyWith({
+    WallpaperSettings? wallpaperSettings,
     double? dailyWorkHours,
     double? dailySalary,
     String? industry,
@@ -219,6 +243,7 @@ class AppConfig {
     bool? showDesktopWidget,
     Object? desktopWidgetPosition = _sentinel,
     bool? desktopWidgetOrbMode,
+    DesktopWidgetWallpaperSettings? desktopWidgetWallpaperSettings,
     bool? showTrayIcon,
     bool? closeToTray,
     double? memorySearchLimit,
@@ -238,6 +263,7 @@ class AppConfig {
     final nextCloseToTray =
         nextShowTrayIcon && (closeToTray ?? this.closeToTray);
     return AppConfig(
+      wallpaperSettings: wallpaperSettings ?? this.wallpaperSettings,
       dailyWorkHours: dailyWorkHours ?? this.dailyWorkHours,
       dailySalary: dailySalary ?? this.dailySalary,
       industry: industry ?? this.industry,
@@ -254,6 +280,8 @@ class AppConfig {
           ? this.desktopWidgetPosition
           : desktopWidgetPosition as DesktopWidgetPosition?,
       desktopWidgetOrbMode: desktopWidgetOrbMode ?? this.desktopWidgetOrbMode,
+      desktopWidgetWallpaperSettings:
+          desktopWidgetWallpaperSettings ?? this.desktopWidgetWallpaperSettings,
       showTrayIcon: nextShowTrayIcon,
       closeToTray: nextCloseToTray,
       memorySearchLimit: memorySearchLimit ?? this.memorySearchLimit,

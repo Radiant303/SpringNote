@@ -23,6 +23,116 @@ class _PreferencesPanel extends StatelessWidget {
   final String? errorMessage;
   final ValueChanged<String?> onDataDirectoryChanged;
 
+  String _wallpaperImageSummary(String? path) {
+    if (path == null || path.isEmpty) {
+      return '未选择';
+    }
+    final name = path.split('/').last;
+    return name.length > 32 ? '${name.substring(0, 32)}...' : name;
+  }
+
+  Future<void> _pickWallpaperImage({
+    required BuildContext context,
+    required AppConfig config,
+    required ValueChanged<AppConfig> onChanged,
+  }) async {
+    try {
+      const imageType = XTypeGroup(
+        label: '图片',
+        extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'],
+      );
+      final file = await openFile(acceptedTypeGroups: [imageType]);
+      if (file == null) {
+        return;
+      }
+
+      final widgetWallpaperPath = WallpaperService.resolveAbsolutePath(
+        settings: WallpaperSettings(
+          mode: WallpaperMode.image,
+          imagePath: config.desktopWidgetWallpaperSettings.imagePath,
+          fillMode: WallpaperFillMode.cover,
+          opacity: 1.0,
+          blur: 0.0,
+          maskOpacity: 0.0,
+          solidColorArgb: 0xFFFFFFFF,
+        ),
+        dataDirectory: dataDirectory,
+      );
+      final next = await WallpaperService.adoptImage(
+        sourceFile: File(file.path),
+        current: config.wallpaperSettings,
+        dataDirectory: dataDirectory,
+        alsoKeepPath: widgetWallpaperPath,
+      );
+      if (!context.mounted) {
+        return;
+      }
+      onChanged(config.copyWith(wallpaperSettings: next));
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('选择图片失败: $error')));
+    }
+  }
+
+  Future<void> _pickWidgetWallpaperImage({
+    required BuildContext context,
+    required AppConfig config,
+    required ValueChanged<AppConfig> onChanged,
+  }) async {
+    try {
+      const imageType = XTypeGroup(
+        label: '图片',
+        extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'],
+      );
+      final file = await openFile(acceptedTypeGroups: [imageType]);
+      if (file == null) {
+        return;
+      }
+
+      final mainWallpaperPath = WallpaperService.resolveAbsolutePath(
+        settings: config.wallpaperSettings,
+        dataDirectory: dataDirectory,
+      );
+      final current = config.desktopWidgetWallpaperSettings;
+      final next = await WallpaperService.adoptImage(
+        sourceFile: File(file.path),
+        current: WallpaperSettings(
+          mode: WallpaperMode.image,
+          imagePath: current.imagePath,
+          fillMode: WallpaperFillMode.cover,
+          opacity: 1.0,
+          blur: 0.0,
+          maskOpacity: 0.0,
+          solidColorArgb: 0xFFFFFFFF,
+        ),
+        dataDirectory: dataDirectory,
+        alsoKeepPath: mainWallpaperPath,
+      );
+      if (!context.mounted) {
+        return;
+      }
+      onChanged(
+        config.copyWith(
+          desktopWidgetWallpaperSettings: current.copyWith(
+            mode: DesktopWidgetWallpaperMode.image,
+            imagePath: next.imagePath,
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('选择图片失败: $error')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final windowsOnlyLabel = _platformFeatureMessage();
@@ -103,6 +213,156 @@ class _PreferencesPanel extends StatelessWidget {
               value: config.apiLogEnabled,
               onChanged: (value) =>
                   onChanged(config.copyWith(apiLogEnabled: value)),
+            ),
+          ],
+        ),
+        _SettingsCard(
+          title: '壁纸',
+          children: [
+            _WallpaperPreview(
+              settings: config.wallpaperSettings,
+              dataDirectory: dataDirectory,
+            ),
+            _ChoiceSettingRow<WallpaperMode>(
+              label: '模式',
+              value: config.wallpaperSettings.mode,
+              options: WallpaperMode.values,
+              labels: const ['默认背景', '本地图片', '纯色'],
+              onChanged: (mode) => onChanged(
+                config.copyWith(
+                  wallpaperSettings: config.wallpaperSettings.copyWith(
+                    mode: mode,
+                    clearImagePath: mode != WallpaperMode.image,
+                  ),
+                ),
+              ),
+            ),
+            if (config.wallpaperSettings.mode == WallpaperMode.image) ...[
+              _ActionSettingRow(
+                label: '选择图片',
+                value: _wallpaperImageSummary(
+                  config.wallpaperSettings.imagePath,
+                ),
+                onTap: () => _pickWallpaperImage(
+                  context: context,
+                  config: config,
+                  onChanged: onChanged,
+                ),
+              ),
+              _ChoiceSettingRow<WallpaperFillMode>(
+                label: '填充',
+                value: config.wallpaperSettings.fillMode,
+                options: WallpaperFillMode.values,
+                labels: const ['拉伸', '覆盖', '居中'],
+                onChanged: (fillMode) => onChanged(
+                  config.copyWith(
+                    wallpaperSettings: config.wallpaperSettings.copyWith(
+                      fillMode: fillMode,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            if (config.wallpaperSettings.mode == WallpaperMode.solid)
+              _ColorSettingRow(
+                label: '背景颜色',
+                color: Color(config.wallpaperSettings.solidColorArgb),
+                onChanged: (color) => onChanged(
+                  config.copyWith(
+                    wallpaperSettings: config.wallpaperSettings.copyWith(
+                      solidColorArgb: WallpaperService.colorToArgb(color),
+                    ),
+                  ),
+                ),
+              ),
+            _SliderSettingRow(
+              label: '不透明度',
+              value: config.wallpaperSettings.opacity,
+              onChanged: (value) => onChanged(
+                config.copyWith(
+                  wallpaperSettings: config.wallpaperSettings.copyWith(
+                    opacity: value,
+                  ),
+                ),
+              ),
+            ),
+            _SliderSettingRow(
+              label: '模糊度',
+              value: config.wallpaperSettings.blur,
+              max: 25,
+              valueFormatter: (value) => value.toStringAsFixed(0),
+              onChanged: (value) => onChanged(
+                config.copyWith(
+                  wallpaperSettings: config.wallpaperSettings.copyWith(
+                    blur: value,
+                  ),
+                ),
+              ),
+            ),
+            _SliderSettingRow(
+              label: '蒙版浓度',
+              value: config.wallpaperSettings.maskOpacity,
+              onChanged: (value) => onChanged(
+                config.copyWith(
+                  wallpaperSettings: config.wallpaperSettings.copyWith(
+                    maskOpacity: value,
+                  ),
+                ),
+              ),
+            ),
+            _SwitchSettingRow(
+              label: '透明控件模式',
+              value: config.wallpaperSettings.transparentControls,
+              onChanged: (value) => onChanged(
+                config.copyWith(
+                  wallpaperSettings: config.wallpaperSettings.copyWith(
+                    transparentControls: value,
+                  ),
+                ),
+              ),
+            ),
+            _SliderSettingRow(
+              label: '控件不透明度',
+              value: config.wallpaperSettings.controlAlpha,
+              enabled: config.wallpaperSettings.transparentControls,
+              onChanged: (value) => onChanged(
+                config.copyWith(
+                  wallpaperSettings: config.wallpaperSettings.copyWith(
+                    controlAlpha: value,
+                  ),
+                ),
+              ),
+            ),
+            _SwitchSettingRow(
+              label: '保留卡片描边',
+              value: config.wallpaperSettings.showBorders,
+              enabled: config.wallpaperSettings.transparentControls,
+              onChanged: (value) => onChanged(
+                config.copyWith(
+                  wallpaperSettings: config.wallpaperSettings.copyWith(
+                    showBorders: value,
+                  ),
+                ),
+              ),
+            ),
+            _SliderSettingRow(
+              label: '文字颜色加深',
+              value: config.wallpaperSettings.textContrast,
+              enabled: config.wallpaperSettings.transparentControls,
+              onChanged: (value) => onChanged(
+                config.copyWith(
+                  wallpaperSettings: config.wallpaperSettings.copyWith(
+                    textContrast: value,
+                  ),
+                ),
+              ),
+            ),
+            _ActionSettingRow(
+              label: '恢复默认',
+              value: '',
+              onTap: () => onChanged(
+                config.copyWith(wallpaperSettings: WallpaperSettings.defaults),
+              ),
             ),
           ],
         ),
@@ -192,6 +452,83 @@ class _PreferencesPanel extends StatelessWidget {
             ),
           ],
         ),
+        if (PlatformFeatureSupport.supportsDesktopWidget &&
+            config.showDesktopWidget)
+          _SettingsCard(
+            title: '组件壁纸',
+            children: [
+              _ChoiceSettingRow<DesktopWidgetWallpaperMode>(
+                label: '模式',
+                value: config.desktopWidgetWallpaperSettings.mode,
+                options: DesktopWidgetWallpaperMode.values,
+                labels: const ['默认白色', '纯色', '本地图片'],
+                onChanged: (mode) => onChanged(
+                  config.copyWith(
+                    desktopWidgetWallpaperSettings: config
+                        .desktopWidgetWallpaperSettings
+                        .copyWith(
+                          mode: mode,
+                          clearImagePath:
+                              mode != DesktopWidgetWallpaperMode.image,
+                        ),
+                  ),
+                ),
+              ),
+              if (config.desktopWidgetWallpaperSettings.mode ==
+                  DesktopWidgetWallpaperMode.solid)
+                _ColorSettingRow(
+                  label: '背景颜色',
+                  color: Color(
+                    config.desktopWidgetWallpaperSettings.solidColorArgb,
+                  ),
+                  onChanged: (color) => onChanged(
+                    config.copyWith(
+                      desktopWidgetWallpaperSettings: config
+                          .desktopWidgetWallpaperSettings
+                          .copyWith(
+                            solidColorArgb: WallpaperService.colorToArgb(color),
+                          ),
+                    ),
+                  ),
+                ),
+              if (config.desktopWidgetWallpaperSettings.mode ==
+                  DesktopWidgetWallpaperMode.image)
+                _ActionSettingRow(
+                  label: '选择图片',
+                  value: _wallpaperImageSummary(
+                    config.desktopWidgetWallpaperSettings.imagePath,
+                  ),
+                  onTap: () => _pickWidgetWallpaperImage(
+                    context: context,
+                    config: config,
+                    onChanged: onChanged,
+                  ),
+                ),
+              if (config.desktopWidgetWallpaperSettings.mode !=
+                  DesktopWidgetWallpaperMode.defaultWhite)
+                _SliderSettingRow(
+                  label: '不透明度',
+                  value: config.desktopWidgetWallpaperSettings.opacity,
+                  onChanged: (value) => onChanged(
+                    config.copyWith(
+                      desktopWidgetWallpaperSettings: config
+                          .desktopWidgetWallpaperSettings
+                          .copyWith(opacity: value),
+                    ),
+                  ),
+                ),
+              _ActionSettingRow(
+                label: '恢复默认',
+                value: '',
+                onTap: () => onChanged(
+                  config.copyWith(
+                    desktopWidgetWallpaperSettings:
+                        DesktopWidgetWallpaperSettings.defaults,
+                  ),
+                ),
+              ),
+            ],
+          ),
         _SettingsCard(
           title: '提示词',
           children: [

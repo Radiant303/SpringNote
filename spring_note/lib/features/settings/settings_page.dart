@@ -8,10 +8,12 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/models/app_config.dart';
 import '../../core/models/cloud_sync_config.dart';
+import '../../core/models/desktop_widget_wallpaper_settings.dart';
 import '../../core/models/local_data_state.dart';
 import '../../core/models/model_config.dart';
 import '../../core/models/model_reference.dart';
 import '../../core/models/provider_config.dart';
+import '../../core/models/wallpaper_settings.dart';
 import '../../core/services/ai_client_service.dart';
 import '../../core/services/cloud_sync_service.dart';
 import '../../core/services/external_link_service.dart';
@@ -19,8 +21,10 @@ import '../../core/services/local_data_service.dart';
 import '../../core/services/platform_feature_support.dart';
 import '../../core/services/system_font_service.dart';
 import '../../core/services/update_check_service.dart';
+import '../../core/services/wallpaper_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/update_dialog.dart';
+import '../../core/widgets/wallpaper_layer.dart';
 import 'settings_stats_panel.dart';
 
 part 'settings_preferences_panel.dart';

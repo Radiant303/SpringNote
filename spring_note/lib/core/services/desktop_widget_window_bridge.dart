@@ -20,6 +20,10 @@ class DesktopWidgetWindowSnapshot {
     required this.position,
     required this.orbMode,
     required this.darkMode,
+    this.widgetWallpaperMode = 0,
+    this.widgetWallpaperColor = 0xFFFFFFFF,
+    this.widgetWallpaperImagePath,
+    this.widgetWallpaperOpacity = 1.0,
   });
 
   final bool running;
@@ -34,6 +38,10 @@ class DesktopWidgetWindowSnapshot {
   final DesktopWidgetPosition? position;
   final bool orbMode;
   final bool darkMode;
+  final int widgetWallpaperMode;
+  final int widgetWallpaperColor;
+  final String? widgetWallpaperImagePath;
+  final double widgetWallpaperOpacity;
 
   Map<String, Object?> toJson() {
     return {
@@ -49,6 +57,10 @@ class DesktopWidgetWindowSnapshot {
       'position': position?.toJson(),
       'orbMode': orbMode,
       'darkMode': darkMode,
+      'widgetWallpaperMode': widgetWallpaperMode,
+      'widgetWallpaperColor': widgetWallpaperColor,
+      'widgetWallpaperImagePath': widgetWallpaperImagePath,
+      'widgetWallpaperOpacity': widgetWallpaperOpacity,
     };
   }
 }
