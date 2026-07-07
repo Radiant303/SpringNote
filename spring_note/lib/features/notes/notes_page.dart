@@ -20,6 +20,8 @@ import 'markdown_preview.dart';
 
 typedef NoteImagePicker = Future<List<NoteImageAttachment>> Function();
 
+enum _EditorWorkspaceMode { edit, split, preview }
+
 class NoteImageAttachment {
   const NoteImageAttachment({required this.path, required this.name});
 
@@ -87,6 +89,7 @@ class _NotesPageState extends State<NotesPage> {
   Timer? _autoCloudSyncTimer;
   bool _autoCloudUploadAfterSave = false;
   bool _editorFocusedByPointer = false;
+  _EditorWorkspaceMode _workspaceMode = _EditorWorkspaceMode.split;
   NoteUploadQueue? _ownedNoteUploadQueue;
 
   static const Duration _autoCloudSyncInterval = Duration(seconds: 3);
@@ -1107,8 +1110,9 @@ class _NotesPageState extends State<NotesPage> {
             onNoteSelected: _selectNote,
           ),
           Expanded(
-            flex: 32,
-            child: _EditorPane(
+            flex: 64,
+            child: _EditorWorkspace(
+              mode: _workspaceMode,
               controller: _editorController,
               editorRevision: _editorRevision,
               undoController: _editorUndoController,
@@ -1116,17 +1120,13 @@ class _NotesPageState extends State<NotesPage> {
               statusText: _editorStatusText,
               enabled: selected != null && !_loading,
               predicting: _predicting,
-              onInsertImage: _insertImageFromPicker,
-              onPointerFocus: _handleEditorPointerFocus,
-            ),
-          ),
-          Expanded(
-            flex: 32,
-            child: _PreviewPane(
               markdown: _editorController.text,
               localImageBasePath: selected == null
                   ? null
                   : _parentDirectoryPath(selected.path),
+              onInsertImage: _insertImageFromPicker,
+              onPointerFocus: _handleEditorPointerFocus,
+              onModeChanged: (mode) => setState(() => _workspaceMode = mode),
             ),
           ),
         ],
@@ -1218,8 +1218,8 @@ class _FimTextEditingController extends TextEditingController {
           text: prediction,
           style: effectiveStyle.copyWith(
             color: Theme.of(context).brightness == Brightness.dark
-                ? const Color(0xFF7B92A8)  // 深色模式：优雅的灰蓝色，与微暖文字完美搭配
-                : const Color(0xFF9AA0A6),  // 浅色模式：保持原有灰色
+                ? const Color(0xFF7B92A8) // 深色模式：优雅的灰蓝色，与微暖文字完美搭配
+                : const Color(0xFF9AA0A6), // 浅色模式：保持原有灰色
           ),
         ),
         TextSpan(text: text.substring(offset)),
@@ -1846,8 +1846,9 @@ class _NoteListItemState extends State<_NoteListItem> {
   }
 }
 
-class _EditorPane extends StatefulWidget {
-  const _EditorPane({
+class _EditorWorkspace extends StatefulWidget {
+  const _EditorWorkspace({
+    required this.mode,
     required this.controller,
     required this.editorRevision,
     required this.undoController,
@@ -1855,10 +1856,14 @@ class _EditorPane extends StatefulWidget {
     required this.statusText,
     required this.enabled,
     required this.predicting,
+    required this.markdown,
+    required this.localImageBasePath,
     required this.onInsertImage,
     required this.onPointerFocus,
+    required this.onModeChanged,
   });
 
+  final _EditorWorkspaceMode mode;
   final TextEditingController controller;
   final int editorRevision;
   final UndoHistoryController undoController;
@@ -1866,21 +1871,166 @@ class _EditorPane extends StatefulWidget {
   final String? statusText;
   final bool enabled;
   final bool predicting;
+  final String markdown;
+  final String? localImageBasePath;
   final VoidCallback onInsertImage;
   final VoidCallback onPointerFocus;
+  final ValueChanged<_EditorWorkspaceMode> onModeChanged;
 
   @override
-  State<_EditorPane> createState() => _EditorPaneState();
+  State<_EditorWorkspace> createState() => _EditorWorkspaceState();
 }
 
-class _EditorPaneState extends State<_EditorPane> {
-  final ScrollController _scrollController = ScrollController();
+class _EditorWorkspaceState extends State<_EditorWorkspace> {
+  final ScrollController _editorScrollController = ScrollController();
+  final ScrollController _previewScrollController = ScrollController();
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    _editorScrollController.dispose();
+    _previewScrollController.dispose();
     super.dispose();
   }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    return _PaneFrame(
+      headerHeight: 42,
+      headerPadding: const EdgeInsets.only(left: 24, right: 12),
+      header: _EditorWorkspaceHeader(
+        statusText: widget.statusText,
+        insertImageEnabled: widget.enabled,
+        onInsertImage: widget.onInsertImage,
+        mode: widget.mode,
+        onModeChanged: widget.onModeChanged,
+      ),
+      child: _buildBody(colors),
+    );
+  }
+
+  Widget _buildBody(SpringThemeColors colors) {
+    final editor = _EditorContent(
+      controller: widget.controller,
+      editorRevision: widget.editorRevision,
+      undoController: widget.undoController,
+      focusNode: widget.focusNode,
+      enabled: widget.enabled,
+      onPointerFocus: widget.onPointerFocus,
+      scrollController: _editorScrollController,
+    );
+    final preview = _PreviewContent(
+      markdown: widget.markdown,
+      localImageBasePath: widget.localImageBasePath,
+      scrollController: _previewScrollController,
+      padding: widget.mode == _EditorWorkspaceMode.split
+          ? const EdgeInsets.fromLTRB(32, 0, 32, 56)
+          : const EdgeInsets.fromLTRB(32, 32, 32, 56),
+    );
+
+    return switch (widget.mode) {
+      _EditorWorkspaceMode.edit => editor,
+      _EditorWorkspaceMode.preview => preview,
+      _EditorWorkspaceMode.split => Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: editor),
+          Container(width: 1, color: colors.divider),
+          Expanded(child: preview),
+        ],
+      ),
+    };
+  }
+}
+
+class _EditorWorkspaceHeader extends StatelessWidget {
+  const _EditorWorkspaceHeader({
+    required this.statusText,
+    required this.insertImageEnabled,
+    required this.onInsertImage,
+    required this.mode,
+    required this.onModeChanged,
+  });
+
+  final String? statusText;
+  final bool insertImageEnabled;
+  final VoidCallback onInsertImage;
+  final _EditorWorkspaceMode mode;
+  final ValueChanged<_EditorWorkspaceMode> onModeChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 240,
+          child: statusText == null
+              ? const SizedBox.shrink()
+              : _EditorStatusPill(statusText: statusText!),
+        ),
+        const Spacer(),
+        _EditorHeaderIconButton(
+          tooltip: '插入图片',
+          icon: Icons.image_outlined,
+          onPressed: insertImageEnabled ? onInsertImage : null,
+        ),
+        const SizedBox(width: 8),
+        _WorkspaceModeSegmentedControl(value: mode, onChanged: onModeChanged),
+      ],
+    );
+  }
+}
+
+class _EditorHeaderIconButton extends StatelessWidget {
+  const _EditorHeaderIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      icon: Icon(icon, size: 16),
+      color: colors.textSubtle,
+      style: IconButton.styleFrom(
+        fixedSize: const Size(30, 30),
+        minimumSize: const Size(30, 30),
+        maximumSize: const Size(30, 30),
+        padding: EdgeInsets.zero,
+        backgroundColor: Colors.transparent,
+        hoverColor: colors.surfaceMuted,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+      ),
+    );
+  }
+}
+
+class _EditorContent extends StatelessWidget {
+  const _EditorContent({
+    required this.controller,
+    required this.editorRevision,
+    required this.undoController,
+    required this.focusNode,
+    required this.enabled,
+    required this.onPointerFocus,
+    required this.scrollController,
+  });
+
+  final TextEditingController controller;
+  final int editorRevision;
+  final UndoHistoryController undoController;
+  final FocusNode focusNode;
+  final bool enabled;
+  final VoidCallback onPointerFocus;
+  final ScrollController scrollController;
 
   @override
   Widget build(BuildContext context) {
@@ -1892,110 +2042,70 @@ class _EditorPaneState extends State<_EditorPane> {
           height: 1.55,
         ) ??
         TextStyle(color: colors.text, fontSize: 14, height: 1.55);
-    return _PaneFrame(
-      headerPadding: const EdgeInsets.only(left: 32, right: 16),
-      header: Row(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                Icon(Icons.code_rounded, size: 15, color: colors.textSubtle),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    'Markdown Source · 源码编辑',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: colors.textSubtle,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          SpringNoteIconButton(
-            tooltip: '插入图片',
-            icon: Icons.image_outlined,
-            onPressed: widget.enabled ? widget.onInsertImage : null,
-          ),
-          if (widget.statusText != null) ...[
-            const SizedBox(width: 8),
-            _EditorStatusPill(statusText: widget.statusText!),
-          ],
-        ],
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final sideInset = constraints.maxWidth > 720
-              ? (constraints.maxWidth - 720) / 2 + 40
-              : 40.0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final sideInset = constraints.maxWidth > 720
+            ? (constraints.maxWidth - 720) / 2 + 40
+            : 40.0;
 
-          return Stack(
-            children: [
-              Positioned.fill(
-                child: Scrollbar(
-                  controller: _scrollController,
-                  child: ScrollConfiguration(
-                    behavior: const _EditorTextFieldScrollBehavior(),
-                    child: TextSelectionTheme(
-                      data: TextSelectionTheme.of(context).copyWith(
-                        cursorColor: colors.textMuted,
-                        selectionColor: colors.textSubtle.withValues(
-                          alpha: 0.28,
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: Scrollbar(
+                controller: scrollController,
+                child: ScrollConfiguration(
+                  behavior: const _EditorTextFieldScrollBehavior(),
+                  child: TextSelectionTheme(
+                    data: TextSelectionTheme.of(context).copyWith(
+                      cursorColor: colors.textMuted,
+                      selectionColor: colors.textSubtle.withValues(alpha: 0.28),
+                      selectionHandleColor: colors.textSubtle,
+                    ),
+                    child: TextField(
+                      key: ValueKey('note-editor-$editorRevision'),
+                      controller: controller,
+                      undoController: undoController,
+                      focusNode: focusNode,
+                      onTap: onPointerFocus,
+                      scrollController: scrollController,
+                      enabled: enabled,
+                      expands: true,
+                      maxLines: null,
+                      minLines: null,
+                      keyboardType: TextInputType.multiline,
+                      decoration: InputDecoration(
+                        hintText: '# 开始编辑 Markdown...',
+                        hintStyle: TextStyle(
+                          color: colors.textSubtle.withValues(alpha: 0.58),
                         ),
-                        selectionHandleColor: colors.textSubtle,
-                      ),
-                      child: TextField(
-                        key: ValueKey('note-editor-${widget.editorRevision}'),
-                        controller: widget.controller,
-                        undoController: widget.undoController,
-                        focusNode: widget.focusNode,
-                        onTap: widget.onPointerFocus,
-                        scrollController: _scrollController,
-                        enabled: widget.enabled,
-                        expands: true,
-                        maxLines: null,
-                        minLines: null,
-                        keyboardType: TextInputType.multiline,
-                        decoration: InputDecoration(
-                          hintText: '# 开始编辑 Markdown...',
-                          hintStyle: TextStyle(
-                            color: colors.textSubtle.withValues(alpha: 0.58),
-                          ),
-                          filled: true,
-                          fillColor: colors.surface,
-                          hoverColor: Colors.transparent,
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          disabledBorder: InputBorder.none,
-                          contentPadding: EdgeInsets.fromLTRB(
-                            sideInset,
-                            0,
-                            sideInset / 2,
-                            0,
-                          ),
+                        filled: true,
+                        fillColor: colors.surface,
+                        hoverColor: Colors.transparent,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        disabledBorder: InputBorder.none,
+                        contentPadding: EdgeInsets.fromLTRB(
+                          sideInset,
+                          0,
+                          sideInset / 2,
+                          0,
                         ),
-                        style: editorStyle,
-                        cursorColor: colors.textMuted,
-                        cursorWidth: 1.25,
-                        cursorRadius: const Radius.circular(1),
-                        selectionControls: desktopTextSelectionHandleControls,
-                        enableInteractiveSelection: true,
                       ),
+                      style: editorStyle,
+                      cursorColor: colors.textMuted,
+                      cursorWidth: 1.25,
+                      cursorRadius: const Radius.circular(1),
+                      selectionControls: desktopTextSelectionHandleControls,
+                      enableInteractiveSelection: true,
                     ),
                   ),
                 ),
               ),
-            ],
-          );
-        },
-      ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -2046,69 +2156,192 @@ class _EditorStatusPill extends StatelessWidget {
         : colors.surfaceMuted;
 
     return Align(
-      alignment: Alignment.centerRight,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.auto_awesome_outlined, size: 12, color: foreground),
-            const SizedBox(width: 4),
-            Text(
-              displayText,
-              maxLines: 1,
-              softWrap: false,
-              style: TextStyle(
-                color: foreground,
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                height: 1.2,
+      alignment: Alignment.centerLeft,
+      child: Tooltip(
+        message: displayText,
+        waitDuration: const Duration(milliseconds: 500),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 240),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.auto_awesome_outlined, size: 12, color: foreground),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  displayText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: false,
+                  style: TextStyle(
+                    color: foreground,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    height: 1.2,
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _PreviewPane extends StatelessWidget {
-  const _PreviewPane({
-    required this.markdown,
-    required this.localImageBasePath,
+class _WorkspaceModeSegmentedControl extends StatelessWidget {
+  const _WorkspaceModeSegmentedControl({
+    required this.value,
+    required this.onChanged,
   });
 
-  final String markdown;
-  final String? localImageBasePath;
+  final _EditorWorkspaceMode value;
+  final ValueChanged<_EditorWorkspaceMode> onChanged;
+
+  static const _options = [
+    _EditorWorkspaceMode.edit,
+    _EditorWorkspaceMode.split,
+    _EditorWorkspaceMode.preview,
+  ];
+
+  static const _labels = {
+    _EditorWorkspaceMode.edit: '编辑',
+    _EditorWorkspaceMode.split: '分栏',
+    _EditorWorkspaceMode.preview: '预览',
+  };
 
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
-    return _PaneFrame(
-      headerPadding: const EdgeInsets.symmetric(horizontal: 24),
-      header: Row(
-        children: [
-          Text(
-            'Markdown Preview · 渲染预览',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: colors.textSubtle,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.8,
+    final selectedIndex = _options.indexOf(value);
+    return SizedBox(
+      width: 156,
+      height: 30,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final segmentWidth = constraints.maxWidth / _options.length;
+          return Container(
+            decoration: BoxDecoration(
+              color: colors.surfaceMuted,
+              border: Border.all(color: colors.border),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Stack(
+              children: [
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutCubic,
+                  left: selectedIndex * segmentWidth + 3,
+                  top: 3,
+                  width: segmentWidth - 6,
+                  height: 24,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(7),
+                      boxShadow: [
+                        BoxShadow(
+                          color: colors.shadow.withValues(alpha: 0.12),
+                          blurRadius: 7,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    for (final option in _options)
+                      _WorkspaceModeSegment(
+                        mode: option,
+                        label: _labels[option]!,
+                        selected: option == value,
+                        onTap: () => onChanged(option),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _WorkspaceModeSegment extends StatelessWidget {
+  const _WorkspaceModeSegment({
+    required this.mode,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _EditorWorkspaceMode mode;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    return Expanded(
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          key: ValueKey('notes-workspace-mode-${mode.name}'),
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: Center(
+            child: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 140),
+              style:
+                  Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: selected ? colors.text : colors.textSubtle,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                    height: 1.2,
+                  ) ??
+                  TextStyle(
+                    color: selected ? colors.text : colors.textSubtle,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                    height: 1.2,
+                  ),
+              child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
           ),
-          const Spacer(),
-          Icon(Icons.open_in_full_rounded, size: 15, color: colors.textSubtle),
-        ],
+        ),
       ),
-      child: MarkdownPreview(
-        markdown: markdown,
-        localImageBasePath: localImageBasePath,
-      ),
+    );
+  }
+}
+
+class _PreviewContent extends StatelessWidget {
+  const _PreviewContent({
+    required this.markdown,
+    required this.localImageBasePath,
+    required this.scrollController,
+    required this.padding,
+  });
+
+  final String markdown;
+  final String? localImageBasePath;
+  final ScrollController scrollController;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return MarkdownPreview(
+      markdown: markdown,
+      localImageBasePath: localImageBasePath,
+      scrollController: scrollController,
+      padding: padding,
     );
   }
 }
@@ -2117,11 +2350,13 @@ class _PaneFrame extends StatelessWidget {
   const _PaneFrame({
     required this.header,
     required this.child,
+    this.headerHeight = 56,
     this.headerPadding = const EdgeInsets.symmetric(horizontal: 24),
   });
 
   final Widget header;
   final Widget child;
+  final double headerHeight;
   final EdgeInsetsGeometry headerPadding;
 
   @override
@@ -2135,7 +2370,7 @@ class _PaneFrame extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            height: 56,
+            height: headerHeight,
             padding: headerPadding,
             decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: colors.divider)),

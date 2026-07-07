@@ -15,6 +15,7 @@ import 'package:spring_note/core/services/cloud_sync_service.dart';
 import 'package:spring_note/core/services/note_service.dart';
 import 'package:spring_note/core/services/pasted_image_service.dart';
 import 'package:spring_note/core/theme/app_theme.dart';
+import 'package:spring_note/features/notes/markdown_preview.dart';
 import 'package:spring_note/features/notes/notes_page.dart';
 import 'package:spring_note/src/rust/cloud_sync.dart' as rust_model;
 
@@ -43,7 +44,10 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Markdown Source · 源码编辑'), findsOneWidget);
+    expect(find.text('编辑'), findsOneWidget);
+    expect(find.text('分栏'), findsOneWidget);
+    expect(find.text('预览'), findsWidgets);
+    expect(find.text('Markdown Source · 源码编辑'), findsNothing);
     expect(find.text('2026-06-18 日报'), findsWidgets);
 
     const edited = r'''
@@ -83,9 +87,120 @@ final value = 1;
     expect(find.text('无序项', findRichText: true), findsOneWidget);
     expect(find.textContaining('E = mc', findRichText: true), findsWidgets);
     expect(find.text('dart'), findsOneWidget);
-    expect(find.text('预览'), findsOneWidget);
+    expect(find.text('预览'), findsWidgets);
     expect(tester.takeException(), isNull);
     expect(noteService.contents.values.single, edited);
+  });
+
+  testWidgets('notes editor switches workspace modes without losing text', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const notePath = 'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-20.md';
+    final noteService = _MemoryNoteService({notePath: '# 初始内容'});
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: NotesPage(
+          localDataState: _localDataState,
+          noteService: noteService,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    const edited = '# 三态内容\n\n正文';
+    await tester.enterText(find.byType(TextField).last, edited);
+    await tester.pump();
+
+    await tester.tap(
+      find.byKey(const ValueKey('notes-workspace-mode-preview')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.byType(SelectionArea), findsOneWidget);
+    expect(find.text('三态内容', findRichText: true), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('notes-workspace-mode-edit')));
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsWidgets);
+    expect(find.byType(SelectionArea), findsNothing);
+    expect(
+      tester.widget<TextField>(find.byType(TextField).last).controller?.text,
+      edited,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('notes-workspace-mode-split')));
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsWidgets);
+    expect(find.byType(SelectionArea), findsOneWidget);
+    expect(find.text('三态内容', findRichText: true), findsOneWidget);
+  });
+
+  testWidgets('split workspace scrolls editor and preview independently', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final longMarkdown = [
+      '# 长文档',
+      for (var index = 0; index < 160; index++) '第 $index 行内容，用来制造足够的滚动高度。',
+    ].join('\n\n');
+    final noteService = _MemoryNoteService({
+      'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-18.md': longMarkdown,
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: NotesPage(
+          localDataState: _localDataState,
+          noteService: noteService,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final editorField = tester.widget<TextField>(find.byType(TextField).last);
+    final editorScrollController = editorField.scrollController!;
+    final previewScrollView = tester.widget<SingleChildScrollView>(
+      find.descendant(
+        of: find.byType(MarkdownPreview),
+        matching: find.byType(SingleChildScrollView),
+      ),
+    );
+    final previewScrollController = previewScrollView.controller!;
+    final previewTop = tester.getTopLeft(find.byType(MarkdownPreview)).dy;
+    final headingTop = tester
+        .getTopLeft(
+          find
+              .descendant(
+                of: find.byType(MarkdownPreview),
+                matching: find.textContaining('长文档', findRichText: true),
+              )
+              .first,
+        )
+        .dy;
+
+    expect(editorScrollController.position.maxScrollExtent, greaterThan(0));
+    expect(previewScrollView.padding, const EdgeInsets.fromLTRB(32, 0, 32, 56));
+    expect(headingTop - previewTop, lessThan(80));
+    expect(previewScrollController.offset, 0);
+
+    editorScrollController.jumpTo(
+      editorScrollController.position.maxScrollExtent,
+    );
+    await tester.pump();
+
+    expect(previewScrollController.offset, 0);
   });
 
   testWidgets('notes search matches content beyond the visible preview', (

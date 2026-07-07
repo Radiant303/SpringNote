@@ -11,21 +11,35 @@ class MarkdownPreview extends StatelessWidget {
     super.key,
     required this.markdown,
     this.localImageBasePath,
+    this.scrollController,
+    this.padding = const EdgeInsets.fromLTRB(32, 32, 32, 56),
+    this.maxContentWidth = 760,
   });
 
   final String markdown;
   final String? localImageBasePath;
+  final ScrollController? scrollController;
+  final EdgeInsetsGeometry padding;
+  final double maxContentWidth;
 
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
     if (markdown.trim().isEmpty) {
-      return Center(
-        child: Text(
-          '预览区域会随着 Markdown 源码实时刷新',
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: colors.textSubtle),
+      return SingleChildScrollView(
+        controller: scrollController,
+        padding: padding,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxContentWidth),
+            child: Text(
+              '预览区域会随着 Markdown 源码实时刷新',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: colors.textSubtle),
+            ),
+          ),
         ),
       );
     }
@@ -33,32 +47,42 @@ class MarkdownPreview extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     return SelectionArea(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(32, 32, 32, 56),
-        child: DefaultTextStyle.merge(
-          style: textTheme.bodyLarge?.copyWith(
-            color: colors.text,
-            fontSize: 14,
-            height: 1.55,
-          ),
-          child: GptMarkdown(
-            _markdownWithRenderableImageUris(markdown),
-            followLinkColor: true,
-            useDollarSignsForLatex: true,
-            codeBuilder: (context, name, code, closed) =>
-                MarkdownCodeBlock(language: name, code: code),
-            imageBuilder: (context, url, width, height) =>
-                _MarkdownPreviewImage(
-                  url: url,
-                  width: width,
-                  height: height,
-                  localImageBasePath: localImageBasePath,
+        controller: scrollController,
+        padding: padding,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxContentWidth),
+            child: SizedBox(
+              width: double.infinity,
+              child: DefaultTextStyle.merge(
+                style: textTheme.bodyLarge?.copyWith(
+                  color: colors.text,
+                  fontSize: 14,
+                  height: 1.55,
                 ),
-            style: textTheme.bodyLarge?.copyWith(
-              color: colors.text,
-              fontSize: 14,
-              height: 1.55,
+                child: GptMarkdown(
+                  _markdownWithRenderableImageUris(markdown),
+                  followLinkColor: true,
+                  useDollarSignsForLatex: true,
+                  codeBuilder: (context, name, code, closed) =>
+                      MarkdownCodeBlock(language: name, code: code),
+                  imageBuilder: (context, url, width, height) =>
+                      _MarkdownPreviewImage(
+                        url: url,
+                        width: width,
+                        height: height,
+                        localImageBasePath: localImageBasePath,
+                      ),
+                  style: textTheme.bodyLarge?.copyWith(
+                    color: colors.text,
+                    fontSize: 14,
+                    height: 1.55,
+                  ),
+                  onLinkTap: (url, title) {},
+                ),
+              ),
             ),
-            onLinkTap: (url, title) {},
           ),
         ),
       ),
