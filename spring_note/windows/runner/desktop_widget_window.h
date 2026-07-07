@@ -6,9 +6,18 @@
 #include <flutter/method_channel.h>
 #include <windows.h>
 
+#include <filesystem>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
+
+// Forward-declare Gdiplus::Image so this header doesn't need to pull in the
+// full <gdiplus.h> (which transitively includes a lot of COM/Win32 machinery).
+// Pointer members to incomplete types are well-defined C++.
+namespace Gdiplus {
+class Image;
+}  // namespace Gdiplus
 
 class DesktopWidgetWindow {
  public:
@@ -77,6 +86,8 @@ class DesktopWidgetWindow {
   std::wstring FormatDuration() const;
   void EnsureGdiplus();
   void ShutdownGdiplus();
+  Gdiplus::Image* GetOrLoadWallpaperImage(const std::wstring& path);
+  void ClearWallpaperCache();
   static LRESULT CALLBACK WindowProc(HWND hwnd,
                                      UINT message,
                                      WPARAM wparam,
@@ -104,6 +115,16 @@ class DesktopWidgetWindow {
   int region_radius_ = -1;
   ULONG_PTR gdiplus_token_ = 0;
   bool gdiplus_initialized_ = false;
+  // Cached wallpaper image. Lifetime is tied to cached_wallpaper_path_ and
+  // cached_wallpaper_mtime_; the cache is invalidated lazily by comparing
+  // the requested path against the cached path and the file's last write
+  // time, so repeated Paint() calls avoid repeated disk I/O and GDI+ image
+  // allocation. Access is serialised by gdiplus_mutex_ to keep the GDI+
+  // startup/shutdown lifecycle consistent with cache mutation.
+  Gdiplus::Image* cached_wallpaper_image_ = nullptr;
+  std::wstring cached_wallpaper_path_;
+  std::filesystem::file_time_type cached_wallpaper_mtime_{};
+  std::mutex gdiplus_mutex_;
 };
 
 #endif  // RUNNER_DESKTOP_WIDGET_WINDOW_H_
