@@ -1123,8 +1123,6 @@ final class DesktopWidgetView: NSView {
   private var trackingArea: NSTrackingArea?
   private var cachedWallpaperImage: NSImage?
   private var cachedWallpaperPath: String?
-  /// 修改时间与路径一起作为缓存 key，路径未变但文件被覆盖时也能重新加载
-  private var cachedWallpaperModifiedAt: Date?
 
   init(controller: DesktopWidgetWindowController, frame: NSRect) {
     self.controller = controller
@@ -1393,9 +1391,15 @@ final class DesktopWidgetView: NSView {
     context.addPath(clipPath)
     context.clip()
 
+    let fillDefaultBackground = {
+      context.setFillColor(colors.surface.cgColor)
+      context.fill(bounds)
+    }
+
     switch state.wallpaperMode {
     case 1:
       // 纯色模式：从 ARGB int 提取 RGB
+      fillDefaultBackground()
       let argb = state.wallpaperColor >= 0 ? state.wallpaperColor : 0xFFFFFF
       let r = CGFloat((argb >> 16) & 0xFF) / 255.0
       let g = CGFloat((argb >> 8) & 0xFF) / 255.0
@@ -1405,14 +1409,11 @@ final class DesktopWidgetView: NSView {
 
     case 2:
       // 图片模式：加载并绘制壁纸
+      fillDefaultBackground()
       if let imagePath = state.wallpaperImagePath {
-        // 读 modificationDate 参与缓存 key：同路径覆盖文件时也能感知
-        let modifiedAt = wallpaperModifiedDate(for: imagePath)
-        if cachedWallpaperPath != imagePath
-            || cachedWallpaperModifiedAt != modifiedAt {
+        if cachedWallpaperPath != imagePath {
           cachedWallpaperImage = NSImage(contentsOfFile: imagePath)
           cachedWallpaperPath = imagePath
-          cachedWallpaperModifiedAt = modifiedAt
         }
         if let image = cachedWallpaperImage {
           context.saveGState()
@@ -1430,34 +1431,15 @@ final class DesktopWidgetView: NSView {
             image.draw(in: NSRect(x: drawX, y: drawY, width: drawW, height: drawH))
           }
           context.restoreGState()
-        } else {
-          // 图片加载失败，回退白色
-          context.setFillColor(red: 1, green: 1, blue: 1, alpha: 1)
-          context.fill(bounds)
         }
-      } else {
-        // 无路径，回退白色
-        context.setFillColor(red: 1, green: 1, blue: 1, alpha: 1)
-        context.fill(bounds)
       }
 
     default:
       // mode 0: 默认主题背景色
-      context.setFillColor(colors.surface.cgColor)
-      context.fill(bounds)
+      fillDefaultBackground()
     }
 
     context.restoreGState()
-  }
-
-  /// 读取指定路径的修改时间。失败时返回 nil，调用方会保守地重新加载。
-  private func wallpaperModifiedDate(for path: String) -> Date? {
-    do {
-      let attrs = try FileManager.default.attributesOfItem(atPath: path)
-      return attrs[.modificationDate] as? Date
-    } catch {
-      return nil
-    }
   }
 }
 

@@ -7,13 +7,11 @@
 #include <cerrno>
 #include <cmath>
 #include <cstdlib>
-#include <filesystem>
 #include <iomanip>
 #include <limits>
 #include <mutex>
 #include <sstream>
 #include <string>
-#include <system_error>
 #include <vector>
 
 #include <gdiplus.h>
@@ -89,6 +87,22 @@ int ReadInt(const flutter::EncodableMap& map,
   }
   if (std::holds_alternative<int64_t>(it->second)) {
     return static_cast<int>(std::get<int64_t>(it->second));
+  }
+  return fallback;
+}
+
+int64_t ReadInt64(const flutter::EncodableMap& map,
+                  const char* key,
+                  int64_t fallback = 0) {
+  const auto it = map.find(flutter::EncodableValue(key));
+  if (it == map.end()) {
+    return fallback;
+  }
+  if (std::holds_alternative<int32_t>(it->second)) {
+    return std::get<int32_t>(it->second);
+  }
+  if (std::holds_alternative<int64_t>(it->second)) {
+    return std::get<int64_t>(it->second);
   }
   return fallback;
 }
@@ -261,10 +275,7 @@ void DesktopWidgetWindow::ShutdownGdiplus() {
   std::lock_guard<std::mutex> lock(gdiplus_mutex_);
   // Drop the cached image first; its destructor relies on a live GDI+
   // runtime, so this must happen before GdiplusShutdown.
-  delete cached_wallpaper_image_;
-  cached_wallpaper_image_ = nullptr;
-  cached_wallpaper_path_.clear();
-  cached_wallpaper_mtime_ = {};
+  ClearWallpaperCache();
 
   if (!gdiplus_initialized_) {
     return;
@@ -283,19 +294,11 @@ Gdiplus::Image* DesktopWidgetWindow::GetOrLoadWallpaperImage(
     return nullptr;
   }
 
-  // Resolve the file's current modification time. A failure here (missing
-  // file, permission denied, etc.) is treated as "no usable image".
-  std::error_code ec;
-  const auto mtime = std::filesystem::last_write_time(path, ec);
-  if (ec) {
-    return nullptr;
-  }
-
-  // Cache hit: same path and the file hasn't been modified on disk since
-  // we last loaded it. Returning the existing Gdiplus::Image* avoids the
-  // expensive FromFile() + decoder initialisation on every WM_PAINT.
+  // Cache hit: same imported wallpaper path. Returning the existing
+  // Gdiplus::Image* avoids decoder initialisation and filesystem metadata
+  // reads on every WM_PAINT.
   if (cached_wallpaper_image_ != nullptr &&
-      cached_wallpaper_path_ == path && cached_wallpaper_mtime_ == mtime) {
+      cached_wallpaper_path_ == path) {
     return cached_wallpaper_image_;
   }
 
@@ -317,16 +320,113 @@ Gdiplus::Image* DesktopWidgetWindow::GetOrLoadWallpaperImage(
   delete cached_wallpaper_image_;
   cached_wallpaper_image_ = loaded;
   cached_wallpaper_path_ = path;
-  cached_wallpaper_mtime_ = mtime;
   return cached_wallpaper_image_;
+}
+
+Gdiplus::Bitmap* DesktopWidgetWindow::GetOrRenderWallpaperBitmap(
+    const std::wstring& path,
+    int width,
+    int height,
+    double opacity,
+    COLORREF base_color) {
+  // Precondition: caller must hold gdiplus_mutex_.
+  if (path.empty() || width <= 0 || height <= 0) {
+    return nullptr;
+  }
+
+  const double normalized_opacity = std::clamp(opacity, 0.0, 1.0);
+  RenderedWallpaperCache& cache =
+      (width <= kOrbWindowSize && height <= kOrbWindowSize)
+          ? cached_wallpaper_renders_[0]
+          : cached_wallpaper_renders_[1];
+  if (cache.bitmap != nullptr && cache.path == path && cache.width == width &&
+      cache.height == height &&
+      std::abs(cache.opacity - normalized_opacity) < 0.001 &&
+      cache.base_color == base_color) {
+    return cache.bitmap;
+  }
+
+  Gdiplus::Image* src = GetOrLoadWallpaperImage(path);
+  if (src == nullptr) {
+    return nullptr;
+  }
+  const int img_w = static_cast<int>(src->GetWidth());
+  const int img_h = static_cast<int>(src->GetHeight());
+  if (img_w <= 0 || img_h <= 0) {
+    return nullptr;
+  }
+
+  Gdiplus::Bitmap* rendered =
+      new Gdiplus::Bitmap(width, height, PixelFormat32bppPARGB);
+  if (rendered == nullptr || rendered->GetLastStatus() != Gdiplus::Ok) {
+    delete rendered;
+    return nullptr;
+  }
+
+  Gdiplus::Graphics render_graphics(rendered);
+  render_graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+  render_graphics.SetInterpolationMode(
+      Gdiplus::InterpolationModeHighQualityBicubic);
+
+  Gdiplus::Color base(255, GetRValue(base_color), GetGValue(base_color),
+                      GetBValue(base_color));
+  Gdiplus::SolidBrush base_brush(base);
+  render_graphics.FillRectangle(&base_brush, 0, 0, width, height);
+
+  const double scale_x =
+      static_cast<double>(width) / static_cast<double>(img_w);
+  const double scale_y =
+      static_cast<double>(height) / static_cast<double>(img_h);
+  const double scale = (scale_x > scale_y) ? scale_x : scale_y;
+  const int draw_w = std::max(1, static_cast<int>(img_w * scale));
+  const int draw_h = std::max(1, static_cast<int>(img_h * scale));
+  const int draw_x = (width - draw_w) / 2;
+  const int draw_y = (height - draw_h) / 2;
+
+  if (normalized_opacity < 1.0) {
+    Gdiplus::ColorMatrix matrix{};
+    matrix.m[0][0] = 1.0f;
+    matrix.m[1][1] = 1.0f;
+    matrix.m[2][2] = 1.0f;
+    matrix.m[3][3] = static_cast<Gdiplus::REAL>(normalized_opacity);
+    matrix.m[4][4] = 1.0f;
+    Gdiplus::ImageAttributes attrs;
+    attrs.SetColorMatrix(&matrix);
+    render_graphics.DrawImage(src, Gdiplus::Rect(draw_x, draw_y, draw_w, draw_h),
+                              0, 0, img_w, img_h, Gdiplus::UnitPixel, &attrs);
+  } else {
+    render_graphics.DrawImage(src, draw_x, draw_y, draw_w, draw_h);
+  }
+
+  delete cache.bitmap;
+  cache.bitmap = rendered;
+  cache.path = path;
+  cache.width = width;
+  cache.height = height;
+  cache.opacity = normalized_opacity;
+  cache.base_color = base_color;
+  return cache.bitmap;
 }
 
 void DesktopWidgetWindow::ClearWallpaperCache() {
   // Precondition: caller must hold gdiplus_mutex_.
+  ClearRenderedWallpaperCache();
   delete cached_wallpaper_image_;
   cached_wallpaper_image_ = nullptr;
   cached_wallpaper_path_.clear();
-  cached_wallpaper_mtime_ = {};
+}
+
+void DesktopWidgetWindow::ClearRenderedWallpaperCache() {
+  // Precondition: caller must hold gdiplus_mutex_.
+  for (auto& cache : cached_wallpaper_renders_) {
+    delete cache.bitmap;
+    cache.bitmap = nullptr;
+    cache.path.clear();
+    cache.width = 0;
+    cache.height = 0;
+    cache.opacity = -1.0;
+    cache.base_color = RGB(0, 0, 0);
+  }
 }
 
 void DesktopWidgetWindow::RegisterChannelHandler() {
@@ -384,7 +484,7 @@ void DesktopWidgetWindow::ShowOrUpdate(const flutter::EncodableMap& arguments) {
   state_.wallpaper_mode =
       std::clamp(ReadInt(arguments, "widgetWallpaperMode", state_.wallpaper_mode),
                  0, 2);
-  const int wp_color = ReadInt(arguments, "widgetWallpaperColor", -1);
+  const int64_t wp_color = ReadInt64(arguments, "widgetWallpaperColor", -1);
   if (wp_color >= 0) {
     state_.wallpaper_color =
         RGB((wp_color >> 16) & 0xFF, (wp_color >> 8) & 0xFF, wp_color & 0xFF);
@@ -697,6 +797,9 @@ void DesktopWidgetWindow::Paint() {
   const COLORREF c_stopped  = dark ? RGB(120, 120, 120) : RGB(207, 207, 207);
   // Green accent stays the same in both themes for brand consistency.
   const COLORREF c_running  = RGB(16, 185, 129);
+  const bool collapsed_orb = state_.orb_mode && !expanded_;
+  const COLORREF c_wallpaper_base = collapsed_orb ? c_orb_bg
+                                                  : RGB(255, 255, 255);
 
   PAINTSTRUCT paint{};
   HDC dc = BeginPaint(window_, &paint);
@@ -720,9 +823,19 @@ void DesktopWidgetWindow::Paint() {
       graphics->SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
       const int bmp_w = std::max(static_cast<int>(client.right), 1);
       const int bmp_h = std::max(static_cast<int>(client.bottom), 1);
+      const auto fill_base = [&]() {
+        Gdiplus::Color base(255, GetRValue(c_wallpaper_base),
+                            GetGValue(c_wallpaper_base),
+                            GetBValue(c_wallpaper_base));
+        Gdiplus::SolidBrush brush(base);
+        graphics->FillRectangle(&brush, 0, 0, bmp_w, bmp_h);
+      };
 
       if (state_.wallpaper_mode == 1) {
-        Gdiplus::Color c(255, GetRValue(state_.wallpaper_color),
+        fill_base();
+        const BYTE alpha = static_cast<BYTE>(
+            std::round(std::clamp(state_.wallpaper_opacity, 0.0, 1.0) * 255.0));
+        Gdiplus::Color c(alpha, GetRValue(state_.wallpaper_color),
                          GetGValue(state_.wallpaper_color),
                          GetBValue(state_.wallpaper_color));
         Gdiplus::SolidBrush brush(c);
@@ -730,64 +843,25 @@ void DesktopWidgetWindow::Paint() {
       } else if (state_.wallpaper_mode == 2 &&
                  !state_.wallpaper_image_path.empty()) {
         // Use the cached image instead of reloading from disk on every
-        // WM_PAINT. The cache is keyed on (path, last_write_time), so a
-        // hot redraw loop is essentially free, and external edits to the
-        // wallpaper file are picked up automatically on the next paint.
-        Gdiplus::Image* src =
-            GetOrLoadWallpaperImage(state_.wallpaper_image_path);
-        if (src != nullptr) {
-          const int imgW = src->GetWidth();
-          const int imgH = src->GetHeight();
-          if (imgW > 0 && imgH > 0) {
-            // Cover-mode: keep aspect ratio, fill the bitmap, center when
-            // the scaled image is larger than the bitmap on either axis.
-            const double scaleX =
-                static_cast<double>(bmp_w) / static_cast<double>(imgW);
-            const double scaleY =
-                static_cast<double>(bmp_h) / static_cast<double>(imgH);
-            const double scale = (scaleX > scaleY) ? scaleX : scaleY;
-            const int drawW =
-                std::max(1, static_cast<int>(imgW * scale));
-            const int drawH =
-                std::max(1, static_cast<int>(imgH * scale));
-            const int drawX = (bmp_w - drawW) / 2;
-            const int drawY = (bmp_h - drawH) / 2;
-            if (state_.wallpaper_opacity < 1.0) {
-              Gdiplus::ColorMatrix matrix{};
-              matrix.m[0][0] = 1.0f;
-              matrix.m[1][1] = 1.0f;
-              matrix.m[2][2] = 1.0f;
-              matrix.m[3][3] = static_cast<Gdiplus::REAL>(state_.wallpaper_opacity);
-              matrix.m[4][4] = 1.0f;
-              Gdiplus::ImageAttributes attrs;
-              attrs.SetColorMatrix(&matrix);
-              graphics->DrawImage(
-                  src,
-                  Gdiplus::Rect(drawX, drawY, drawW, drawH),
-                  0, 0, imgW, imgH,
-                  Gdiplus::UnitPixel, &attrs);
-            } else {
-              graphics->DrawImage(src, drawX, drawY, drawW, drawH);
-            }
-          } else {
-            Gdiplus::Color white(255, 255, 255, 255);
-            Gdiplus::SolidBrush wb(white);
-            graphics->FillRectangle(&wb, 0, 0, bmp_w, bmp_h);
-          }
+        // WM_PAINT. The rendered cache is keyed by imported path, target size,
+        // opacity and base color, so orb/card transitions draw a tiny bitmap
+        // instead of rescaling the original image on the UI thread.
+        Gdiplus::Bitmap* wallpaper = GetOrRenderWallpaperBitmap(
+            state_.wallpaper_image_path, bmp_w, bmp_h,
+            state_.wallpaper_opacity, c_wallpaper_base);
+        if (wallpaper != nullptr) {
+          graphics->DrawImage(wallpaper, 0, 0, bmp_w, bmp_h);
         } else {
-          Gdiplus::Color white(255, 255, 255, 255);
-          Gdiplus::SolidBrush wb(white);
-          graphics->FillRectangle(&wb, 0, 0, bmp_w, bmp_h);
+          fill_base();
         }
       } else {
-        Gdiplus::Color white(255, 255, 255, 255);
-        Gdiplus::SolidBrush wb(white);
-        graphics->FillRectangle(&wb, 0, 0, bmp_w, bmp_h);
+        fill_base();
       }
       delete graphics;
     } else {
-      FillRect(memory_dc, &client,
-               static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
+      HBRUSH fallback_brush = CreateSolidBrush(c_wallpaper_base);
+      FillRect(memory_dc, &client, fallback_brush);
+      DeleteObject(fallback_brush);
     }
   }
 
@@ -796,10 +870,7 @@ void DesktopWidgetWindow::Paint() {
         1, static_cast<int>(std::round(size * state_.font_scale_factor)));
   };
 
-  if (state_.orb_mode && !expanded_) {
-    RECT orb{0, 0, kOrbWindowSize, kOrbWindowSize};
-    FillRoundRect(memory_dc, orb, kOrbWindowSize, c_orb_bg);
-
+  if (collapsed_orb) {
     HBRUSH dot_brush = CreateSolidBrush(
         state_.running ? c_running : c_stopped);
     HBRUSH old_dot_brush =
