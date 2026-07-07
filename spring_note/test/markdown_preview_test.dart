@@ -59,6 +59,33 @@ void main() {
       markdownTheme.gptThemeData.hrLinePadding,
       const EdgeInsets.only(bottom: 16),
     );
+    final h1FontSize = markdownTheme.gptThemeData.h1?.fontSize;
+    expect(h1FontSize, isNotNull);
+    expect(markdownTheme.gptThemeData.h1?.color, const Color(0xFF333333));
+    expect(
+      markdownTheme.gptThemeData.h2?.fontSize,
+      closeTo(h1FontSize! * 0.75, 0.001),
+    );
+    expect(markdownTheme.gptThemeData.h2?.fontWeight, FontWeight.w700);
+    expect(markdownTheme.gptThemeData.h2?.color, const Color(0xFF333333));
+    expect(
+      markdownTheme.gptThemeData.h3?.fontSize,
+      closeTo(h1FontSize * 0.625, 0.001),
+    );
+    expect(markdownTheme.gptThemeData.h3?.fontWeight, FontWeight.w700);
+    expect(
+      markdownTheme.gptThemeData.h4?.fontSize,
+      closeTo(h1FontSize * 0.50, 0.001),
+    );
+    expect(
+      markdownTheme.gptThemeData.h5?.fontSize,
+      closeTo(h1FontSize * 0.438, 0.001),
+    );
+    expect(
+      markdownTheme.gptThemeData.h6?.fontSize,
+      closeTo(h1FontSize * 0.425, 0.001),
+    );
+    expect(markdownTheme.gptThemeData.h6?.fontWeight, FontWeight.w700);
   });
 
   testWidgets('markdown preview renders h1 followed by text consistently', (
@@ -70,6 +97,36 @@ void main() {
     const spaced =
         '# 2026-07-07 日报\n\n'
         '今天完成了登录接口的开发工作，目前接口已可正常调用。下午点了一杯咖啡提神，继续跟进后续联调准备。';
+
+    await _pumpPreview(tester, compact);
+    final compactText = _previewPlainText(tester);
+
+    await _pumpPreview(tester, spaced);
+    final spacedText = _previewPlainText(tester);
+
+    expect(compactText, spacedText);
+  });
+
+  testWidgets('markdown preview normalizes heading body spacing', (
+    WidgetTester tester,
+  ) async {
+    const compact = '## 二级标题\n这是第二个测试';
+    const spaced = '## 二级标题\n\n这是第二个测试';
+
+    await _pumpPreview(tester, compact);
+    final compactText = _previewPlainText(tester);
+
+    await _pumpPreview(tester, spaced);
+    final spacedText = _previewPlainText(tester);
+
+    expect(compactText, spacedText);
+  });
+
+  testWidgets('markdown preview normalizes body heading spacing', (
+    WidgetTester tester,
+  ) async {
+    const compact = '这是第二个测试\n### 三级标题\n这是第三个测试';
+    const spaced = '这是第二个测试\n\n### 三级标题\n这是第三个测试';
 
     await _pumpPreview(tester, compact);
     final compactText = _previewPlainText(tester);

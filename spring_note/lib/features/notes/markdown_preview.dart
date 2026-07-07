@@ -44,6 +44,7 @@ class MarkdownPreview extends StatelessWidget {
       );
     }
 
+    final brightness = Theme.of(context).brightness;
     final textTheme = Theme.of(context).textTheme;
     final markdownTheme = GptMarkdownTheme.of(context);
     return SelectionArea(
@@ -63,9 +64,10 @@ class MarkdownPreview extends StatelessWidget {
                   height: 1.55,
                 ),
                 child: GptMarkdownTheme(
-                  gptThemeData: markdownTheme.copyWith(
-                    h1: markdownTheme.h1?.copyWith(height: 0.92),
-                    hrLinePadding: const EdgeInsets.only(bottom: 16),
+                  gptThemeData: _previewMarkdownTheme(
+                    markdownTheme,
+                    colors,
+                    brightness,
                   ),
                   child: GptMarkdown(
                     _markdownForPreview(markdown),
@@ -97,6 +99,77 @@ class MarkdownPreview extends StatelessWidget {
   }
 }
 
+GptMarkdownThemeData _previewMarkdownTheme(
+  GptMarkdownThemeData base,
+  SpringThemeColors colors,
+  Brightness brightness,
+) {
+  final headingColor = brightness == Brightness.dark
+      ? colors.text
+      : const Color(0xFF333333);
+  final h1FontSize = base.h1?.fontSize ?? 32;
+  return base.copyWith(
+    h1: _headingStyle(
+      base.h1,
+      color: headingColor,
+      fontSize: h1FontSize,
+      fontWeight: FontWeight.w700,
+      height: 0.92,
+    ),
+    h2: _headingStyle(
+      base.h2,
+      color: headingColor,
+      fontSize: h1FontSize * 0.75,
+      fontWeight: FontWeight.w700,
+      height: 1.22,
+    ),
+    h3: _headingStyle(
+      base.h3,
+      color: headingColor,
+      fontSize: h1FontSize * 0.625,
+      fontWeight: FontWeight.w700,
+      height: 1.26,
+    ),
+    h4: _headingStyle(
+      base.h4,
+      color: headingColor,
+      fontSize: h1FontSize * 0.50,
+      fontWeight: FontWeight.w700,
+      height: 1.30,
+    ),
+    h5: _headingStyle(
+      base.h5,
+      color: headingColor,
+      fontSize: h1FontSize * 0.438,
+      fontWeight: FontWeight.w700,
+      height: 1.34,
+    ),
+    h6: _headingStyle(
+      base.h6,
+      color: headingColor,
+      fontSize: h1FontSize * 0.425,
+      fontWeight: FontWeight.w700,
+      height: 1.38,
+    ),
+    hrLinePadding: const EdgeInsets.only(bottom: 16),
+  );
+}
+
+TextStyle _headingStyle(
+  TextStyle? base, {
+  required Color color,
+  double? fontSize,
+  FontWeight? fontWeight,
+  double? height,
+}) {
+  return (base ?? const TextStyle()).copyWith(
+    color: color,
+    fontSize: fontSize,
+    fontWeight: fontWeight,
+    height: height,
+  );
+}
+
 String _markdownForPreview(String markdown) {
   return _markdownWithRenderableImageUris(
     _normalizeAtxHeadingSpacing(markdown),
@@ -119,6 +192,15 @@ String _normalizeAtxHeadingSpacing(String markdown) {
 
   for (var index = 0; index < lines.length; index++) {
     final line = lines[index];
+    final headingLevelBeforeFenceUpdate = inFence
+        ? null
+        : _atxHeadingLevel(line);
+    if (headingLevelBeforeFenceUpdate != null &&
+        headingLevelBeforeFenceUpdate > 1 &&
+        _needsLeadingHeadingGap(lines, index)) {
+      buffer.write('\n');
+    }
+
     buffer.write(line);
     if (index < lines.length - 1) {
       buffer.write('\n');
@@ -140,7 +222,8 @@ String _normalizeAtxHeadingSpacing(String markdown) {
       }
     }
 
-    if (inFence || index >= lines.length - 1 || !_isAtxHeading(line)) {
+    final headingLevel = _atxHeadingLevel(line);
+    if (inFence || index >= lines.length - 1 || headingLevel == null) {
       continue;
     }
 
@@ -150,7 +233,21 @@ String _normalizeAtxHeadingSpacing(String markdown) {
       nextContentIndex++;
     }
 
-    if (nextContentIndex > index + 1 && nextContentIndex < lines.length) {
+    if (nextContentIndex >= lines.length) {
+      continue;
+    }
+
+    final nextLineIsHeading = _isAtxHeading(lines[nextContentIndex]);
+    final shouldKeepBlockGap = headingLevel > 1 || nextLineIsHeading;
+    final hadBlockGap = nextContentIndex > index + 1;
+
+    if (shouldKeepBlockGap) {
+      if (!hadBlockGap) {
+        buffer.write('\n');
+      } else {
+        index = nextContentIndex - 2;
+      }
+    } else if (hadBlockGap) {
       index = nextContentIndex - 1;
     }
   }
@@ -165,6 +262,25 @@ final _fencedCodeBlockPattern = RegExp(r'^[ \t]{0,3}(`{3,}|~{3,})');
 
 bool _isAtxHeading(String line) {
   return _atxHeadingPattern.hasMatch(line);
+}
+
+bool _needsLeadingHeadingGap(List<String> lines, int index) {
+  if (index <= 0) {
+    return false;
+  }
+  return lines[index - 1].trim().isNotEmpty;
+}
+
+int? _atxHeadingLevel(String line) {
+  if (!_atxHeadingPattern.hasMatch(line)) {
+    return null;
+  }
+  final trimmed = line.trimLeft();
+  var level = 0;
+  while (level < trimmed.length && trimmed.codeUnitAt(level) == 0x23) {
+    level++;
+  }
+  return level == 0 ? null : level;
 }
 
 String _markdownWithRenderableImageUris(String markdown) {
