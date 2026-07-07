@@ -107,15 +107,7 @@ class AppStartupLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: SizedBox(
-          height: 28,
-          width: 28,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-      ),
-    );
+    return const Scaffold(body: SizedBox.expand());
   }
 }
 
