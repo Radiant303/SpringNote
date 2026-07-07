@@ -1609,19 +1609,19 @@ class _WallpaperPreview extends StatelessWidget {
       dataDirectory: dataDirectory,
     );
     if (abs == null) return DefaultGreenWallpaper(showLeaves: false);
-    final file = File(abs);
-    return FutureBuilder<bool>(
-      future: file.exists(),
-      builder: (context, snap) {
-        if (snap.data != true) return DefaultGreenWallpaper(showLeaves: false);
-        return Image.file(
-          file,
-          fit: WallpaperService.toBoxFit(settings.fillMode),
-          gaplessPlayback: true,
-          errorBuilder: (_, __, ___) =>
-              DefaultGreenWallpaper(showLeaves: false),
-        );
-      },
+    // Use Image.file directly with errorBuilder instead of a FutureBuilder
+    // around file.exists(). The previous implementation allocated a new
+    // Future<bool> on every build, which re-ran the existence check (and
+    // triggered a setState) on every parent rebuild — including harmless
+    // ones like theme toggles and scroll-driven rebuilds. Image.file caches
+    // the resolved file internally and only re-decodes when the path
+    // actually changes; errorBuilder handles the missing-file fallback in
+    // a single pass. This mirrors the pattern in wallpaper_layer.dart.
+    return Image.file(
+      File(abs),
+      fit: WallpaperService.toBoxFit(settings.fillMode),
+      gaplessPlayback: true,
+      errorBuilder: (_, __, ___) => DefaultGreenWallpaper(showLeaves: false),
     );
   }
 
