@@ -1403,7 +1403,7 @@ class _ChoiceSettingRow<T> extends StatelessWidget {
     required this.labels,
     required this.onChanged,
     this.description,
-  });
+  }) : assert(options.length == labels.length);
 
   final String label;
   final T value;
@@ -1415,6 +1415,32 @@ class _ChoiceSettingRow<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
+    final selectedIndex = options.indexOf(value);
+    final textStyle =
+        Theme.of(context).textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w400,
+          height: 1.2,
+        ) ??
+        const TextStyle(fontWeight: FontWeight.w400, height: 1.2);
+    final textDirection = Directionality.of(context);
+    final textScaler = MediaQuery.textScalerOf(context);
+    final segmentWidths = [
+      for (final label in labels)
+        _measureTextWidth(
+              label: label,
+              style: textStyle,
+              textDirection: textDirection,
+              textScaler: textScaler,
+            ) +
+            26,
+    ];
+    final selectedLeft = selectedIndex <= 0
+        ? 0.0
+        : segmentWidths
+              .take(selectedIndex)
+              .fold(0.0, (sum, width) => sum + width);
+    final controlWidth = segmentWidths.fold(0.0, (sum, width) => sum + width);
+
     return _SettingRowShell(
       label: label,
       description: description,
@@ -1425,24 +1451,71 @@ class _ChoiceSettingRow<T> extends StatelessWidget {
           border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(14),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var index = 0; index < options.length; index++)
-              _ChoicePill(
-                label: labels[index],
-                selected: options[index] == value,
-                onTap: () => onChanged(options[index]),
+        child: SizedBox(
+          width: controlWidth,
+          child: Stack(
+            children: [
+              if (selectedIndex >= 0)
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutCubic,
+                  left: selectedLeft,
+                  top: 0,
+                  bottom: 0,
+                  width: segmentWidths[selectedIndex],
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(11),
+                      boxShadow: [
+                        BoxShadow(
+                          color: colors.shadow.withValues(alpha: 0.12),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var index = 0; index < options.length; index++)
+                    SizedBox(
+                      width: segmentWidths[index],
+                      child: _ChoiceSegment(
+                        label: labels[index],
+                        selected: options[index] == value,
+                        onTap: () => onChanged(options[index]),
+                      ),
+                    ),
+                ],
               ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+
+  static double _measureTextWidth({
+    required String label,
+    required TextStyle style,
+    required TextDirection textDirection,
+    required TextScaler textScaler,
+  }) {
+    final painter = TextPainter(
+      text: TextSpan(text: label, style: style),
+      maxLines: 1,
+      textDirection: textDirection,
+      textScaler: textScaler,
+    )..layout();
+    return painter.width;
+  }
 }
 
-class _ChoicePill extends StatelessWidget {
-  const _ChoicePill({
+class _ChoiceSegment extends StatelessWidget {
+  const _ChoiceSegment({
     required this.label,
     required this.selected,
     required this.onTap,
@@ -1460,29 +1533,23 @@ class _ChoicePill extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          curve: Curves.easeOutCubic,
+        child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-          decoration: BoxDecoration(
-            color: selected ? colors.surface : Colors.transparent,
-            borderRadius: BorderRadius.circular(11),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: colors.shadow.withValues(alpha: 0.12),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: selected ? colors.text : colors.textSubtle,
-              fontWeight: FontWeight.w400,
-              height: 1.2,
+          child: Center(
+            child: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 140),
+              style:
+                  Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: selected ? colors.text : colors.textSubtle,
+                    fontWeight: FontWeight.w400,
+                    height: 1.2,
+                  ) ??
+                  TextStyle(
+                    color: selected ? colors.text : colors.textSubtle,
+                    fontWeight: FontWeight.w400,
+                    height: 1.2,
+                  ),
+              child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
           ),
         ),
