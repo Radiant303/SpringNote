@@ -12,7 +12,7 @@ class MarkdownPreview extends StatelessWidget {
     required this.markdown,
     this.localImageBasePath,
     this.scrollController,
-    this.padding = const EdgeInsets.fromLTRB(32, 32, 32, 56),
+    this.padding = const EdgeInsets.fromLTRB(32, 20, 32, 56),
     this.maxContentWidth = 760,
   });
 
@@ -64,8 +64,8 @@ class MarkdownPreview extends StatelessWidget {
                 ),
                 child: GptMarkdownTheme(
                   gptThemeData: markdownTheme.copyWith(
-                    h1: markdownTheme.h1?.copyWith(height: 1.0),
-                    hrLinePadding: const EdgeInsets.only(bottom: 10),
+                    h1: markdownTheme.h1?.copyWith(height: 0.92),
+                    hrLinePadding: const EdgeInsets.only(bottom: 16),
                   ),
                   child: GptMarkdown(
                     _markdownForPreview(markdown),

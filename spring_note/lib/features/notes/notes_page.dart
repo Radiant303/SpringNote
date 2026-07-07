@@ -1925,7 +1925,7 @@ class _EditorWorkspaceState extends State<_EditorWorkspace> {
       scrollController: _previewScrollController,
       padding: widget.mode == _EditorWorkspaceMode.split
           ? const EdgeInsets.fromLTRB(32, 0, 32, 56)
-          : const EdgeInsets.fromLTRB(32, 32, 32, 56),
+          : const EdgeInsets.fromLTRB(32, 20, 32, 56),
     );
 
     return switch (widget.mode) {

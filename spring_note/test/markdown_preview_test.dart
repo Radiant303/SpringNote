@@ -54,10 +54,10 @@ void main() {
       find.byType(GptMarkdownTheme),
     );
 
-    expect(markdownTheme.gptThemeData.h1?.height, 1.0);
+    expect(markdownTheme.gptThemeData.h1?.height, 0.92);
     expect(
       markdownTheme.gptThemeData.hrLinePadding,
-      const EdgeInsets.only(bottom: 10),
+      const EdgeInsets.only(bottom: 16),
     );
   });
 
