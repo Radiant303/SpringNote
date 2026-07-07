@@ -42,8 +42,14 @@ class WallpaperService {
   }) {
     final rel = settings.imagePath;
     if (rel == null || rel.isEmpty) return null;
-    if (p.isAbsolute(rel)) return rel;
+    if (_isAbsolutePath(rel)) return rel;
     return p.join(dataDirectory, rel);
+  }
+
+  static bool _isAbsolutePath(String path) {
+    return p.isAbsolute(path) ||
+        p.Context(style: p.Style.windows).isAbsolute(path) ||
+        p.Context(style: p.Style.posix).isAbsolute(path);
   }
 
   // ---------------- 启动校验 ----------------
