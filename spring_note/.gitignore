@@ -46,3 +46,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# FVM version cache
+# - Track:  .fvmrc / .fvm/fvm_config.json / .fvm/version / .fvm/release  (small,决定 SDK 版本)
+# - Ignore: .fvm/flutter_sdk / .fvm/versions                              (large、平台相关 SDK 本体)
+.fvm/flutter_sdk
+.fvm/versions
