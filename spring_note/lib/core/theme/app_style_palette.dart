@@ -70,12 +70,16 @@ class AppStylePalette extends ThemeExtension<AppStylePalette> {
       : cardBgHover;
 
   /// 文字颜色：透明控件模式下叠加对比度加深
+  ///
+  /// 暗色模式向白色方向加深的系数更激进（0.5），避免在深色壁纸上字
+  /// 色仍偏黑；亮色模式保持 0.3 的温和加深。
   Color get effectiveTextPrimary {
     if (!transparentControls) return textPrimary;
     final contrast = textContrast.clamp(0.0, 1.0);
     if (contrast == 0) return textPrimary;
     final overlay = brightness == Brightness.dark ? Colors.white : Colors.black;
-    return Color.lerp(textPrimary, overlay, contrast * 0.3) ?? textPrimary;
+    final factor = brightness == Brightness.dark ? 0.5 : 0.3;
+    return Color.lerp(textPrimary, overlay, contrast * factor) ?? textPrimary;
   }
 
   Color get effectiveTextSecondary => transparentControls

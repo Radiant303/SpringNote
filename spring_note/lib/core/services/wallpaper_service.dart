@@ -20,6 +20,10 @@ class WallpaperService {
 
   static const String _wallpaperSubdir = 'wallpapers';
 
+  /// Windows / macOS 默认不区分路径大小写，保留时按小写比较。
+  static bool get _isCaseInsensitiveFs =>
+      Platform.isWindows || Platform.isMacOS;
+
   // ---------------- 路径解析 ----------------
 
   /// 用户自定义图片所在子目录（绝对路径）。
@@ -90,10 +94,11 @@ class WallpaperService {
     String? alsoKeepPath,
   }) async {
     final extRaw = p.extension(sourceFile.path);
-    final ext = normalizedImageExtension(extRaw, fallback: 'jpg');
-    if (!hasAllowedImageExtension('.$ext')) {
+    // 先检查原始扩展名是否允许，再规范化（避免 fallback 绕过检查）
+    if (!hasAllowedImageExtension(sourceFile.path)) {
       throw ArgumentError('不支持的图片格式: $extRaw');
     }
+    final ext = normalizedImageExtension(extRaw, fallback: 'jpg');
     if (!await sourceFile.exists()) {
       throw FileSystemException('源图片不存在', sourceFile.path);
     }
@@ -123,14 +128,25 @@ class WallpaperService {
     required Set<String> keepPaths,
   }) async {
     try {
+      // Windows / macOS 文件系统默认大小写不敏感，归一为小写避免
+      // “c:\...\Wallpaper_X.JPG” 和“c:\...\wallpaper_x.jpg”被误判
+      // 为两个不同文件导致合法文件被误删。
+      final keepSet = _isCaseInsensitiveFs
+          ? keepPaths.map((path) => path.toLowerCase()).toSet()
+          : keepPaths;
       await for (final entity in dir.list()) {
-        if (entity is File && !keepPaths.contains(entity.path)) {
-          final name = p.basename(entity.path);
-          if (name.startsWith('wallpaper_')) {
-            try {
-              await entity.delete();
-            } catch (e) {
-              debugPrint('[WallpaperService] 删除旧壁纸失败: $e');
+        if (entity is File) {
+          final cmp = _isCaseInsensitiveFs
+              ? entity.path.toLowerCase()
+              : entity.path;
+          if (!keepSet.contains(cmp)) {
+            final name = p.basename(entity.path);
+            if (name.startsWith('wallpaper_')) {
+              try {
+                await entity.delete();
+              } catch (e) {
+                debugPrint('[WallpaperService] 删除旧壁纸失败: $e');
+              }
             }
           }
         }

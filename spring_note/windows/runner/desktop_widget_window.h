@@ -37,6 +37,7 @@ class DesktopWidgetWindow {
     COLORREF wallpaper_color = RGB(255, 255, 255);
     std::wstring wallpaper_image_path;
     double wallpaper_opacity = 1.0;
+    bool dark_mode = false;
   };
 
   struct WidgetPosition {
@@ -74,6 +75,8 @@ class DesktopWidgetWindow {
   void InvokeFlutterMethod(const std::string& method);
   void OpenMainWindow();
   std::wstring FormatDuration() const;
+  void EnsureGdiplus();
+  void ShutdownGdiplus();
   static LRESULT CALLBACK WindowProc(HWND hwnd,
                                      UINT message,
                                      WPARAM wparam,
@@ -99,6 +102,8 @@ class DesktopWidgetWindow {
   int region_width_ = -1;
   int region_height_ = -1;
   int region_radius_ = -1;
+  ULONG_PTR gdiplus_token_ = 0;
+  bool gdiplus_initialized_ = false;
 };
 
 #endif  // RUNNER_DESKTOP_WIDGET_WINDOW_H_

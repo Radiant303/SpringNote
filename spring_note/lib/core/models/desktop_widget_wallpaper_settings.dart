@@ -44,6 +44,16 @@ class DesktopWidgetWallpaperSettings {
   /// 壁纸不透明度 0.0 ~ 1.0
   final double opacity;
 
+  /// 拷贝当前配置并按需覆盖字段。
+  ///
+  /// 调用规则：
+  /// - 不要传 [imagePath]（使用默认）→ 保留原值
+  /// - 传 [imagePath] 任意非空值 → 覆盖为该值
+  /// - 需要把 [imagePath] 重置为 null（例如切回非 image 模式）→
+  ///   传 [clearImagePath]: true
+  ///
+  /// 注意：Dart 默认参数不能严格区分“不传”与“传 null”，所以清空
+  /// 必须使用专门的 [clearImagePath] 开关，不要传 `imagePath: null`。
   DesktopWidgetWallpaperSettings copyWith({
     DesktopWidgetWallpaperMode? mode,
     int? solidColorArgb,

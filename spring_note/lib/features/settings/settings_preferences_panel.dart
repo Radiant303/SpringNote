@@ -23,6 +23,18 @@ class _PreferencesPanel extends StatelessWidget {
   final String? errorMessage;
   final ValueChanged<String?> onDataDirectoryChanged;
 
+  /// 壁纸模式从 image 切到其他模式时，删除磁盘上残余的 wallpaper_*
+  /// 文件。失败仅 debugPrint，不阻断 UI 切换。
+  static Future<void> _pruneWallpaperFilesAfterModeChange(
+    String dataDirectory,
+  ) async {
+    try {
+      await WallpaperService.clearImageFiles(dataDirectory);
+    } catch (e) {
+      debugPrint('[Settings] 清理旧壁纸文件失败: $e');
+    }
+  }
+
   String _wallpaperImageSummary(String? path) {
     if (path == null || path.isEmpty) return '未选择';
     final name = path.split('/').last;
@@ -195,13 +207,21 @@ class _PreferencesPanel extends StatelessWidget {
               value: config.wallpaperSettings.mode,
               options: WallpaperMode.values,
               labels: const ['默认背景', '本地图片', '纯色'],
-              onChanged: (mode) => onChanged(
-                config.copyWith(
-                  wallpaperSettings: config.wallpaperSettings.copyWith(
-                    mode: mode,
+              onChanged: (mode) {
+                final prevMode = config.wallpaperSettings.mode;
+                if (prevMode == WallpaperMode.image &&
+                    mode != WallpaperMode.image) {
+                  // 切出图片模式时清空磁盘上的旧 wallpaper_* 文件
+                  unawaited(_pruneWallpaperFilesAfterModeChange(dataDirectory));
+                }
+                onChanged(
+                  config.copyWith(
+                    wallpaperSettings: config.wallpaperSettings.copyWith(
+                      mode: mode,
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
             if (config.wallpaperSettings.mode == WallpaperMode.image) ...[
               _ActionSettingRow(
@@ -454,13 +474,24 @@ class _PreferencesPanel extends StatelessWidget {
                 value: config.desktopWidgetWallpaperSettings.mode,
                 options: DesktopWidgetWallpaperMode.values,
                 labels: const ['默认白色', '纯色', '本地图片'],
-                onChanged: (mode) => onChanged(
-                  config.copyWith(
-                    desktopWidgetWallpaperSettings: config
-                        .desktopWidgetWallpaperSettings
-                        .copyWith(mode: mode),
-                  ),
-                ),
+                onChanged: (mode) {
+                  final prevMode = config.desktopWidgetWallpaperSettings.mode;
+                  if (prevMode == DesktopWidgetWallpaperMode.image &&
+                      mode != DesktopWidgetWallpaperMode.image) {
+                    // 切出图片模式时清空磁盘上的旧 wallpaper_* 文件
+                    // （主窗口与桌面组件可能共用同一份文件，仍用同一清理函数）
+                    unawaited(
+                      _pruneWallpaperFilesAfterModeChange(dataDirectory),
+                    );
+                  }
+                  onChanged(
+                    config.copyWith(
+                      desktopWidgetWallpaperSettings: config
+                          .desktopWidgetWallpaperSettings
+                          .copyWith(mode: mode),
+                    ),
+                  );
+                },
               ),
               if (config.desktopWidgetWallpaperSettings.mode ==
                   DesktopWidgetWallpaperMode.solid)
@@ -1949,6 +1980,7 @@ class _FontPickerDialogState extends State<_FontPickerDialog> {
   Future<void> _handleFontTap(String font) async {
     // system 始终视为支持中文，直接应用
     if (font == 'system') {
+      if (!mounted) return;
       Navigator.of(context).pop(font);
       return;
     }
@@ -1961,6 +1993,7 @@ class _FontPickerDialogState extends State<_FontPickerDialog> {
         return; // 用户取消
       }
     }
+    if (!mounted) return;
     Navigator.of(context).pop(font);
   }
 
@@ -2001,9 +2034,7 @@ class _FontPickerDialogState extends State<_FontPickerDialog> {
     // 不受 transparentControls / controlAlpha 影响。
     final isDark = context.appIsDark;
     final dialogBg = isDark ? AppTheme.darkSurface : AppTheme.surface;
-    final tileBg = isDark
-        ? const Color(0xFF25262B)
-        : const Color(0xFFEEEEEE);
+    final tileBg = isDark ? const Color(0xFF25262B) : const Color(0xFFEEEEEE);
     return Dialog(
       backgroundColor: dialogBg,
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
