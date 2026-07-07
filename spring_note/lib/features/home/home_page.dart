@@ -20,6 +20,7 @@ import '../../core/services/pending_image_service.dart';
 import '../../core/services/stats_service.dart';
 import '../../core/services/update_check_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/context_extensions.dart';
 import '../../core/widgets/page_scaffold.dart';
 import '../../core/widgets/update_dialog.dart';
 import '../../src/rust/stats.dart' as rust_stats;
@@ -706,9 +707,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Material(
-      color: colors.background,
+      color: context.appCardBg,
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1184),
@@ -881,7 +881,6 @@ class _IncomeSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
     final progress = (levelProgressState.experiencePercent / 100).clamp(
       0.0,
@@ -900,7 +899,7 @@ class _IncomeSummary extends StatelessWidget {
             Text(
               'LEVEL ${levelProgressState.level.toString().padLeft(2, '0')}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colors.textSubtle,
+                color: context.appTextTertiary,
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 1,
@@ -917,14 +916,14 @@ class _IncomeSummary extends StatelessWidget {
                     size: const Size.square(64),
                     painter: _LevelRingPainter(
                       progress: progress,
-                      backgroundColor: colors.surfaceMuted,
-                      progressColor: colors.textSubtle,
+                      backgroundColor: context.appCardBgHover,
+                      progressColor: context.appTextTertiary,
                     ),
                   ),
                   Text(
                     progressLabel,
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: colors.textMuted,
+                      color: context.appTextSecondary,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                     ),
@@ -942,7 +941,7 @@ class _IncomeSummary extends StatelessWidget {
               Text(
                 'EARNINGS TODAY',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colors.textSubtle,
+                  color: context.appTextTertiary,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 1,
@@ -961,7 +960,7 @@ class _IncomeSummary extends StatelessWidget {
                           ?.copyWith(
                             fontSize: 56,
                             fontWeight: FontWeight.w700,
-                            color: colors.text,
+                            color: context.appTextPrimary,
                             letterSpacing: -3.2,
                             height: 1,
                             fontFeatures: const [FontFeature.tabularFigures()],
@@ -1018,7 +1017,7 @@ class _IncomeSummary extends StatelessWidget {
                     TextSpan(
                       text: _formatCoinAmount(visibleTotalCoins),
                       style: TextStyle(
-                        color: colors.textSubtle,
+                        color: context.appTextTertiary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1026,7 +1025,7 @@ class _IncomeSummary extends StatelessWidget {
                   ],
                 ),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colors.textSubtle,
+                  color: context.appTextTertiary,
                   fontSize: 12,
                   letterSpacing: 0.1,
                 ),
@@ -1114,7 +1113,6 @@ class _ActivityPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
     final today = DateTime.now();
     final activityByDate = {
@@ -1133,7 +1131,7 @@ class _ActivityPreview extends StatelessWidget {
             Text(
               'ACTIVITY INPUT',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: colors.textSubtle,
+                color: context.appTextTertiary,
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
                 letterSpacing: 1,
@@ -1153,7 +1151,7 @@ class _ActivityPreview extends StatelessWidget {
         _ActivityHeatmap(
           today: today,
           activityByDate: activityByDate,
-          colors: AppTheme.activityHeatmapColors(context),
+          colors: _ActivityHeatmap._colorsFor(context),
           activityLevel: _activityLevel,
         ),
         const SizedBox(height: 16),
@@ -1172,7 +1170,7 @@ class _ActivityPreview extends StatelessWidget {
                 _ActivityMetric(
                   label: '上次同步',
                   value: '刚刚',
-                  valueColor: colors.textSubtle,
+                  valueColor: context.appTextTertiary,
                 ),
               ],
             ),
@@ -1189,7 +1187,7 @@ class _ActivityPreview extends StatelessWidget {
       width: 392,
       padding: const EdgeInsets.only(left: 32),
       decoration: BoxDecoration(
-        border: Border(left: BorderSide(color: colors.divider)),
+        border: Border(left: BorderSide(color: context.appBorder)),
       ),
       child: content,
     );
@@ -1238,7 +1236,6 @@ class _ActivityMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Text.rich(
       TextSpan(
         text: '$label: ',
@@ -1246,15 +1243,16 @@ class _ActivityMetric extends StatelessWidget {
           TextSpan(
             text: value,
             style: TextStyle(
-              color: valueColor ?? colors.textMuted,
+              color: valueColor ?? context.appTextSecondary,
               fontWeight: FontWeight.w600,
             ),
           ),
         ],
       ),
-      style: Theme.of(
-        context,
-      ).textTheme.bodyMedium?.copyWith(color: colors.textSubtle, fontSize: 12),
+      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+        color: context.appTextTertiary,
+        fontSize: 12,
+      ),
     );
   }
 }
@@ -1266,6 +1264,14 @@ class _ActivityHeatmap extends StatefulWidget {
     required this.colors,
     required this.activityLevel,
   });
+
+  static List<Color> _colorsFor(BuildContext context) => [
+    context.appBgSecondary,
+    const Color(0xFFDCFCE7),
+    const Color(0xFFBBF7D0),
+    const Color(0xFF86EFAC),
+    const Color(0xFF4ADE80),
+  ];
 
   static const _dayCount = 140;
   static const _rowCount = 7;
@@ -1472,24 +1478,23 @@ class _HeatmapTooltip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return IgnorePointer(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: colors.surface,
-          border: Border.all(color: colors.border),
+          color: context.appCardBg,
+          border: Border.all(color: context.appBorder),
           borderRadius: BorderRadius.circular(8),
           boxShadow: [
             BoxShadow(
-              color: colors.shadow.withValues(alpha: 0.24),
+              color: const Color(0x05000000).withValues(alpha: 0.24),
               blurRadius: 18,
               offset: Offset(0, 8),
             ),
           ],
         ),
         child: Text.rich(
-          _tooltipMessage(colors),
+          _tooltipMessage(context),
           softWrap: false,
           overflow: TextOverflow.visible,
         ),
@@ -1497,9 +1502,9 @@ class _HeatmapTooltip extends StatelessWidget {
     );
   }
 
-  InlineSpan _tooltipMessage(SpringThemeColors colors) {
+  InlineSpan _tooltipMessage(BuildContext context) {
     final baseStyle = TextStyle(
-      color: colors.text,
+      color: context.appTextPrimary,
       fontSize: 11,
       fontWeight: FontWeight.w500,
       height: 1.2,
@@ -1511,12 +1516,12 @@ class _HeatmapTooltip extends StatelessWidget {
         children: [
           TextSpan(
             text: 'No contributions on ',
-            style: TextStyle(color: colors.textSubtle),
+            style: TextStyle(color: context.appTextTertiary),
           ),
           TextSpan(
             text: dateLabel,
             style: TextStyle(
-              color: colors.textMuted,
+              color: context.appTextSecondary,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1529,16 +1534,19 @@ class _HeatmapTooltip extends StatelessWidget {
       children: [
         TextSpan(
           text: '$count ${count == 1 ? 'commit' : 'commits'}',
-          style: TextStyle(color: colors.text, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            color: context.appTextPrimary,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         TextSpan(
           text: ' on ',
-          style: TextStyle(color: colors.textSubtle),
+          style: TextStyle(color: context.appTextTertiary),
         ),
         TextSpan(
           text: dateLabel,
           style: TextStyle(
-            color: colors.textMuted,
+            color: context.appTextSecondary,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -1581,7 +1589,6 @@ class _QuickCaptureCard extends StatelessWidget {
     return AnimatedBuilder(
       animation: focusNode,
       builder: (context, child) {
-        final colors = AppTheme.colors(context);
         final dark = Theme.of(context).brightness == Brightness.dark;
         final focused = focusNode.hasFocus;
         return AnimatedContainer(
@@ -1590,11 +1597,11 @@ class _QuickCaptureCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: dark
-                ? (focused ? colors.inputFocusedFill : colors.inputFill)
+                ? (focused ? context.appCardBg : context.appCardBg)
                 : (focused ? const Color(0xE6F5F5F5) : const Color(0x99F5F5F5)),
             border: Border.all(
               color: dark
-                  ? (focused ? colors.textSubtle : colors.border)
+                  ? (focused ? context.appTextTertiary : context.appBorder)
                   : (focused
                         ? const Color(0xCCCFCFCF)
                         : const Color(0x99E0E0E0)),
@@ -1607,7 +1614,6 @@ class _QuickCaptureCard extends StatelessWidget {
       child: AnimatedBuilder(
         animation: controller,
         builder: (context, _) {
-          final colors = AppTheme.colors(context);
           final dark = Theme.of(context).brightness == Brightness.dark;
           final characterCount = controller.text.characters.length;
           final canSubmit =
@@ -1646,7 +1652,7 @@ class _QuickCaptureCard extends StatelessWidget {
                     decoration: InputDecoration(
                       hintText: '写下你的想法，AI 将自动整理并生成结构化内容...',
                       hintStyle: Theme.of(context).textTheme.bodyMedium
-                          ?.copyWith(color: colors.textSubtle),
+                          ?.copyWith(color: context.appTextTertiary),
                       hoverColor: Colors.transparent,
                       focusColor: Colors.transparent,
                       filled: false,
@@ -1657,7 +1663,7 @@ class _QuickCaptureCard extends StatelessWidget {
                       focusedBorder: InputBorder.none,
                     ),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: colors.text,
+                      color: context.appTextPrimary,
                       fontSize: 14,
                       height: 1.625,
                     ),
@@ -1697,7 +1703,7 @@ class _QuickCaptureCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   border: Border(
                     top: BorderSide(
-                      color: colors.divider.withValues(alpha: 0.5),
+                      color: context.appBorder.withValues(alpha: 0.5),
                     ),
                   ),
                 ),
@@ -1725,7 +1731,7 @@ class _QuickCaptureCard extends StatelessWidget {
                     Text(
                       '$characterCount 字',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: colors.textSubtle,
+                        color: context.appTextTertiary,
                         fontSize: 12,
                       ),
                     ),
@@ -1768,14 +1774,15 @@ class _SmartGenerateButtonState extends State<_SmartGenerateButton> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
     final backgroundColor = dark
-        ? (_hovered && widget.canSubmit ? colors.textMuted : colors.text)
+        ? (_hovered && widget.canSubmit
+              ? context.appTextSecondary
+              : context.appTextPrimary)
         : (_hovered && widget.canSubmit
               ? const Color(0xFF262626)
               : const Color(0xFF171717));
-    final foregroundColor = dark ? colors.onAccent : Colors.white;
+    final foregroundColor = dark ? Colors.white : Colors.white;
     return MouseRegion(
       cursor: widget.canSubmit
           ? SystemMouseCursors.click
@@ -1796,7 +1803,7 @@ class _SmartGenerateButtonState extends State<_SmartGenerateButton> {
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
-                color: colors.shadow.withValues(alpha: 0.08),
+                color: const Color(0x05000000).withValues(alpha: 0.08),
                 offset: Offset(0, 1),
                 blurRadius: 2,
               ),
@@ -1878,7 +1885,6 @@ class _PendingImageChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Tooltip(
       message: image.name,
       child: Container(
@@ -1886,8 +1892,8 @@ class _PendingImageChip extends StatelessWidget {
         height: 40,
         padding: const EdgeInsets.only(left: 6, right: 4),
         decoration: BoxDecoration(
-          color: colors.surface,
-          border: Border.all(color: colors.border),
+          color: context.appCardBg,
+          border: Border.all(color: context.appBorder),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -1900,11 +1906,13 @@ class _PendingImageChip extends StatelessWidget {
                 height: 28,
                 child: image.isSvg
                     ? DecoratedBox(
-                        decoration: BoxDecoration(color: colors.surfaceMuted),
+                        decoration: BoxDecoration(
+                          color: context.appCardBgHover,
+                        ),
                         child: Icon(
                           Icons.image_outlined,
                           size: 16,
-                          color: colors.textMuted,
+                          color: context.appTextSecondary,
                         ),
                       )
                     : Image.memory(
@@ -1912,11 +1920,13 @@ class _PendingImageChip extends StatelessWidget {
                         fit: BoxFit.cover,
                         gaplessPlayback: true,
                         errorBuilder: (_, _, _) => DecoratedBox(
-                          decoration: BoxDecoration(color: colors.surfaceMuted),
+                          decoration: BoxDecoration(
+                            color: context.appCardBgHover,
+                          ),
                           child: Icon(
                             Icons.image_outlined,
                             size: 16,
-                            color: colors.textMuted,
+                            color: context.appTextSecondary,
                           ),
                         ),
                       ),
@@ -1928,7 +1938,7 @@ class _PendingImageChip extends StatelessWidget {
                 '图片 · ${image.name}',
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colors.textMuted,
+                  color: context.appTextSecondary,
                   fontSize: 12,
                   height: 1.2,
                 ),
@@ -1944,8 +1954,8 @@ class _PendingImageChip extends StatelessWidget {
                   Icons.close,
                   size: 13,
                   color: enabled
-                      ? colors.textSubtle
-                      : colors.textSubtle.withValues(alpha: 0.48),
+                      ? context.appTextTertiary
+                      : context.appTextTertiary.withValues(alpha: 0.48),
                 ),
               ),
             ),
@@ -1997,7 +2007,6 @@ class _AttachmentChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final icon = attachment.kind == HomeAttachmentKind.image
         ? Icons.image_outlined
         : Icons.description_outlined;
@@ -2010,21 +2019,21 @@ class _AttachmentChip extends StatelessWidget {
         height: 32,
         padding: const EdgeInsets.only(left: 10, right: 4),
         decoration: BoxDecoration(
-          color: colors.surface,
-          border: Border.all(color: colors.border),
+          color: context.appCardBg,
+          border: Border.all(color: context.appBorder),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 15, color: colors.textMuted),
+            Icon(icon, size: 15, color: context.appTextSecondary),
             const SizedBox(width: 6),
             Flexible(
               child: Text(
                 '$typeLabel · ${attachment.name}',
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colors.textMuted,
+                  color: context.appTextSecondary,
                   fontSize: 12,
                   height: 1.2,
                 ),
@@ -2040,8 +2049,8 @@ class _AttachmentChip extends StatelessWidget {
                   Icons.close,
                   size: 13,
                   color: enabled
-                      ? colors.textSubtle
-                      : colors.textSubtle.withValues(alpha: 0.48),
+                      ? context.appTextTertiary
+                      : context.appTextTertiary.withValues(alpha: 0.48),
                 ),
               ),
             ),
@@ -2076,7 +2085,6 @@ class _ToolIconState extends State<_ToolIcon> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final active = widget.enabled && widget.onTap != null;
     return Tooltip(
       message: widget.tooltip,
@@ -2100,7 +2108,7 @@ class _ToolIconState extends State<_ToolIcon> {
                     opacity: _hovered && active ? 1 : 0,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: colors.surface,
+                        color: context.appCardBg,
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
@@ -2120,14 +2128,13 @@ class _ToolIconState extends State<_ToolIcon> {
   }
 
   Color _iconColor(BuildContext context, bool active) {
-    final colors = AppTheme.colors(context);
     if (!widget.enabled) {
-      return colors.textSubtle.withValues(alpha: 0.48);
+      return context.appTextTertiary.withValues(alpha: 0.48);
     }
     if (_hovered && active) {
-      return colors.textMuted;
+      return context.appTextSecondary;
     }
-    return colors.textSubtle;
+    return context.appTextTertiary;
   }
 }
 
@@ -2431,12 +2438,11 @@ class _OverviewGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
     final cards = [
       _OverviewCard(
         eyebrow: 'Completed · 完成事项',
-        accentColor: colors.textSubtle,
+        accentColor: context.appTextTertiary,
         items: overview.completed,
         emptyText: '完成事项',
       ),
@@ -2448,7 +2454,7 @@ class _OverviewGrid extends StatelessWidget {
       ),
       _OverviewCard(
         eyebrow: 'Next Steps · 明日计划',
-        accentColor: colors.textSubtle,
+        accentColor: context.appTextTertiary,
         items: overview.plans,
         emptyText: '明日计划',
       ),
@@ -2501,7 +2507,6 @@ class _OverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final visibleItems = items.take(2).toList();
     final lineTexts = [
       if (visibleItems.isEmpty) emptyText else visibleItems[0],
@@ -2556,8 +2561,8 @@ class _OverviewCard extends StatelessWidget {
                                         .bodyMedium
                                         ?.copyWith(
                                           color: index == 0
-                                              ? colors.textMuted
-                                              : colors.textSubtle,
+                                              ? context.appTextSecondary
+                                              : context.appTextTertiary,
                                           fontSize: 12,
                                           height: 1.333,
                                         ),
@@ -2574,7 +2579,7 @@ class _OverviewCard extends StatelessWidget {
           Text(
             items.length.toString().padLeft(2, '0'),
             style: TextStyle(
-              color: colors.text,
+              color: context.appTextPrimary,
               fontSize: 36,
               fontWeight: FontWeight.w600,
               letterSpacing: -0.9,
@@ -2725,7 +2730,6 @@ class _UpdateNoticeBannerState extends State<_UpdateNoticeBanner> {
   @override
   Widget build(BuildContext context) {
     final latest = widget.result.latest;
-    final colors = AppTheme.colors(context);
     final message = switch (widget.result.status) {
       UpdateCheckStatus.updateAvailable =>
         '发现新版本 ${latest?.version ?? ''}，点击查看更新内容',
@@ -2733,8 +2737,8 @@ class _UpdateNoticeBannerState extends State<_UpdateNoticeBanner> {
       UpdateCheckStatus.idle => '',
     };
     final foreground = widget.result.status == UpdateCheckStatus.failed
-        ? colors.textSubtle
-        : colors.textMuted;
+        ? context.appTextTertiary
+        : context.appTextSecondary;
 
     return MouseRegion(
       cursor: _clickable ? SystemMouseCursors.click : SystemMouseCursors.basic,
@@ -2756,7 +2760,7 @@ class _UpdateNoticeBannerState extends State<_UpdateNoticeBanner> {
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: _hovered ? colors.surfaceHover : colors.surfaceMuted,
+            color: _hovered ? context.appCardBgHover : context.appCardBgHover,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(

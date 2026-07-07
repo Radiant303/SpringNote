@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../theme/context_extensions.dart';
 
 class SpringNotePageScaffold extends StatelessWidget {
   const SpringNotePageScaffold({
@@ -16,9 +17,8 @@ class SpringNotePageScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Material(
-      color: colors.background,
+      color: context.appCardBg,
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1184),
@@ -57,18 +57,17 @@ class SpringNoteIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final button = IconButton(
       tooltip: tooltip,
       onPressed: onPressed,
       icon: Icon(icon, size: 18),
-      color: colors.textSubtle,
+      color: context.appTextTertiary,
       style: IconButton.styleFrom(
         fixedSize: const Size(34, 34),
         minimumSize: const Size(34, 34),
         maximumSize: const Size(34, 34),
         backgroundColor: Colors.transparent,
-        hoverColor: colors.surfaceMuted,
+        hoverColor: context.appCardBgHover,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
@@ -94,24 +93,23 @@ class SoftCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Container(
       padding: padding,
       decoration: BoxDecoration(
         color: backgroundColor == AppTheme.surface
-            ? colors.surface
+            ? context.appCardBg
             : backgroundColor,
-        border: Border.all(color: colors.border),
+        border: Border.all(color: context.appBorder),
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: withShadow
             ? [
                 BoxShadow(
-                  color: colors.shadow.withValues(alpha: 0.08),
+                  color: const Color(0x05000000).withValues(alpha: 0.08),
                   blurRadius: 30,
                   offset: Offset(0, 4),
                 ),
                 BoxShadow(
-                  color: colors.shadow.withValues(alpha: 0.06),
+                  color: const Color(0x05000000).withValues(alpha: 0.06),
                   blurRadius: 3,
                   offset: Offset(0, 1),
                 ),

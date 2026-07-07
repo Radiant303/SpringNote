@@ -6,7 +6,10 @@ import 'core/models/local_data_state.dart';
 import 'core/router/app_shell.dart';
 import 'core/services/local_data_service.dart';
 import 'core/services/stats_service.dart';
+import 'core/theme/app_style_palette.dart';
+import 'core/theme/app_style_palette_factory.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/context_extensions.dart';
 import 'core/widgets/app_window_frame.dart';
 
 class SpringNoteApp extends StatefulWidget {
@@ -61,14 +64,23 @@ class _SpringNoteAppState extends State<SpringNoteApp> {
       ],
       theme: AppTheme.light(appFont: _config.appFont),
       darkTheme: AppTheme.dark(appFont: _config.appFont),
-      themeMode: _themeMode(_config.themeMode),
+      themeMode: _config.appThemeMode,
       themeAnimationDuration: Duration.zero,
       themeAnimationCurve: Curves.linear,
       builder: (context, child) {
         final mediaQuery = MediaQuery.of(context);
-        return MediaQuery(
-          data: mediaQuery.copyWith(textScaler: TextScaler.linear(fontScale)),
-          child: child ?? const SizedBox.shrink(),
+        final palette = AppStylePaletteFactory.fromConfig(
+          _config,
+          platformBrightness: mediaQuery.platformBrightness,
+        );
+        return Theme(
+          data: Theme.of(
+            context,
+          ).copyWith(extensions: <ThemeExtension<dynamic>>[palette]),
+          child: MediaQuery(
+            data: mediaQuery.copyWith(textScaler: TextScaler.linear(fontScale)),
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
       home: AppWindowFrame(
@@ -91,14 +103,6 @@ class _SpringNoteAppState extends State<SpringNoteApp> {
         ),
       ),
     );
-  }
-
-  ThemeMode _themeMode(AppThemePreference preference) {
-    return switch (preference) {
-      AppThemePreference.system => ThemeMode.system,
-      AppThemePreference.light => ThemeMode.light,
-      AppThemePreference.dark => ThemeMode.dark,
-    };
   }
 }
 
@@ -126,15 +130,14 @@ class AppStartupError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Scaffold(
       body: Center(
         child: Container(
           width: 520,
           padding: const EdgeInsets.all(28),
           decoration: BoxDecoration(
-            color: colors.surface,
-            border: Border.all(color: colors.border),
+            color: context.appCardBg,
+            border: Border.all(color: context.appBorder),
             borderRadius: BorderRadius.circular(24),
           ),
           child: Column(
@@ -148,9 +151,9 @@ class AppStartupError extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 error,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: colors.textSubtle),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: context.appTextTertiary,
+                ),
               ),
             ],
           ),

@@ -11,6 +11,7 @@ import '../../core/services/ai_client_service.dart';
 import '../../core/services/memory_conversation_service.dart';
 import '../../core/services/memory_search_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/context_extensions.dart';
 import '../../core/widgets/markdown_code_block.dart';
 
 bool shouldCollapseMemoryReasoning(MemoryMessage message) {
@@ -598,9 +599,8 @@ class _MemoryPageState extends State<MemoryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Container(
-      color: colors.background,
+      color: context.appCardBg,
       child: Column(
         children: [
           _MemoryHeader(
@@ -632,7 +632,6 @@ class _MemoryPageState extends State<MemoryPage> {
   }
 
   Widget _buildEntryState() {
-    final colors = AppTheme.colors(context);
     return Center(
       key: const ValueKey('memory-entry'),
       child: Transform.translate(
@@ -646,7 +645,7 @@ class _MemoryPageState extends State<MemoryPage> {
                 '准备好了，随时开始',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.w400,
-                  color: colors.text,
+                  color: context.appTextPrimary,
                 ),
               ),
               const SizedBox(height: 22),
@@ -688,7 +687,6 @@ class _MemoryPageState extends State<MemoryPage> {
   }
 
   Widget _buildChatState() {
-    final colors = AppTheme.colors(context);
     final visibleMessages = _messages
         .where(
           (message) =>
@@ -739,9 +737,9 @@ class _MemoryPageState extends State<MemoryPage> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  colors.background.withValues(alpha: 0),
-                  colors.background,
-                  colors.background,
+                  context.appBg.withValues(alpha: 0),
+                  context.appBg,
+                  context.appBg,
                 ],
               ),
             ),
@@ -801,19 +799,18 @@ class _MemoryHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Container(
       height: 56,
       padding: const EdgeInsets.symmetric(horizontal: 32),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: colors.divider)),
+        border: Border(bottom: BorderSide(color: context.appBorder)),
       ),
       child: Row(
         children: [
           Text(
             '回忆书',
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: colors.text,
+              color: context.appTextPrimary,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -833,14 +830,14 @@ class _MemoryHeader extends StatelessWidget {
               minimumSize: const Size(34, 34),
               maximumSize: const Size(34, 34),
               backgroundColor: Colors.transparent,
-              hoverColor: colors.surfaceMuted,
+              hoverColor: context.appCardBgHover,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
             icon: _MemoryNewConversationIcon(
               size: 17,
-              color: colors.textSubtle,
+              color: context.appTextTertiary,
             ),
           ),
         ],
@@ -930,17 +927,16 @@ class _MemoryComposer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Container(
       constraints: const BoxConstraints(minHeight: 52),
       padding: const EdgeInsets.fromLTRB(7, 5, 8, 5),
       decoration: BoxDecoration(
-        color: colors.surface,
-        border: Border.all(color: colors.border),
+        color: context.appCardBg,
+        border: Border.all(color: context.appBorder),
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: colors.shadow.withValues(alpha: 0.08),
+            color: const Color(0x05000000).withValues(alpha: 0.08),
             blurRadius: 28,
             offset: Offset(0, 8),
           ),
@@ -951,8 +947,8 @@ class _MemoryComposer extends StatelessWidget {
           IconButton(
             onPressed: null,
             icon: const Icon(Icons.add_rounded),
-            color: colors.textMuted,
-            disabledColor: colors.textMuted,
+            color: context.appTextSecondary,
+            disabledColor: context.appTextSecondary,
           ),
           Expanded(
             child: CallbackShortcuts(
@@ -991,8 +987,8 @@ class _MemoryComposer extends StatelessWidget {
           IconButton.filled(
             onPressed: answering ? null : onSubmit,
             style: IconButton.styleFrom(
-              backgroundColor: colors.text,
-              disabledBackgroundColor: colors.surfaceMuted,
+              backgroundColor: context.appTextPrimary,
+              disabledBackgroundColor: context.appCardBgHover,
             ),
             icon: answering
                 ? SizedBox(
@@ -1000,10 +996,10 @@ class _MemoryComposer extends StatelessWidget {
                     height: 14,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: colors.textSubtle,
+                      color: context.appTextTertiary,
                     ),
                   )
-                : Icon(Icons.arrow_upward_rounded, color: colors.onAccent),
+                : Icon(Icons.arrow_upward_rounded, color: Colors.white),
           ),
         ],
       ),
@@ -1024,14 +1020,13 @@ class _QuickPromptChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return OutlinedButton.icon(
       onPressed: onTap,
-      icon: Icon(icon, size: 15, color: colors.textSubtle),
+      icon: Icon(icon, size: 15, color: context.appTextTertiary),
       label: Text(label),
       style: OutlinedButton.styleFrom(
-        foregroundColor: colors.textMuted,
-        side: BorderSide(color: colors.border),
+        foregroundColor: context.appTextSecondary,
+        side: BorderSide(color: context.appBorder),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
         minimumSize: const Size(0, 36),
         textStyle: Theme.of(context).textTheme.bodyMedium,
@@ -1055,7 +1050,6 @@ class _ThinkingControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final value = enabled ? effort : 'disabled';
     final labelStyle = Theme.of(
       context,
@@ -1075,8 +1069,8 @@ class _ThinkingControl extends StatelessWidget {
           final segmentWidth = constraints.maxWidth / 3;
           return Container(
             decoration: BoxDecoration(
-              color: colors.surfaceMuted,
-              border: Border.all(color: colors.border),
+              color: context.appCardBgHover,
+              border: Border.all(color: context.appBorder),
               borderRadius: BorderRadius.circular(999),
             ),
             child: Stack(
@@ -1090,11 +1084,13 @@ class _ThinkingControl extends StatelessWidget {
                   height: 28,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: colors.surface,
+                      color: context.appCardBg,
                       borderRadius: BorderRadius.circular(999),
                       boxShadow: [
                         BoxShadow(
-                          color: colors.shadow.withValues(alpha: 0.12),
+                          color: const Color(
+                            0x05000000,
+                          ).withValues(alpha: 0.12),
                           blurRadius: 10,
                           offset: Offset(0, 2),
                         ),
@@ -1158,7 +1154,6 @@ class _ThinkingSegment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -1168,9 +1163,15 @@ class _ThinkingSegment extends StatelessWidget {
             duration: const Duration(milliseconds: 140),
             style:
                 style?.copyWith(
-                  color: selected ? colors.text : colors.textSubtle,
+                  color: selected
+                      ? context.appTextPrimary
+                      : context.appTextTertiary,
                 ) ??
-                TextStyle(color: selected ? colors.text : colors.textSubtle),
+                TextStyle(
+                  color: selected
+                      ? context.appTextPrimary
+                      : context.appTextTertiary,
+                ),
             child: Text(label),
           ),
         ),
@@ -1200,7 +1201,6 @@ class _MemoryMessageView extends StatelessWidget {
   }
 
   Widget _buildMessage(BuildContext context) {
-    final colors = AppTheme.colors(context);
     if (message.role == 'user') {
       return Align(
         alignment: Alignment.centerRight,
@@ -1209,14 +1209,15 @@ class _MemoryMessageView extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 28),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           decoration: BoxDecoration(
-            color: colors.surfaceMuted,
+            color: context.appCardBgHover,
             borderRadius: BorderRadius.circular(22),
           ),
           child: SelectableText(
             message.content,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyLarge?.copyWith(color: colors.text, height: 1.7),
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              color: context.appTextPrimary,
+              height: 1.7,
+            ),
           ),
         ),
       );
@@ -1245,7 +1246,7 @@ class _MemoryMessageView extends StatelessWidget {
                   codeBuilder: (context, name, code, closed) =>
                       MarkdownCodeBlock(language: name, code: code),
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: colors.textMuted,
+                    color: context.appTextSecondary,
                     fontSize: 14,
                     height: 1.55,
                   ),
@@ -1267,7 +1268,6 @@ class _MemoryWaitingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 820),
@@ -1280,15 +1280,15 @@ class _MemoryWaitingIndicator extends StatelessWidget {
                 height: 13,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: colors.textSubtle,
+                  color: context.appTextTertiary,
                 ),
               ),
               const SizedBox(width: 8),
               Text(
                 '正在思考并调用工具...',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: colors.textSubtle),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: context.appTextTertiary,
+                ),
               ),
             ],
           ),
@@ -1333,7 +1333,6 @@ class _ToolAttachmentChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
     final resultLabel = memoryToolResultLabel(attachment.resultMessage);
     return Material(
@@ -1346,7 +1345,7 @@ class _ToolAttachmentChip extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.fromLTRB(10, 7, 12, 7),
           decoration: BoxDecoration(
-            color: colors.surfaceMuted,
+            color: context.appCardBgHover,
             borderRadius: BorderRadius.circular(999),
           ),
           child: Row(
@@ -1373,7 +1372,7 @@ class _ToolAttachmentChip extends StatelessWidget {
               Text(
                 _toolLabel(attachment.toolCall.name),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colors.text,
+                  color: context.appTextPrimary,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -1382,7 +1381,7 @@ class _ToolAttachmentChip extends StatelessWidget {
                 resultLabel,
                 style: Theme.of(
                   context,
-                ).textTheme.bodySmall?.copyWith(color: colors.textSubtle),
+                ).textTheme.bodySmall?.copyWith(color: context.appTextTertiary),
               ),
             ],
           ),
@@ -1392,11 +1391,10 @@ class _ToolAttachmentChip extends StatelessWidget {
   }
 
   void _showToolDialog(BuildContext context, _MemoryToolAttachment attachment) {
-    final colors = AppTheme.colors(context);
     showDialog<void>(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: colors.surface,
+        backgroundColor: context.appCardBg,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: ConstrainedBox(
@@ -1412,7 +1410,7 @@ class _ToolAttachmentChip extends StatelessWidget {
                     Icon(
                       Icons.build_circle_outlined,
                       size: 20,
-                      color: colors.text,
+                      color: context.appTextPrimary,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -1420,7 +1418,7 @@ class _ToolAttachmentChip extends StatelessWidget {
                         _toolLabel(attachment.toolCall.name),
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(
-                              color: colors.text,
+                              color: context.appTextPrimary,
                               fontWeight: FontWeight.w800,
                             ),
                       ),
@@ -1492,7 +1490,6 @@ class _ToolDetailBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Column(
@@ -1501,7 +1498,7 @@ class _ToolDetailBlock extends StatelessWidget {
           Text(
             title,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: colors.textSubtle,
+              color: context.appTextTertiary,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -1510,13 +1507,13 @@ class _ToolDetailBlock extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: colors.surfaceMuted,
+              color: context.appCardBgHover,
               borderRadius: BorderRadius.circular(14),
             ),
             child: SelectableText(
               content,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colors.textMuted,
+                color: context.appTextSecondary,
                 height: 1.55,
                 fontFamily: 'monospace',
               ),
@@ -1579,15 +1576,14 @@ class _ReasoningBlockState extends State<_ReasoningBlock> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final titleStyle = Theme.of(context).textTheme.labelMedium?.copyWith(
-      color: colors.textSubtle,
+      color: context.appTextTertiary,
       fontWeight: FontWeight.w700,
     );
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: colors.surfaceMuted,
+        color: context.appCardBgHover,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -1605,7 +1601,7 @@ class _ReasoningBlockState extends State<_ReasoningBlock> {
                     Icon(
                       Icons.auto_awesome_outlined,
                       size: 17,
-                      color: colors.textMuted,
+                      color: context.appTextSecondary,
                     ),
                     const SizedBox(width: 6),
                     Expanded(
@@ -1618,7 +1614,7 @@ class _ReasoningBlockState extends State<_ReasoningBlock> {
                                 text:
                                     ' (${_formatReasoningDuration(widget.duration!)})',
                                 style: titleStyle?.copyWith(
-                                  color: colors.textSubtle.withValues(
+                                  color: context.appTextTertiary.withValues(
                                     alpha: 0.7,
                                   ),
                                   fontWeight: FontWeight.w600,
@@ -1634,7 +1630,7 @@ class _ReasoningBlockState extends State<_ReasoningBlock> {
                           ? Icons.keyboard_arrow_up_rounded
                           : Icons.keyboard_arrow_down_rounded,
                       size: 18,
-                      color: colors.textSubtle,
+                      color: context.appTextTertiary,
                     ),
                   ],
                 ),
@@ -1657,10 +1653,10 @@ class _ReasoningBlockState extends State<_ReasoningBlock> {
   }
 
   Widget _buildReasoningBody(BuildContext context) {
-    final colors = AppTheme.colors(context);
-    final style = Theme.of(
-      context,
-    ).textTheme.bodySmall?.copyWith(color: colors.textSubtle, height: 1.65);
+    final style = Theme.of(context).textTheme.bodySmall?.copyWith(
+      color: context.appTextTertiary,
+      height: 1.65,
+    );
     final text = Text(widget.reasoning.trim(), style: style);
     final body = widget.collapsed
         ? Padding(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/context_extensions.dart';
 import '../../core/widgets/markdown_code_block.dart';
 import 'markdown_local_image_stub.dart'
     if (dart.library.io) 'markdown_local_image_io.dart';
@@ -18,14 +19,13 @@ class MarkdownPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     if (markdown.trim().isEmpty) {
       return Center(
         child: Text(
           '预览区域会随着 Markdown 源码实时刷新',
           style: Theme.of(
             context,
-          ).textTheme.bodyMedium?.copyWith(color: colors.textSubtle),
+          ).textTheme.bodyMedium?.copyWith(color: context.appTextTertiary),
         ),
       );
     }
@@ -36,7 +36,7 @@ class MarkdownPreview extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(32, 32, 32, 56),
         child: DefaultTextStyle.merge(
           style: textTheme.bodyLarge?.copyWith(
-            color: colors.text,
+            color: context.appTextPrimary,
             fontSize: 14,
             height: 1.55,
           ),
@@ -54,7 +54,7 @@ class MarkdownPreview extends StatelessWidget {
                   localImageBasePath: localImageBasePath,
                 ),
             style: textTheme.bodyLarge?.copyWith(
-              color: colors.text,
+              color: context.appTextPrimary,
               fontSize: 14,
               height: 1.55,
             ),
@@ -195,13 +195,15 @@ class _ImageFallbackIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Container(
       width: 120,
       height: 88,
       alignment: Alignment.center,
-      color: colors.surfaceMuted,
-      child: Icon(Icons.image_not_supported_outlined, color: colors.textSubtle),
+      color: context.appCardBgHover,
+      child: Icon(
+        Icons.image_not_supported_outlined,
+        color: context.appTextTertiary,
+      ),
     );
   }
 }

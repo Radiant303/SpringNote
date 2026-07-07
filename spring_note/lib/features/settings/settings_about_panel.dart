@@ -14,15 +14,14 @@ class _AboutPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return _SettingsScrollFrame(
       maxWidth: 1120,
       children: [
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: colors.surface,
-            border: Border.all(color: colors.border),
+            color: context.appCardBg,
+            border: Border.all(color: context.appBorder),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(
@@ -130,11 +129,10 @@ class _AboutListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Container(
       decoration: BoxDecoration(
-        color: colors.surface,
-        border: Border.all(color: colors.border),
+        color: context.appCardBg,
+        border: Border.all(color: context.appBorder),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
@@ -147,7 +145,7 @@ class _AboutListCard extends StatelessWidget {
               ],
             ),
           ),
-          Divider(height: 1, color: colors.divider),
+          Divider(height: 1, color: context.appBorder),
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 8, 18, 10),
             child: Column(
@@ -157,7 +155,7 @@ class _AboutListCard extends StatelessWidget {
                   if (index != rows.length - 1)
                     Padding(
                       padding: const EdgeInsets.only(left: 34),
-                      child: Divider(height: 1, color: colors.divider),
+                      child: Divider(height: 1, color: context.appBorder),
                     ),
                 ],
               ],
@@ -257,9 +255,12 @@ class _AboutListRowState extends State<_AboutListRow> {
   @override
   Widget build(BuildContext context) {
     final active = _clickable && _hovered;
-    final colors = AppTheme.colors(context);
-    final contentColor = active ? colors.text : colors.textMuted;
-    final trailingColor = active ? colors.textMuted : colors.textSubtle;
+    final contentColor = active
+        ? context.appTextPrimary
+        : context.appTextSecondary;
+    final trailingColor = active
+        ? context.appTextSecondary
+        : context.appTextTertiary;
 
     return MouseRegion(
       cursor: _clickable ? SystemMouseCursors.click : SystemMouseCursors.basic,
@@ -288,7 +289,7 @@ class _AboutListRowState extends State<_AboutListRow> {
                   opacity: active ? 1 : 0,
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: colors.surfaceHover,
+                      color: context.appCardBgHover,
                       borderRadius: BorderRadius.circular(13),
                     ),
                   ),

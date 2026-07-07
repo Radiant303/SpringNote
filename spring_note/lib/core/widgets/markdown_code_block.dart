@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:syntax_highlight/src/highlighter.dart';
 
 import '../theme/app_theme.dart';
+import '../theme/context_extensions.dart';
 
 const _supportedHighlightLanguages = <String>[
   'css',
@@ -57,9 +58,7 @@ Future<HighlighterTheme> _loadHighlightTheme(Brightness brightness) async {
             'packages/syntax_highlight/themes/light_vs.json',
             'packages/syntax_highlight/themes/light_plus.json',
           ],
-    _codeTextStyle.copyWith(
-      color: isDark ? SpringThemeColors.dark.textMuted : AppTheme.textMuted,
-    ),
+    _codeTextStyle.copyWith(color: AppTheme.textMuted),
   );
 }
 
@@ -97,7 +96,6 @@ class _MarkdownCodeBlockState extends State<MarkdownCodeBlock> {
     final rawLanguage = widget.language.trim();
     final displayLanguage = rawLanguage.isEmpty ? 'code' : rawLanguage;
     final highlightLanguage = _normalizeLanguage(rawLanguage);
-    final colors = AppTheme.colors(context);
     final highlightThemeFuture = Theme.of(context).brightness == Brightness.dark
         ? _darkHighlightThemeFuture
         : _lightHighlightThemeFuture;
@@ -105,8 +103,8 @@ class _MarkdownCodeBlockState extends State<MarkdownCodeBlock> {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        color: colors.surfaceMuted,
-        border: Border.all(color: colors.border),
+        color: context.appCardBgHover,
+        border: Border.all(color: context.appBorder),
         borderRadius: BorderRadius.circular(12),
       ),
       clipBehavior: Clip.antiAlias,
@@ -117,14 +115,14 @@ class _MarkdownCodeBlockState extends State<MarkdownCodeBlock> {
             height: 34,
             padding: const EdgeInsets.only(left: 14, right: 8),
             decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: colors.divider)),
+              border: Border(bottom: BorderSide(color: context.appBorder)),
             ),
             child: Row(
               children: [
                 Text(
                   displayLanguage,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colors.textSubtle,
+                    color: context.appTextTertiary,
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     height: 1,
@@ -134,7 +132,7 @@ class _MarkdownCodeBlockState extends State<MarkdownCodeBlock> {
                 TextButton.icon(
                   onPressed: _copyCode,
                   style: TextButton.styleFrom(
-                    foregroundColor: colors.textSubtle,
+                    foregroundColor: context.appTextTertiary,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     minimumSize: const Size(0, 28),
                     textStyle: const TextStyle(
@@ -155,7 +153,10 @@ class _MarkdownCodeBlockState extends State<MarkdownCodeBlock> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.all(16),
             child: highlightLanguage == null
-                ? _PlainCodeText(code: widget.code, color: colors.textMuted)
+                ? _PlainCodeText(
+                    code: widget.code,
+                    color: context.appTextSecondary,
+                  )
                 : FutureBuilder<HighlighterTheme>(
                     future: highlightThemeFuture,
                     builder: (context, snapshot) {
@@ -163,7 +164,7 @@ class _MarkdownCodeBlockState extends State<MarkdownCodeBlock> {
                       if (theme == null) {
                         return _PlainCodeText(
                           code: widget.code,
-                          color: colors.textMuted,
+                          color: context.appTextSecondary,
                         );
                       }
 

@@ -8,6 +8,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/models/app_config.dart';
 import '../../core/models/cloud_sync_config.dart';
+import '../../core/models/desktop_widget_wallpaper_settings.dart';
 import '../../core/models/local_data_state.dart';
 import '../../core/models/model_config.dart';
 import '../../core/models/model_reference.dart';
@@ -19,7 +20,11 @@ import '../../core/services/local_data_service.dart';
 import '../../core/services/platform_feature_support.dart';
 import '../../core/services/system_font_service.dart';
 import '../../core/services/update_check_service.dart';
+import '../../core/services/wallpaper_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/context_extensions.dart';
+import '../../core/widgets/wallpaper_layer.dart';
+import '../../core/models/wallpaper_settings.dart';
 import '../../core/widgets/update_dialog.dart';
 import 'settings_stats_panel.dart';
 
@@ -289,17 +294,16 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Material(
-      color: colors.background,
+      color: context.appCardBg,
       child: Row(
         children: [
           Container(
             width: 220,
             padding: const EdgeInsets.fromLTRB(18, 28, 18, 18),
             decoration: BoxDecoration(
-              color: colors.background,
-              border: Border(right: BorderSide(color: colors.divider)),
+              color: context.appCardBg,
+              border: Border(right: BorderSide(color: context.appBorder)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -411,12 +415,13 @@ class _SettingsNavItemState extends State<_SettingsNavItem> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final active = widget.selected || _hovered;
-    final contentColor = active ? colors.text : colors.textSubtle;
+    final contentColor = active
+        ? context.appTextPrimary
+        : context.appTextTertiary;
     final backgroundColor = widget.selected
-        ? colors.surfacePressed
-        : colors.surfaceHover;
+        ? context.appCardBgHover
+        : context.appCardBgHover;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),

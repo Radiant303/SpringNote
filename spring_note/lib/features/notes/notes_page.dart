@@ -15,6 +15,7 @@ import '../../core/services/note_service.dart';
 import '../../core/services/note_upload_queue.dart';
 import '../../core/services/pasted_image_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/context_extensions.dart';
 import '../../core/widgets/page_scaffold.dart';
 import 'markdown_preview.dart';
 
@@ -1091,11 +1092,10 @@ class _NotesPageState extends State<NotesPage> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final selected = _selectedNote;
 
     return Material(
-      color: colors.background,
+      color: context.appCardBg,
       child: Row(
         children: [
           _NotesSidebar(
@@ -1218,8 +1218,8 @@ class _FimTextEditingController extends TextEditingController {
           text: prediction,
           style: effectiveStyle.copyWith(
             color: Theme.of(context).brightness == Brightness.dark
-                ? const Color(0xFF7B92A8)  // 深色模式：优雅的灰蓝色，与微暖文字完美搭配
-                : const Color(0xFF9AA0A6),  // 浅色模式：保持原有灰色
+                ? const Color(0xFF7B92A8) // 深色模式：优雅的灰蓝色，与微暖文字完美搭配
+                : const Color(0xFF9AA0A6), // 浅色模式：保持原有灰色
           ),
         ),
         TextSpan(text: text.substring(offset)),
@@ -1248,13 +1248,12 @@ class _NotesSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Container(
       width: 278,
       padding: const EdgeInsets.fromLTRB(18, 24, 14, 20),
       decoration: BoxDecoration(
-        color: colors.background,
-        border: Border(right: BorderSide(color: colors.divider)),
+        color: context.appCardBg,
+        border: Border(right: BorderSide(color: context.appBorder)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1266,7 +1265,7 @@ class _NotesSidebar extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: colors.surfaceMuted,
+                  color: context.appCardBgHover,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -1431,24 +1430,23 @@ class _NotesKindMenuState extends State<_NotesKindMenu> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Material(
       color: Colors.transparent,
       child: Container(
         width: 190,
         padding: const EdgeInsets.all(7),
         decoration: BoxDecoration(
-          color: colors.surface,
-          border: Border.all(color: colors.border),
+          color: context.appCardBg,
+          border: Border.all(color: context.appBorder),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: colors.shadow.withValues(alpha: 0.16),
+              color: const Color(0x05000000).withValues(alpha: 0.16),
               blurRadius: 24,
               offset: Offset(0, 10),
             ),
             BoxShadow(
-              color: colors.shadow.withValues(alpha: 0.08),
+              color: const Color(0x05000000).withValues(alpha: 0.08),
               blurRadius: 4,
               offset: Offset(0, 1),
             ),
@@ -1463,7 +1461,7 @@ class _NotesKindMenuState extends State<_NotesKindMenu> {
               child: Text(
                 '切换笔记类型',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: colors.textSubtle,
+                  color: context.appTextTertiary,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.2,
                 ),
@@ -1518,13 +1516,14 @@ class _NotesKindMenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final active = selected || hovered;
     final backgroundColor = selected
-        ? colors.surfacePressed
-        : colors.surfaceHover;
-    final contentColor = active ? colors.text : colors.textMuted;
-    final subtleColor = colors.textSubtle;
+        ? context.appCardBgHover
+        : context.appCardBgHover;
+    final contentColor = active
+        ? context.appTextPrimary
+        : context.appTextSecondary;
+    final subtleColor = context.appTextTertiary;
     final titleStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
       color: contentColor,
       fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
@@ -1573,7 +1572,9 @@ class _NotesKindMenuItem extends StatelessWidget {
                       Icon(
                         _iconForKind(kind),
                         size: 17,
-                        color: active ? colors.text : colors.textSubtle,
+                        color: active
+                            ? context.appTextPrimary
+                            : context.appTextTertiary,
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -1591,7 +1592,11 @@ class _NotesKindMenuItem extends StatelessWidget {
                         ),
                       ),
                       if (selected)
-                        Icon(Icons.check_rounded, size: 16, color: colors.text),
+                        Icon(
+                          Icons.check_rounded,
+                          size: 16,
+                          color: context.appTextPrimary,
+                        ),
                     ],
                   ),
                 ),
@@ -1649,14 +1654,13 @@ class _NotesSearchFieldState extends State<_NotesSearchField> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final focused = _focusNode.hasFocus;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
       height: 40,
       decoration: BoxDecoration(
-        color: focused ? colors.inputFocusedFill : colors.inputFill,
+        color: focused ? context.appCardBg : context.appCardBg,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Center(
@@ -1665,19 +1669,20 @@ class _NotesSearchFieldState extends State<_NotesSearchField> {
           focusNode: _focusNode,
           textAlignVertical: TextAlignVertical.center,
           cursorHeight: 16,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: colors.text, height: 1.2),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: context.appTextPrimary,
+            height: 1.2,
+          ),
           decoration: InputDecoration(
             hintText: '搜索知识记录...',
             hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: colors.textSubtle.withValues(alpha: 0.78),
+              color: context.appTextTertiary.withValues(alpha: 0.78),
               height: 1.2,
             ),
             prefixIcon: Icon(
               Icons.search_rounded,
               size: 18,
-              color: colors.textSubtle,
+              color: context.appTextTertiary,
             ),
             prefixIconConstraints: const BoxConstraints(
               minWidth: 40,
@@ -1719,13 +1724,14 @@ class _NoteListItemState extends State<_NoteListItem> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final backgroundColor = widget.selected
-        ? colors.surfacePressed
-        : colors.surfaceHover;
+        ? context.appCardBgHover
+        : context.appCardBgHover;
     final active = widget.selected || _hovered;
-    final titleColor = active ? colors.text : colors.textMuted;
-    final secondaryColor = colors.textSubtle;
+    final titleColor = active
+        ? context.appTextPrimary
+        : context.appTextSecondary;
+    final secondaryColor = context.appTextTertiary;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -1884,14 +1890,13 @@ class _EditorPaneState extends State<_EditorPane> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final editorStyle =
         Theme.of(context).textTheme.bodyLarge?.copyWith(
-          color: colors.text,
+          color: context.appTextPrimary,
           fontSize: 14,
           height: 1.55,
         ) ??
-        TextStyle(color: colors.text, fontSize: 14, height: 1.55);
+        TextStyle(color: context.appTextPrimary, fontSize: 14, height: 1.55);
     return _PaneFrame(
       headerPadding: const EdgeInsets.only(left: 32, right: 16),
       header: Row(
@@ -1899,7 +1904,11 @@ class _EditorPaneState extends State<_EditorPane> {
           Expanded(
             child: Row(
               children: [
-                Icon(Icons.code_rounded, size: 15, color: colors.textSubtle),
+                Icon(
+                  Icons.code_rounded,
+                  size: 15,
+                  color: context.appTextTertiary,
+                ),
                 const SizedBox(width: 8),
                 Flexible(
                   child: Text(
@@ -1907,7 +1916,7 @@ class _EditorPaneState extends State<_EditorPane> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: colors.textSubtle,
+                      color: context.appTextTertiary,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.8,
@@ -1944,11 +1953,11 @@ class _EditorPaneState extends State<_EditorPane> {
                     behavior: const _EditorTextFieldScrollBehavior(),
                     child: TextSelectionTheme(
                       data: TextSelectionTheme.of(context).copyWith(
-                        cursorColor: colors.textMuted,
-                        selectionColor: colors.textSubtle.withValues(
+                        cursorColor: context.appTextSecondary,
+                        selectionColor: context.appTextTertiary.withValues(
                           alpha: 0.28,
                         ),
-                        selectionHandleColor: colors.textSubtle,
+                        selectionHandleColor: context.appTextTertiary,
                       ),
                       child: TextField(
                         key: ValueKey('note-editor-${widget.editorRevision}'),
@@ -1965,10 +1974,12 @@ class _EditorPaneState extends State<_EditorPane> {
                         decoration: InputDecoration(
                           hintText: '# 开始编辑 Markdown...',
                           hintStyle: TextStyle(
-                            color: colors.textSubtle.withValues(alpha: 0.58),
+                            color: context.appTextTertiary.withValues(
+                              alpha: 0.58,
+                            ),
                           ),
                           filled: true,
-                          fillColor: colors.surface,
+                          fillColor: context.appCardBg,
                           hoverColor: Colors.transparent,
                           border: InputBorder.none,
                           enabledBorder: InputBorder.none,
@@ -1982,7 +1993,7 @@ class _EditorPaneState extends State<_EditorPane> {
                           ),
                         ),
                         style: editorStyle,
-                        cursorColor: colors.textMuted,
+                        cursorColor: context.appTextSecondary,
                         cursorWidth: 1.25,
                         cursorRadius: const Radius.circular(1),
                         selectionControls: desktopTextSelectionHandleControls,
@@ -2029,7 +2040,6 @@ class _EditorStatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
     final displayText = switch (statusText) {
       _ => statusText,
@@ -2040,10 +2050,10 @@ class _EditorStatusPill extends StatelessWidget {
         statusText.startsWith('Tab ');
     final foreground = active
         ? (dark ? const Color(0xFF34D399) : const Color(0xFF10B981))
-        : colors.textSubtle;
+        : context.appTextTertiary;
     final background = active
         ? (dark ? const Color(0xFF0B3024) : const Color(0xFFECFDF5))
-        : colors.surfaceMuted;
+        : context.appCardBgHover;
 
     return Align(
       alignment: Alignment.centerRight,
@@ -2087,7 +2097,6 @@ class _PreviewPane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return _PaneFrame(
       headerPadding: const EdgeInsets.symmetric(horizontal: 24),
       header: Row(
@@ -2095,14 +2104,18 @@ class _PreviewPane extends StatelessWidget {
           Text(
             'Markdown Preview · 渲染预览',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: colors.textSubtle,
+              color: context.appTextTertiary,
               fontSize: 12,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.8,
             ),
           ),
           const Spacer(),
-          Icon(Icons.open_in_full_rounded, size: 15, color: colors.textSubtle),
+          Icon(
+            Icons.open_in_full_rounded,
+            size: 15,
+            color: context.appTextTertiary,
+          ),
         ],
       ),
       child: MarkdownPreview(
@@ -2126,11 +2139,10 @@ class _PaneFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Container(
       decoration: BoxDecoration(
-        color: colors.surface,
-        border: Border(left: BorderSide(color: colors.divider)),
+        color: context.appCardBg,
+        border: Border(left: BorderSide(color: context.appBorder)),
       ),
       child: Column(
         children: [
@@ -2138,7 +2150,7 @@ class _PaneFrame extends StatelessWidget {
             height: 56,
             padding: headerPadding,
             decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: colors.divider)),
+              border: Border(bottom: BorderSide(color: context.appBorder)),
             ),
             child: header,
           ),

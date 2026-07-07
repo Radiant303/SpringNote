@@ -1,141 +1,6 @@
 import 'package:flutter/material.dart';
 
-class SpringThemeColors extends ThemeExtension<SpringThemeColors> {
-  const SpringThemeColors({
-    required this.background,
-    required this.sidebar,
-    required this.surface,
-    required this.surfaceMuted,
-    required this.surfaceHover,
-    required this.surfacePressed,
-    required this.border,
-    required this.divider,
-    required this.text,
-    required this.textMuted,
-    required this.textSubtle,
-    required this.onAccent,
-    required this.inputFill,
-    required this.inputFocusedFill,
-    required this.shadow,
-  });
-
-  final Color background;
-  final Color sidebar;
-  final Color surface;
-  final Color surfaceMuted;
-  final Color surfaceHover;
-  final Color surfacePressed;
-  final Color border;
-  final Color divider;
-  final Color text;
-  final Color textMuted;
-  final Color textSubtle;
-  final Color onAccent;
-  final Color inputFill;
-  final Color inputFocusedFill;
-  final Color shadow;
-
-  static const light = SpringThemeColors(
-    background: AppTheme.background,
-    sidebar: AppTheme.sidebar,
-    surface: AppTheme.surface,
-    surfaceMuted: AppTheme.surfaceMuted,
-    surfaceHover: Color(0xFFF5F5F5),
-    surfacePressed: Color(0xFFE2E2E2),
-    border: AppTheme.border,
-    divider: Color(0xFFEEEEEE),
-    text: AppTheme.text,
-    textMuted: AppTheme.textMuted,
-    textSubtle: AppTheme.textSubtle,
-    onAccent: Colors.white,
-    inputFill: Color(0xFFF5F5F5),
-    inputFocusedFill: Color(0xFFEDEDED),
-    shadow: Color(0x17171717),
-  );
-
-  static const dark = SpringThemeColors(
-    background: Color(0xFF111111),
-    sidebar: Color(0xFF141414),
-    surface: Color(0xFF1B1B1B),
-    surfaceMuted: Color(0xFF2A2A2A),
-    surfaceHover: Color(0xFF242424),
-    surfacePressed: Color(0xFF303030),
-    border: Color(0xFF333333),
-    divider: Color(0xFF2C2C2C),
-    text: Color(0xFFE5E1DA),
-    textMuted: Color(0xFFB5B1A8),
-    textSubtle: Color(0xFF928F87),
-    onAccent: Color(0xFF111111),
-    inputFill: Color(0xFF252525),
-    inputFocusedFill: Color(0xFF303030),
-    shadow: Color(0x99000000),
-  );
-
-  @override
-  SpringThemeColors copyWith({
-    Color? background,
-    Color? sidebar,
-    Color? surface,
-    Color? surfaceMuted,
-    Color? surfaceHover,
-    Color? surfacePressed,
-    Color? border,
-    Color? divider,
-    Color? text,
-    Color? textMuted,
-    Color? textSubtle,
-    Color? onAccent,
-    Color? inputFill,
-    Color? inputFocusedFill,
-    Color? shadow,
-  }) {
-    return SpringThemeColors(
-      background: background ?? this.background,
-      sidebar: sidebar ?? this.sidebar,
-      surface: surface ?? this.surface,
-      surfaceMuted: surfaceMuted ?? this.surfaceMuted,
-      surfaceHover: surfaceHover ?? this.surfaceHover,
-      surfacePressed: surfacePressed ?? this.surfacePressed,
-      border: border ?? this.border,
-      divider: divider ?? this.divider,
-      text: text ?? this.text,
-      textMuted: textMuted ?? this.textMuted,
-      textSubtle: textSubtle ?? this.textSubtle,
-      onAccent: onAccent ?? this.onAccent,
-      inputFill: inputFill ?? this.inputFill,
-      inputFocusedFill: inputFocusedFill ?? this.inputFocusedFill,
-      shadow: shadow ?? this.shadow,
-    );
-  }
-
-  @override
-  SpringThemeColors lerp(ThemeExtension<SpringThemeColors>? other, double t) {
-    if (other is! SpringThemeColors) {
-      return this;
-    }
-    return SpringThemeColors(
-      background: Color.lerp(background, other.background, t)!,
-      sidebar: Color.lerp(sidebar, other.sidebar, t)!,
-      surface: Color.lerp(surface, other.surface, t)!,
-      surfaceMuted: Color.lerp(surfaceMuted, other.surfaceMuted, t)!,
-      surfaceHover: Color.lerp(surfaceHover, other.surfaceHover, t)!,
-      surfacePressed: Color.lerp(surfacePressed, other.surfacePressed, t)!,
-      border: Color.lerp(border, other.border, t)!,
-      divider: Color.lerp(divider, other.divider, t)!,
-      text: Color.lerp(text, other.text, t)!,
-      textMuted: Color.lerp(textMuted, other.textMuted, t)!,
-      textSubtle: Color.lerp(textSubtle, other.textSubtle, t)!,
-      onAccent: Color.lerp(onAccent, other.onAccent, t)!,
-      inputFill: Color.lerp(inputFill, other.inputFill, t)!,
-      inputFocusedFill: Color.lerp(
-        inputFocusedFill,
-        other.inputFocusedFill,
-        t,
-      )!,
-      shadow: Color.lerp(shadow, other.shadow, t)!,
-    );
-  }
-}
+import '../services/system_font_service.dart';
 
 class AppTheme {
   const AppTheme._();
@@ -148,191 +13,141 @@ class AppTheme {
   static const Color text = Color(0xFF171717);
   static const Color textMuted = Color(0xFF4F4F4F);
   static const Color textSubtle = Color(0xFF666666);
-  static const List<Color> lightActivityHeatmapColors = [
-    Color(0xFFEDEDED),
-    Color(0xFFDCFCE7),
-    Color(0xFFBBF7D0),
-    Color(0xFF86EFAC),
-    Color(0xFF4ADE80),
-  ];
-  static const List<Color> darkActivityHeatmapColors = [
-    Color(0xFF2A2A2A),
-    Color(0xFF0F2F1B),
-    Color(0xFF14532D),
-    Color(0xFF16A34A),
-    Color(0xFF4ADE80),
-  ];
 
-  static SpringThemeColors colors(BuildContext context) {
-    return Theme.of(context).extension<SpringThemeColors>() ??
-        SpringThemeColors.light;
-  }
+  // 暗色主题色板 —— 与亮色对称，采用低饱和度中性灰
+  static const Color darkBackground = Color(0xFF121316);
+  static const Color darkSidebar = Color(0xFF15171B);
+  static const Color darkSurface = Color(0xFF1A1B1F);
+  static const Color darkSurfaceMuted = Color(0xFF202126);
+  static const Color darkBorder = Color(0xFF2A2C32);
+  static const Color darkText = Color(0xFFE6E6E8);
+  static const Color darkTextMuted = Color(0xFFA0A2A8);
+  static const Color darkTextSubtle = Color(0xFF6B6D74);
+  static const Color darkInputFill = Color(0xFF202126);
 
-  static List<Color> activityHeatmapColors(BuildContext context) {
-    return Theme.of(context).brightness == Brightness.dark
-        ? darkActivityHeatmapColors
-        : lightActivityHeatmapColors;
+  /// 计算主题使用的 fontFamily / fontFamilyFallback。
+  ///
+  /// - [appFont] 为 `system` / 空字符串时，返回 null 作为 fontFamily，
+  ///   由 fallback 链承担渲染。
+  /// - [appFont] 为具体字体名且支持中文时，fontFamily = appFont，
+  ///   仍附加平台 fallback 链以兼容缺失字符。
+  /// - [appFont] 为具体字体名但不支持中文时，fontFamily = appFont，
+  ///   fontFamilyFallback 强制使用中文回退链，保证中文不出现乱码或粗细不一。
+  static _FontFamilyConfig _resolveFontFamily(String appFont) {
+    final trimmed = appFont.trim();
+    if (trimmed.isEmpty || trimmed == 'system') {
+      // 系统默认：完全交给 fallback 链
+      return _FontFamilyConfig(
+        fontFamily: null,
+        fontFamilyFallback: SystemFontService.chineseFallbackFonts(),
+      );
+    }
+    if (SystemFontService.isChineseSupported(trimmed)) {
+      return _FontFamilyConfig(
+        fontFamily: trimmed,
+        fontFamilyFallback: SystemFontService.chineseFallbackFonts(),
+      );
+    }
+    // 不支持中文的字体：仍使用用户字体，但强制附加中文回退链
+    return _FontFamilyConfig(
+      fontFamily: trimmed,
+      fontFamilyFallback: SystemFontService.chineseFallbackFonts(),
+    );
   }
 
   static ThemeData light({String appFont = 'system'}) {
-    return _theme(
-      appFont: appFont,
-      brightness: Brightness.light,
-      colors: SpringThemeColors.light,
-    );
-  }
-
-  static ThemeData dark({String appFont = 'system'}) {
-    return _theme(
-      appFont: appFont,
-      brightness: Brightness.dark,
-      colors: SpringThemeColors.dark,
-    );
-  }
-
-  static ThemeData _theme({
-    required String appFont,
-    required Brightness brightness,
-    required SpringThemeColors colors,
-  }) {
-    final fontFamily = appFont.trim().isEmpty || appFont == 'system'
-        ? 'Segoe UI'
-        : appFont.trim();
-
-    // 为深色模式定制柔和的强调色
-    final isDark = brightness == Brightness.dark;
-    final linkColor = isDark
-        ? const Color(0xFF6BA4E7)  // 柔和的蓝色链接（降低饱和度和亮度）
-        : const Color(0xFF1E88E5);  // 浅色模式保持鲜艳
-
+    final fontConfig = _resolveFontFamily(appFont);
+    final fontFamily = fontConfig.fontFamily;
+    final fontFamilyFallback = fontConfig.fontFamilyFallback;
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: colors.text,
-      brightness: brightness,
-      surface: colors.surface,
+      seedColor: text,
+      brightness: Brightness.light,
+      surface: surface,
     );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme.copyWith(
-        primary: colors.text,
-        secondary: colors.textMuted,
-        surface: colors.surface,
-        onSurface: colors.text,
-        tertiary: linkColor,
+        primary: text,
+        secondary: textMuted,
+        surface: surface,
       ),
-      extensions: <ThemeExtension<dynamic>>[colors],
-      scaffoldBackgroundColor: colors.background,
+      scaffoldBackgroundColor: background,
       splashFactory: NoSplash.splashFactory,
       splashColor: Colors.transparent,
       highlightColor: Colors.transparent,
       focusColor: Colors.transparent,
       fontFamily: fontFamily,
-      textTheme: TextTheme(
+      fontFamilyFallback: fontFamilyFallback,
+      textTheme: const TextTheme(
         headlineLarge: TextStyle(
-          color: colors.text,
+          color: text,
           fontSize: 32,
           fontWeight: FontWeight.w600,
           height: 1.2,
         ),
         headlineMedium: TextStyle(
-          color: colors.text,
+          color: text,
           fontSize: 24,
           fontWeight: FontWeight.w600,
           height: 1.25,
         ),
         titleLarge: TextStyle(
-          color: colors.text,
+          color: text,
           fontSize: 18,
           fontWeight: FontWeight.w600,
+          letterSpacing: -0.2,
           height: 1.35,
         ),
         titleMedium: TextStyle(
-          color: colors.text,
+          color: text,
           fontSize: 15,
           fontWeight: FontWeight.w600,
           height: 1.4,
         ),
         bodyLarge: TextStyle(
-          color: colors.text,
+          color: text,
           fontSize: 15,
           fontWeight: FontWeight.w400,
           height: 1.7,
         ),
         bodyMedium: TextStyle(
-          color: colors.textMuted,
+          color: textMuted,
           fontSize: 13,
           fontWeight: FontWeight.w400,
           height: 1.55,
         ),
         labelLarge: TextStyle(
-          color: colors.text,
+          color: text,
           fontSize: 13,
           fontWeight: FontWeight.w600,
         ),
-      ).apply(fontFamily: fontFamily),
-      iconTheme: IconThemeData(color: colors.textMuted, size: 20),
-      dividerTheme: DividerThemeData(
-        color: colors.border,
+      ).apply(fontFamily: fontFamily, fontFamilyFallback: fontFamilyFallback),
+      iconTheme: const IconThemeData(color: textMuted, size: 20),
+      dividerTheme: const DividerThemeData(
+        color: border,
         thickness: 1,
         space: 1,
       ),
-      switchTheme: SwitchThemeData(
-        thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.disabled)) {
-            return colors.textSubtle.withValues(alpha: 0.38);
-          }
-          return colors.surface;
-        }),
-        trackColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return colors.text;
-          }
-          if (states.contains(WidgetState.disabled)) {
-            return colors.surfaceMuted.withValues(alpha: 0.56);
-          }
-          return colors.surfaceMuted;
-        }),
-        trackOutlineColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return Colors.transparent;  // 开启时无边框
-          }
-          return colors.border;  // 关闭时显示边框
-        }),
-        overlayColor: const WidgetStatePropertyAll(Colors.transparent),
-        splashRadius: 0,
-      ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: colors.inputFill,
-        hintStyle: TextStyle(color: colors.textSubtle),
-        labelStyle: TextStyle(color: colors.textSubtle),
-        floatingLabelStyle: TextStyle(color: colors.textMuted),
-        helperStyle: TextStyle(color: colors.textSubtle),
-        prefixIconColor: colors.textSubtle,
-        suffixIconColor: colors.textSubtle,
+        fillColor: const Color(0xFFF5F5F5),
+        hintStyle: const TextStyle(color: textSubtle),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
           vertical: 12,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: colors.border),
+          borderSide: const BorderSide(color: border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: colors.border),
+          borderSide: const BorderSide(color: border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: colors.textSubtle),
-        ),
-      ),
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: linkColor,
-          textStyle: const TextStyle(
-            decoration: TextDecoration.underline,
-          ),
+          borderSide: const BorderSide(color: Color(0xFFCFCFCF)),
         ),
       ),
     );
@@ -342,4 +157,113 @@ class AppTheme {
     final safeScale = fontScale.isFinite ? fontScale : 100;
     return safeScale.clamp(80, 140).toDouble() / 100;
   }
+
+  static ThemeData dark({String appFont = 'system'}) {
+    final fontConfig = _resolveFontFamily(appFont);
+    final fontFamily = fontConfig.fontFamily;
+    final fontFamilyFallback = fontConfig.fontFamilyFallback;
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: darkText,
+      brightness: Brightness.dark,
+      surface: darkSurface,
+    );
+
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: colorScheme.copyWith(
+        primary: darkText,
+        secondary: darkTextMuted,
+        surface: darkSurface,
+      ),
+      scaffoldBackgroundColor: darkBackground,
+      splashFactory: NoSplash.splashFactory,
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      focusColor: Colors.transparent,
+      fontFamily: fontFamily,
+      fontFamilyFallback: fontFamilyFallback,
+      textTheme: const TextTheme(
+        headlineLarge: TextStyle(
+          color: darkText,
+          fontSize: 32,
+          fontWeight: FontWeight.w600,
+          height: 1.2,
+        ),
+        headlineMedium: TextStyle(
+          color: darkText,
+          fontSize: 24,
+          fontWeight: FontWeight.w600,
+          height: 1.25,
+        ),
+        titleLarge: TextStyle(
+          color: darkText,
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.2,
+          height: 1.35,
+        ),
+        titleMedium: TextStyle(
+          color: darkText,
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          height: 1.4,
+        ),
+        bodyLarge: TextStyle(
+          color: darkText,
+          fontSize: 15,
+          fontWeight: FontWeight.w400,
+          height: 1.7,
+        ),
+        bodyMedium: TextStyle(
+          color: darkTextMuted,
+          fontSize: 13,
+          fontWeight: FontWeight.w400,
+          height: 1.55,
+        ),
+        labelLarge: TextStyle(
+          color: darkText,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+      ).apply(fontFamily: fontFamily, fontFamilyFallback: fontFamilyFallback),
+      iconTheme: const IconThemeData(color: darkTextMuted, size: 20),
+      dividerTheme: const DividerThemeData(
+        color: darkBorder,
+        thickness: 1,
+        space: 1,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: darkInputFill,
+        hintStyle: const TextStyle(color: darkTextSubtle),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: darkBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: darkBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Color(0xFF45464C)),
+        ),
+      ),
+    );
+  }
+}
+
+class _FontFamilyConfig {
+  const _FontFamilyConfig({
+    required this.fontFamily,
+    required this.fontFamilyFallback,
+  });
+
+  final String? fontFamily;
+  final List<String> fontFamilyFallback;
 }

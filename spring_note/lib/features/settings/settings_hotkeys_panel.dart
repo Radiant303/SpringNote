@@ -212,11 +212,10 @@ class _HotkeyActionButtonState extends State<_HotkeyActionButton> {
   Widget build(BuildContext context) {
     final enabled = widget.onPressed != null;
     final active = enabled && _hovered;
-    final colors = AppTheme.colors(context);
-    final backgroundColor = colors.surfaceHover;
+    final backgroundColor = context.appCardBgHover;
     final iconColor = !enabled
-        ? colors.textSubtle.withValues(alpha: 0.56)
-        : (active ? colors.text : colors.textSubtle);
+        ? context.appTextTertiary.withValues(alpha: 0.56)
+        : (active ? context.appTextPrimary : context.appTextTertiary);
 
     return Tooltip(
       message: widget.tooltip,

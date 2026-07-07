@@ -92,7 +92,6 @@ class _DefaultModelCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final selectedRef = ModelReference.parse(value);
     final selected = selectedRef == null
         ? null
@@ -107,8 +106,8 @@ class _DefaultModelCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: colors.surface,
-        border: Border.all(color: colors.border),
+        color: context.appCardBg,
+        border: Border.all(color: context.appBorder),
         borderRadius: BorderRadius.circular(22),
       ),
       child: Column(
@@ -128,7 +127,7 @@ class _DefaultModelCard extends StatelessWidget {
                 height: 54,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  color: colors.surfaceMuted,
+                  color: context.appCardBgHover,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Row(
@@ -136,13 +135,13 @@ class _DefaultModelCard extends StatelessWidget {
                     CircleAvatar(
                       radius: 13,
                       backgroundColor: value == null
-                          ? colors.surfacePressed
+                          ? context.appCardBgHover
                           : const Color(0xFFDCFCE7),
                       child: Text(
                         value == null ? '未' : '已',
                         style: TextStyle(
                           color: value == null
-                              ? colors.textMuted
+                              ? context.appTextSecondary
                               : const Color(0xFF166534),
                           fontSize: 11,
                         ),
@@ -155,12 +154,15 @@ class _DefaultModelCard extends StatelessWidget {
                             ? '未选择模型'
                             : '${selected.model.displayName} · ${selected.provider.name}',
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodyMedium?.copyWith(color: colors.text),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: context.appTextPrimary,
+                        ),
                       ),
                     ),
-                    Icon(Icons.expand_more_rounded, color: colors.textSubtle),
+                    Icon(
+                      Icons.expand_more_rounded,
+                      color: context.appTextTertiary,
+                    ),
                   ],
                 ),
               ),
@@ -297,9 +299,8 @@ class _ModelPickerDialogState extends State<_ModelPickerDialog> {
     final groups = _groups;
     final showNoneOption = _showNoneOption;
     final selectedRef = ModelReference.parse(widget.selectedValue);
-    final colors = AppTheme.colors(context);
     return Dialog(
-      backgroundColor: colors.surface,
+      backgroundColor: context.appCardBg,
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: SizedBox(
@@ -318,15 +319,14 @@ class _ModelPickerDialogState extends State<_ModelPickerDialog> {
                         Text(
                           '选择${widget.title}',
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(
-                            context,
-                          ).textTheme.titleMedium?.copyWith(color: colors.text),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(color: context.appTextPrimary),
                         ),
                         const SizedBox(height: 3),
                         Text(
                           '按供应商选择默认模型',
                           style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: colors.textSubtle),
+                              ?.copyWith(color: context.appTextTertiary),
                         ),
                       ],
                     ),
@@ -492,13 +492,14 @@ class _ModelOptionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = selected || hovered;
-    final colors = AppTheme.colors(context);
     final backgroundColor = selected
-        ? colors.surfacePressed
-        : colors.surfaceHover;
+        ? context.appCardBgHover
+        : context.appCardBgHover;
     final option = model;
     final title = option?.model.displayName ?? '未选择';
-    final contentColor = active ? colors.text : colors.textMuted;
+    final contentColor = active
+        ? context.appTextPrimary
+        : context.appTextSecondary;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -556,7 +557,11 @@ class _ModelOptionTile extends StatelessWidget {
                         ),
                       ),
                       if (selected)
-                        Icon(Icons.check_rounded, size: 17, color: colors.text),
+                        Icon(
+                          Icons.check_rounded,
+                          size: 17,
+                          color: context.appTextPrimary,
+                        ),
                     ],
                   ),
                 ),

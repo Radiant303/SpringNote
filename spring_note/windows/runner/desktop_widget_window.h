@@ -33,7 +33,10 @@ class DesktopWidgetWindow {
     std::wstring font_family = L"Segoe UI Variable";
     double font_scale_factor = 1.0;
     bool orb_mode = false;
-    bool dark_mode = false;
+    int wallpaper_mode = 0;       // 0=defaultWhite, 1=solid, 2=image
+    COLORREF wallpaper_color = RGB(255, 255, 255);
+    std::wstring wallpaper_image_path;
+    double wallpaper_opacity = 1.0;
   };
 
   struct WidgetPosition {

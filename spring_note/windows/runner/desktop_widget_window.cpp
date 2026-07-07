@@ -13,6 +13,9 @@
 #include <string>
 #include <vector>
 
+#include <gdiplus.h>
+#include <gdipluscolormatrix.h>
+
 namespace {
 
 constexpr wchar_t kWidgetWindowClassName[] = L"SPRING_NOTE_DESKTOP_WIDGET";
@@ -279,7 +282,20 @@ void DesktopWidgetWindow::ShowOrUpdate(const flutter::EncodableMap& arguments) {
                             state_.font_scale_factor),
                  0.8, 1.4);
   state_.orb_mode = ReadBool(arguments, "orbMode", state_.orb_mode);
-  state_.dark_mode = ReadBool(arguments, "darkMode", false);
+  state_.wallpaper_mode =
+      std::clamp(ReadInt(arguments, "widgetWallpaperMode", state_.wallpaper_mode),
+                 0, 2);
+  const int wp_color = ReadInt(arguments, "widgetWallpaperColor", -1);
+  if (wp_color >= 0) {
+    state_.wallpaper_color =
+        RGB((wp_color >> 16) & 0xFF, (wp_color >> 8) & 0xFF, wp_color & 0xFF);
+  }
+  state_.wallpaper_image_path =
+      Utf8ToWide(ReadString(arguments, "widgetWallpaperImagePath", ""));
+  state_.wallpaper_opacity =
+      std::clamp(ReadDouble(arguments, "widgetWallpaperOpacity",
+                            state_.wallpaper_opacity),
+                 0.0, 1.0);
   if (!state_.orb_mode) {
     expanded_ = true;
   } else if (!was_orb_mode || window_ == nullptr) {
@@ -569,6 +585,15 @@ void DesktopWidgetWindow::ClampWindowToVisibleMonitor(bool notify) {
 }
 
 void DesktopWidgetWindow::Paint() {
+  // Ensure GDI+ is initialized for wallpaper image rendering
+  static Gdiplus::GdiplusStartupInput gdiplus_input;
+  static ULONG_PTR gdiplus_token = 0;
+  static bool gdiplus_checked = false;
+  if (!gdiplus_checked) {
+    gdiplus_checked = true;
+    Gdiplus::GdiplusStartup(&gdiplus_token, &gdiplus_input, nullptr);
+  }
+
   PAINTSTRUCT paint{};
   HDC dc = BeginPaint(window_, &paint);
 
@@ -578,23 +603,58 @@ void DesktopWidgetWindow::Paint() {
   HBITMAP bitmap = CreateCompatibleBitmap(dc, client.right, client.bottom);
   HBITMAP old_bitmap = static_cast<HBITMAP>(SelectObject(memory_dc, bitmap));
 
-  FillRect(memory_dc, &client,
-           static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
+  // Wallpaper background rendering directly on memory_dc
+  if (gdiplus_token != 0) {
+    Gdiplus::Graphics* graphics = Gdiplus::Graphics::FromHDC(memory_dc);
+    graphics->SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+    const int bmp_w = std::max(static_cast<int>(client.right), 1);
+    const int bmp_h = std::max(static_cast<int>(client.bottom), 1);
 
-  const COLORREF surface_color =
-      state_.dark_mode ? RGB(27, 27, 27) : RGB(255, 255, 255);
-  const COLORREF surface_muted_color =
-      state_.dark_mode ? RGB(42, 42, 42) : RGB(237, 237, 237);
-  const COLORREF surface_pressed_color =
-      state_.dark_mode ? RGB(48, 48, 48) : RGB(207, 207, 207);
-  const COLORREF border_color =
-      state_.dark_mode ? RGB(51, 51, 51) : RGB(229, 229, 229);
-  const COLORREF text_color =
-      state_.dark_mode ? RGB(242, 242, 242) : RGB(23, 23, 23);
-  const COLORREF text_subtle_color =
-      state_.dark_mode ? RGB(154, 154, 154) : RGB(102, 102, 102);
-  const COLORREF stopped_color =
-      state_.dark_mode ? RGB(154, 154, 154) : RGB(207, 207, 207);
+    if (state_.wallpaper_mode == 1) {
+      Gdiplus::Color c(255, GetRValue(state_.wallpaper_color),
+                       GetGValue(state_.wallpaper_color),
+                       GetBValue(state_.wallpaper_color));
+      Gdiplus::SolidBrush brush(c);
+      graphics->FillRectangle(&brush, 0, 0, bmp_w, bmp_h);
+    } else if (state_.wallpaper_mode == 2 &&
+               !state_.wallpaper_image_path.empty()) {
+      Gdiplus::Image* src =
+          Gdiplus::Image::FromFile(state_.wallpaper_image_path.c_str());
+      if (src && src->GetLastStatus() == Gdiplus::Ok) {
+        if (state_.wallpaper_opacity < 1.0) {
+          Gdiplus::ColorMatrix matrix{};
+          matrix.m[0][0] = 1.0f;
+          matrix.m[1][1] = 1.0f;
+          matrix.m[2][2] = 1.0f;
+          matrix.m[3][3] = static_cast<Gdiplus::REAL>(state_.wallpaper_opacity);
+          matrix.m[4][4] = 1.0f;
+          Gdiplus::ImageAttributes attrs;
+          attrs.SetColorMatrix(&matrix);
+          graphics->DrawImage(
+              src,
+              Gdiplus::Rect(0, 0, bmp_w, bmp_h),
+              0, 0, src->GetWidth(), src->GetHeight(),
+              Gdiplus::UnitPixel, &attrs);
+        } else {
+          graphics->DrawImage(src, 0, 0, bmp_w, bmp_h);
+        }
+        delete src;
+      } else {
+        delete src;
+        Gdiplus::Color white(255, 255, 255, 255);
+        Gdiplus::SolidBrush wb(white);
+        graphics->FillRectangle(&wb, 0, 0, bmp_w, bmp_h);
+      }
+    } else {
+      Gdiplus::Color white(255, 255, 255, 255);
+      Gdiplus::SolidBrush wb(white);
+      graphics->FillRectangle(&wb, 0, 0, bmp_w, bmp_h);
+    }
+    delete graphics;
+  } else {
+    FillRect(memory_dc, &client,
+             static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
+  }
 
   const auto font_size = [this](int size) {
     return std::max(
@@ -603,14 +663,14 @@ void DesktopWidgetWindow::Paint() {
 
   if (state_.orb_mode && !expanded_) {
     RECT orb{0, 0, kOrbWindowSize, kOrbWindowSize};
-    FillRoundRect(memory_dc, orb, kOrbWindowSize, surface_color);
+    FillRoundRect(memory_dc, orb, kOrbWindowSize, RGB(255, 255, 255));
 
     HBRUSH dot_brush = CreateSolidBrush(
-        state_.running ? RGB(16, 185, 129) : stopped_color);
+        state_.running ? RGB(16, 185, 129) : RGB(207, 207, 207));
     HBRUSH old_dot_brush =
         static_cast<HBRUSH>(SelectObject(memory_dc, dot_brush));
     HPEN dot_pen = CreatePen(
-        PS_SOLID, 1, state_.running ? RGB(16, 185, 129) : stopped_color);
+        PS_SOLID, 1, state_.running ? RGB(16, 185, 129) : RGB(207, 207, 207));
     HPEN old_dot_pen = static_cast<HPEN>(SelectObject(memory_dc, dot_pen));
     Ellipse(memory_dc, 46, 12, 54, 20);
     SelectObject(memory_dc, old_dot_pen);
@@ -623,15 +683,15 @@ void DesktopWidgetWindow::Paint() {
                  << state_.coins;
     RECT coins_rect{7, 20, kOrbWindowSize - 7, 43};
     DrawTextLine(memory_dc, coins_stream.str(), coins_rect, font_size(17),
-                 FW_SEMIBOLD, state_.font_family, text_color,
+                 FW_SEMIBOLD, state_.font_family, RGB(23, 23, 23),
                  DT_CENTER | DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS);
 
     RECT unit_rect{8, 43, kOrbWindowSize - 8, 56};
     DrawTextLine(memory_dc, L"coin", unit_rect, font_size(10), FW_SEMIBOLD,
-                 state_.font_family, text_subtle_color,
+                 state_.font_family, RGB(102, 102, 102),
                  DT_CENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
 
-    HPEN border_pen = CreatePen(PS_SOLID, 1, border_color);
+    HPEN border_pen = CreatePen(PS_SOLID, 1, RGB(229, 229, 229));
     HBRUSH hollow = static_cast<HBRUSH>(GetStockObject(HOLLOW_BRUSH));
     HPEN old_border_pen =
         static_cast<HPEN>(SelectObject(memory_dc, border_pen));
@@ -649,32 +709,31 @@ void DesktopWidgetWindow::Paint() {
     return;
   }
 
-  RECT card{0, 0, kExpandedWindowWidth, kExpandedWindowHeight};
-  FillRoundRect(memory_dc, card, kExpandedCornerRadius * 2, surface_color);
+  // Card background already filled by wallpaper rendering above
 
   RECT header_rect{16, 14, kExpandedWindowWidth - 16, 32};
   std::wstringstream header_stream;
   header_stream << L"Lv." << state_.level << L" \u5b9e\u4e60\u751f ("
                 << state_.experience_percent << L"%)";
   DrawTextLine(memory_dc, header_stream.str(), header_rect, font_size(14),
-               FW_SEMIBOLD, state_.font_family, text_subtle_color,
+               FW_SEMIBOLD, state_.font_family, RGB(102, 102, 102),
                DT_LEFT | DT_SINGLELINE | DT_END_ELLIPSIS);
 
   RECT track{16, 39, kExpandedWindowWidth - 16, 41};
-  FillRoundRect(memory_dc, track, 2, surface_muted_color);
+  FillRoundRect(memory_dc, track, 2, RGB(237, 237, 237));
   RECT progress = track;
   progress.right =
       progress.left + static_cast<LONG>((track.right - track.left) *
                                         std::clamp(state_.progress, 0.0, 1.0));
   if (progress.right > progress.left) {
-    FillRoundRect(memory_dc, progress, 2, surface_pressed_color);
+    FillRoundRect(memory_dc, progress, 2, RGB(207, 207, 207));
   }
 
   std::wstringstream coins_stream;
   coins_stream << std::fixed << std::setprecision(2) << state_.coins;
   RECT coins_rect{16, 54, kExpandedWindowWidth - 16, 98};
   DrawTextLine(memory_dc, coins_stream.str(), coins_rect, font_size(38),
-               FW_MEDIUM, state_.font_family, text_color,
+               FW_MEDIUM, state_.font_family, RGB(23, 23, 23),
                DT_LEFT | DT_SINGLELINE | DT_VCENTER);
 
   std::wstringstream rate_stream;
@@ -687,10 +746,10 @@ void DesktopWidgetWindow::Paint() {
                DT_LEFT | DT_SINGLELINE | DT_END_ELLIPSIS);
 
   HBRUSH dot_brush =
-      CreateSolidBrush(state_.running ? RGB(16, 185, 129) : stopped_color);
+      CreateSolidBrush(state_.running ? RGB(16, 185, 129) : RGB(207, 207, 207));
   HBRUSH old_dot_brush = static_cast<HBRUSH>(SelectObject(memory_dc, dot_brush));
   HPEN dot_pen = CreatePen(
-      PS_SOLID, 1, state_.running ? RGB(16, 185, 129) : stopped_color);
+      PS_SOLID, 1, state_.running ? RGB(16, 185, 129) : RGB(207, 207, 207));
   HPEN old_dot_pen = static_cast<HPEN>(SelectObject(memory_dc, dot_pen));
   Ellipse(memory_dc, kExpandedWindowWidth - 96, 118,
           kExpandedWindowWidth - 90, 124);
@@ -702,10 +761,10 @@ void DesktopWidgetWindow::Paint() {
   RECT time_rect{kExpandedWindowWidth - 84, 111, kExpandedWindowWidth - 16,
                  130};
   DrawTextLine(memory_dc, FormatDuration(), time_rect, font_size(13),
-               FW_NORMAL, state_.font_family, text_subtle_color,
+               FW_NORMAL, state_.font_family, RGB(102, 102, 102),
                DT_RIGHT | DT_SINGLELINE);
 
-  HPEN border_pen = CreatePen(PS_SOLID, 1, border_color);
+  HPEN border_pen = CreatePen(PS_SOLID, 1, RGB(229, 229, 229));
   HBRUSH hollow = static_cast<HBRUSH>(GetStockObject(HOLLOW_BRUSH));
   HPEN old_border_pen = static_cast<HPEN>(SelectObject(memory_dc, border_pen));
   HBRUSH old_hollow = static_cast<HBRUSH>(SelectObject(memory_dc, hollow));

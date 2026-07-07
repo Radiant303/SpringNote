@@ -23,10 +23,103 @@ class _PreferencesPanel extends StatelessWidget {
   final String? errorMessage;
   final ValueChanged<String?> onDataDirectoryChanged;
 
+  String _wallpaperImageSummary(String? path) {
+    if (path == null || path.isEmpty) return '未选择';
+    final name = path.split('/').last;
+    return name.length > 32 ? name.substring(0, 32) + '...' : name;
+  }
+
+  Future<void> _pickWallpaperImage({
+    required BuildContext context,
+    required AppConfig config,
+    required ValueChanged<AppConfig> onChanged,
+  }) async {
+    try {
+      const pngType = XTypeGroup(
+        label: '图片',
+        extensions: <String>['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'],
+      );
+      final file = await openFile(acceptedTypeGroups: <XTypeGroup>[pngType]);
+      if (file == null) return;
+      final widgetWpAbs = WallpaperService.resolveAbsolutePath(
+        settings: WallpaperSettings(
+          mode: WallpaperMode.image,
+          imagePath: config.desktopWidgetWallpaperSettings.imagePath,
+          fillMode: WallpaperFillMode.cover,
+          opacity: 1.0,
+          blur: 0.0,
+          maskOpacity: 0.0,
+          solidColorArgb: 0xFFFFFFFF,
+        ),
+        dataDirectory: dataDirectory,
+      );
+      final next = await WallpaperService.adoptImage(
+        sourceFile: File(file.path),
+        current: config.wallpaperSettings,
+        dataDirectory: dataDirectory,
+        alsoKeepPath: widgetWpAbs,
+      );
+      if (!context.mounted) return;
+      onChanged(config.copyWith(wallpaperSettings: next));
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('选择图片失败: $e')));
+    }
+  }
+
+  Future<void> _pickWidgetWallpaperImage({
+    required BuildContext context,
+    required AppConfig config,
+    required ValueChanged<AppConfig> onChanged,
+  }) async {
+    try {
+      const pngType = XTypeGroup(
+        label: '图片',
+        extensions: <String>['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'],
+      );
+      final file = await openFile(acceptedTypeGroups: <XTypeGroup>[pngType]);
+      if (file == null) return;
+      final mainWpAbs = WallpaperService.resolveAbsolutePath(
+        settings: config.wallpaperSettings,
+        dataDirectory: dataDirectory,
+      );
+      final wpSettings = config.desktopWidgetWallpaperSettings;
+      final tempWallpaper = WallpaperSettings(
+        mode: WallpaperMode.image,
+        imagePath: wpSettings.imagePath,
+        fillMode: WallpaperFillMode.cover,
+        opacity: 1.0,
+        blur: 0.0,
+        maskOpacity: 0.0,
+        solidColorArgb: 0xFFFFFFFF,
+      );
+      final result = await WallpaperService.adoptImage(
+        sourceFile: File(file.path),
+        current: tempWallpaper,
+        dataDirectory: dataDirectory,
+        alsoKeepPath: mainWpAbs,
+      );
+      if (!context.mounted) return;
+      onChanged(
+        config.copyWith(
+          desktopWidgetWallpaperSettings: wpSettings.copyWith(
+            imagePath: result.imagePath,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('选择图片失败: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final windowsOnlyLabel = _platformFeatureMessage();
-    final colors = AppTheme.colors(context);
     return _SettingsScrollFrame(
       maxWidth: 1080,
       children: [
@@ -62,11 +155,6 @@ class _PreferencesPanel extends StatelessWidget {
               value: config.appFont,
               onChanged: (value) => onChanged(config.copyWith(appFont: value)),
             ),
-            _ThemeModeSettingRow(
-              value: config.themeMode,
-              onChanged: (value) =>
-                  onChanged(config.copyWith(themeMode: value)),
-            ),
             _NumberSettingRow(
               label: '字体大小',
               value: config.fontScale,
@@ -75,6 +163,170 @@ class _PreferencesPanel extends StatelessWidget {
               maxValue: 140,
               onChanged: (value) =>
                   onChanged(config.copyWith(fontScale: value)),
+            ),
+          ],
+        ),
+        _SettingsCard(
+          title: '主题',
+          children: [
+            _ChoiceSettingRow<ThemeMode>(
+              label: '外观',
+              value: config.appThemeMode,
+              options: const [
+                ThemeMode.light,
+                ThemeMode.system,
+                ThemeMode.dark,
+              ],
+              labels: const ['浅色', '跟随系统', '深色'],
+              onChanged: (mode) =>
+                  onChanged(config.copyWith(appThemeMode: mode)),
+            ),
+          ],
+        ),
+        _SettingsCard(
+          title: '壁纸',
+          children: [
+            _WallpaperPreview(
+              settings: config.wallpaperSettings,
+              dataDirectory: dataDirectory,
+            ),
+            _ChoiceSettingRow<WallpaperMode>(
+              label: '模式',
+              value: config.wallpaperSettings.mode,
+              options: WallpaperMode.values,
+              labels: const ['默认背景', '本地图片', '纯色'],
+              onChanged: (mode) => onChanged(
+                config.copyWith(
+                  wallpaperSettings: config.wallpaperSettings.copyWith(
+                    mode: mode,
+                  ),
+                ),
+              ),
+            ),
+            if (config.wallpaperSettings.mode == WallpaperMode.image) ...[
+              _ActionSettingRow(
+                label: '选择图片',
+                value: _wallpaperImageSummary(
+                  config.wallpaperSettings.imagePath,
+                ),
+                onTap: () => _pickWallpaperImage(
+                  context: context,
+                  config: config,
+                  onChanged: onChanged,
+                ),
+              ),
+              _ChoiceSettingRow<WallpaperFillMode>(
+                label: '填充',
+                value: config.wallpaperSettings.fillMode,
+                options: WallpaperFillMode.values,
+                labels: const ['拉伸', '覆盖', '居中'],
+                onChanged: (m) => onChanged(
+                  config.copyWith(
+                    wallpaperSettings: config.wallpaperSettings.copyWith(
+                      fillMode: m,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            _SliderSettingRow(
+              label: '不透明度',
+              value: config.wallpaperSettings.opacity,
+              onChanged: (v) => onChanged(
+                config.copyWith(
+                  wallpaperSettings: config.wallpaperSettings.copyWith(
+                    opacity: v,
+                  ),
+                ),
+              ),
+            ),
+            _SliderSettingRow(
+              label: '模糊度',
+              value: config.wallpaperSettings.blur,
+              max: 25,
+              valueFormatter: (v) => v.toStringAsFixed(0),
+              onChanged: (v) => onChanged(
+                config.copyWith(
+                  wallpaperSettings: config.wallpaperSettings.copyWith(blur: v),
+                ),
+              ),
+            ),
+            _SliderSettingRow(
+              label: '蒙版浓度',
+              value: config.wallpaperSettings.maskOpacity,
+              onChanged: (v) => onChanged(
+                config.copyWith(
+                  wallpaperSettings: config.wallpaperSettings.copyWith(
+                    maskOpacity: v,
+                  ),
+                ),
+              ),
+            ),
+            if (config.wallpaperSettings.mode == WallpaperMode.solid)
+              _ColorSettingRow(
+                label: '背景颜色',
+                color: Color(config.wallpaperSettings.solidColorArgb),
+                onChanged: (c) => onChanged(
+                  config.copyWith(
+                    wallpaperSettings: config.wallpaperSettings.copyWith(
+                      solidColorArgb: WallpaperService.colorToArgb(c),
+                    ),
+                  ),
+                ),
+              ),
+            Divider(height: 1, color: context.appBorder),
+            _SwitchSettingRow(
+              label: '透明控件模式',
+              value: config.wallpaperSettings.transparentControls,
+              onChanged: (v) => onChanged(
+                config.copyWith(
+                  wallpaperSettings: config.wallpaperSettings.copyWith(
+                    transparentControls: v,
+                  ),
+                ),
+              ),
+            ),
+            _SliderSettingRow(
+              label: '控件透明度',
+              value: config.wallpaperSettings.controlAlpha,
+              enabled: config.wallpaperSettings.transparentControls,
+              onChanged: (v) => onChanged(
+                config.copyWith(
+                  wallpaperSettings: config.wallpaperSettings.copyWith(
+                    controlAlpha: v,
+                  ),
+                ),
+              ),
+            ),
+            _SwitchSettingRow(
+              label: '保留卡片描边',
+              value: config.wallpaperSettings.showBorders,
+              onChanged: (v) => onChanged(
+                config.copyWith(
+                  wallpaperSettings: config.wallpaperSettings.copyWith(
+                    showBorders: v,
+                  ),
+                ),
+              ),
+            ),
+            _SliderSettingRow(
+              label: '文字颜色加深',
+              value: config.wallpaperSettings.textContrast,
+              enabled: config.wallpaperSettings.transparentControls,
+              onChanged: (v) => onChanged(
+                config.copyWith(
+                  wallpaperSettings: config.wallpaperSettings.copyWith(
+                    textContrast: v,
+                  ),
+                ),
+              ),
+            ),
+            _ActionSettingRow(
+              label: '恢复默认',
+              value: '',
+              onTap: () => onChanged(
+                config.copyWith(wallpaperSettings: WallpaperSettings.defaults),
+              ),
             ),
           ],
         ),
@@ -192,6 +444,79 @@ class _PreferencesPanel extends StatelessWidget {
             ),
           ],
         ),
+        if (PlatformFeatureSupport.supportsDesktopWidget &&
+            config.showDesktopWidget)
+          _SettingsCard(
+            title: '组件壁纸',
+            children: [
+              _ChoiceSettingRow<DesktopWidgetWallpaperMode>(
+                label: '模式',
+                value: config.desktopWidgetWallpaperSettings.mode,
+                options: DesktopWidgetWallpaperMode.values,
+                labels: const ['默认白色', '纯色', '本地图片'],
+                onChanged: (mode) => onChanged(
+                  config.copyWith(
+                    desktopWidgetWallpaperSettings: config
+                        .desktopWidgetWallpaperSettings
+                        .copyWith(mode: mode),
+                  ),
+                ),
+              ),
+              if (config.desktopWidgetWallpaperSettings.mode ==
+                  DesktopWidgetWallpaperMode.solid)
+                _ColorSettingRow(
+                  label: '背景颜色',
+                  color: Color(
+                    config.desktopWidgetWallpaperSettings.solidColorArgb,
+                  ),
+                  onChanged: (c) => onChanged(
+                    config.copyWith(
+                      desktopWidgetWallpaperSettings: config
+                          .desktopWidgetWallpaperSettings
+                          .copyWith(
+                            solidColorArgb: WallpaperService.colorToArgb(c),
+                          ),
+                    ),
+                  ),
+                ),
+              if (config.desktopWidgetWallpaperSettings.mode ==
+                  DesktopWidgetWallpaperMode.image)
+                _ActionSettingRow(
+                  label: '选择图片',
+                  value: _wallpaperImageSummary(
+                    config.desktopWidgetWallpaperSettings.imagePath,
+                  ),
+                  onTap: () => _pickWidgetWallpaperImage(
+                    context: context,
+                    config: config,
+                    onChanged: onChanged,
+                  ),
+                ),
+              if (config.desktopWidgetWallpaperSettings.mode !=
+                  DesktopWidgetWallpaperMode.defaultWhite)
+                _SliderSettingRow(
+                  label: '不透明度',
+                  value: config.desktopWidgetWallpaperSettings.opacity,
+                  onChanged: (v) => onChanged(
+                    config.copyWith(
+                      desktopWidgetWallpaperSettings: config
+                          .desktopWidgetWallpaperSettings
+                          .copyWith(opacity: v),
+                    ),
+                  ),
+                ),
+              _ActionSettingRow(
+                label: '恢复默认',
+                value: '',
+                onTap: () => onChanged(
+                  config.copyWith(
+                    desktopWidgetWallpaperSettings:
+                        DesktopWidgetWallpaperSettings.defaults,
+                  ),
+                ),
+              ),
+            ],
+          ),
         _SettingsCard(
           title: '提示词',
           children: [
@@ -280,7 +605,7 @@ class _PreferencesPanel extends StatelessWidget {
           '配置文件：$configPath',
           style: Theme.of(
             context,
-          ).textTheme.bodyMedium?.copyWith(color: colors.textSubtle),
+          ).textTheme.bodyMedium?.copyWith(color: context.appTextTertiary),
         ),
       ],
     );
@@ -299,10 +624,9 @@ class _DataMigrationCompleteDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Dialog(
       key: const ValueKey('data-migration-complete-dialog'),
-      backgroundColor: colors.surface,
+      backgroundColor: context.appCardBg,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: SizedBox(
@@ -313,13 +637,13 @@ class _DataMigrationCompleteDialog extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _DataMigrationSuccessIcon(colors: colors),
+              const _DataMigrationSuccessIcon(),
               const SizedBox(height: 10),
               Text(
                 '数据迁移完成',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: colors.text,
+                  color: context.appTextPrimary,
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   height: 1.18,
@@ -330,7 +654,7 @@ class _DataMigrationCompleteDialog extends StatelessWidget {
                 '已成功切换至新的数据目录。\n确认数据正常后，可删除原目录以释放存储空间。',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colors.textSubtle,
+                  color: context.appTextTertiary,
                   fontSize: 12.5,
                   height: 1.45,
                 ),
@@ -349,38 +673,45 @@ class _DataMigrationCompleteDialog extends StatelessWidget {
 }
 
 class _DataMigrationSuccessIcon extends StatelessWidget {
-  const _DataMigrationSuccessIcon({required this.colors});
-
-  final SpringThemeColors colors;
+  const _DataMigrationSuccessIcon();
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: 38,
       height: 38,
-      child: CustomPaint(painter: _DataMigrationSuccessIconPainter(colors)),
+      child: CustomPaint(
+        painter: _DataMigrationSuccessIconPainter(
+          bgColor: context.appCardBg,
+          checkColor: context.appTextPrimary,
+        ),
+      ),
     );
   }
 }
 
 class _DataMigrationSuccessIconPainter extends CustomPainter {
-  const _DataMigrationSuccessIconPainter(this.colors);
+  _DataMigrationSuccessIconPainter({
+    required this.bgColor,
+    required this.checkColor,
+  });
 
-  final SpringThemeColors colors;
+  final Color bgColor;
+  final Color checkColor;
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.shortestSide / 2;
     final backgroundPaint = Paint()
-      ..color = colors.inputFill
+      ..color = bgColor
       ..style = PaintingStyle.fill;
     final ringPaint = Paint()
-      ..color = colors.border
+      ..color = const Color(0xFFE2E2E2)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.2;
     final checkPaint = Paint()
-      ..color = colors.text
+      ..color = checkColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.4
       ..strokeCap = StrokeCap.round
@@ -398,7 +729,8 @@ class _DataMigrationSuccessIconPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _DataMigrationSuccessIconPainter oldDelegate) {
-    return oldDelegate.colors != colors;
+    return oldDelegate.bgColor != bgColor ||
+        oldDelegate.checkColor != checkColor;
   }
 }
 
@@ -519,10 +851,9 @@ class _DailyMergePromptDialogState extends State<_DailyMergePromptDialog> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final colors = AppTheme.colors(context);
     return Dialog(
       key: const ValueKey('daily-merge-prompt-dialog'),
-      backgroundColor: colors.surface,
+      backgroundColor: context.appCardBg,
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: SizedBox(
@@ -540,7 +871,7 @@ class _DailyMergePromptDialogState extends State<_DailyMergePromptDialog> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: textTheme.titleMedium?.copyWith(
-                        color: colors.text,
+                        color: context.appTextPrimary,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -568,7 +899,7 @@ class _DailyMergePromptDialogState extends State<_DailyMergePromptDialog> {
                     Text(
                       'Prompt',
                       style: textTheme.labelLarge?.copyWith(
-                        color: colors.text,
+                        color: context.appTextPrimary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -578,16 +909,15 @@ class _DailyMergePromptDialogState extends State<_DailyMergePromptDialog> {
                         borderRadius: BorderRadius.circular(16),
                         child: DecoratedBox(
                           decoration: BoxDecoration(
-                            color: colors.inputFill,
+                            color: context.appCardBg,
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: TextSelectionTheme(
                             data: TextSelectionTheme.of(context).copyWith(
-                              cursorColor: colors.textMuted,
-                              selectionColor: colors.textSubtle.withValues(
-                                alpha: 0.34,
-                              ),
-                              selectionHandleColor: colors.textMuted,
+                              cursorColor: context.appTextSecondary,
+                              selectionColor: context.appTextTertiary
+                                  .withValues(alpha: 0.34),
+                              selectionHandleColor: context.appTextSecondary,
                             ),
                             child: ScrollConfiguration(
                               behavior: const _PromptTextFieldScrollBehavior(),
@@ -602,16 +932,16 @@ class _DailyMergePromptDialogState extends State<_DailyMergePromptDialog> {
                                 keyboardType: TextInputType.multiline,
                                 style:
                                     textTheme.bodyLarge?.copyWith(
-                                      color: colors.text,
+                                      color: context.appTextPrimary,
                                       fontSize: 14,
                                       height: 1.55,
                                     ) ??
                                     TextStyle(
-                                      color: colors.text,
+                                      color: context.appTextPrimary,
                                       fontSize: 14,
                                       height: 1.55,
                                     ),
-                                cursorColor: colors.textMuted,
+                                cursorColor: context.appTextSecondary,
                                 cursorWidth: 1.25,
                                 cursorRadius: const Radius.circular(1),
                                 selectionControls:
@@ -620,11 +950,11 @@ class _DailyMergePromptDialogState extends State<_DailyMergePromptDialog> {
                                 decoration: InputDecoration(
                                   hintText: '输入日报整理 Prompt...',
                                   hintStyle: TextStyle(
-                                    color: colors.textSubtle,
+                                    color: context.appTextTertiary,
                                   ),
                                   filled: true,
-                                  fillColor: colors.inputFill,
-                                  hoverColor: colors.inputFill,
+                                  fillColor: context.appCardBg,
+                                  hoverColor: context.appCardBg,
                                   border: InputBorder.none,
                                   enabledBorder: InputBorder.none,
                                   focusedBorder: InputBorder.none,
@@ -647,12 +977,12 @@ class _DailyMergePromptDialogState extends State<_DailyMergePromptDialog> {
                 ),
               ),
             ),
-            Divider(height: 1, color: colors.divider),
+            Divider(height: 1, color: context.appBorder),
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 14, 24, 12),
               child: _PromptVariablesHint(textTheme: textTheme),
             ),
-            Divider(height: 1, color: colors.divider),
+            Divider(height: 1, color: context.appBorder),
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 14, 24, 18),
               child: Row(
@@ -941,20 +1271,19 @@ class _PromptFimStatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
     final foreground = active
         ? (dark ? const Color(0xFF34D399) : const Color(0xFF10B981))
-        : colors.textSubtle;
+        : context.appTextTertiary;
     final background = active
         ? (dark ? const Color(0xFF0B3024) : const Color(0xFFECFDF5))
-        : colors.surfaceHover;
+        : context.appCardBgHover;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: background,
+        color: context.appCardBg,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
@@ -1106,19 +1435,18 @@ class _PromptVariableChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Container(
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: colors.surfaceHover,
+        color: context.appCardBgHover,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.divider),
+        border: Border.all(color: context.appBorder),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 15, color: colors.textMuted),
+          Icon(icon, size: 15, color: context.appTextSecondary),
           const SizedBox(width: 7),
           Column(
             mainAxisSize: MainAxisSize.min,
@@ -1129,7 +1457,7 @@ class _PromptVariableChip extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colors.text,
+                  color: context.appTextPrimary,
                   fontSize: 11.5,
                   fontWeight: FontWeight.w500,
                   height: 1,
@@ -1141,7 +1469,7 @@ class _PromptVariableChip extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colors.textSubtle,
+                  color: context.appTextTertiary,
                   fontSize: 10.5,
                   fontWeight: FontWeight.w400,
                   height: 1,
@@ -1287,11 +1615,10 @@ class _DataDirectoryActionButtonState
   Widget build(BuildContext context) {
     final enabled = widget.onPressed != null;
     final active = enabled && _hovered;
-    final colors = AppTheme.colors(context);
-    final backgroundColor = colors.surfaceHover;
+    final backgroundColor = context.appCardBgHover;
     final iconColor = !enabled
-        ? colors.textSubtle.withValues(alpha: 0.56)
-        : (active ? colors.text : colors.textSubtle);
+        ? context.appTextTertiary.withValues(alpha: 0.56)
+        : (active ? context.appTextPrimary : context.appTextTertiary);
 
     return Tooltip(
       message: widget.tooltip,
@@ -1474,6 +1801,9 @@ class _FontSettingRowState extends State<_FontSettingRow> {
 
     final selectedFont = await showDialog<String>(
       context: context,
+      // 主动指定较浅的 barrierColor，避免 ColorScheme.fromSeed 生成的 scrim
+      // 在我们以 0xFF171717 为种子的主题下颜色过深，导致弹窗背后整屏严重变暗。
+      barrierColor: Colors.black.withValues(alpha: 0.18),
       builder: (context) =>
           _FontPickerDialog(fonts: fonts, selectedFont: widget.value),
     );
@@ -1529,7 +1859,6 @@ class _FontPickerButtonState extends State<_FontPickerButton> {
   @override
   Widget build(BuildContext context) {
     final active = _hovered || widget.loading;
-    final colors = AppTheme.colors(context);
     return MouseRegion(
       cursor: widget.loading
           ? SystemMouseCursors.basic
@@ -1546,9 +1875,9 @@ class _FontPickerButtonState extends State<_FontPickerButton> {
           height: 42,
           padding: const EdgeInsets.symmetric(horizontal: 13),
           decoration: BoxDecoration(
-            color: active ? colors.inputFocusedFill : colors.inputFill,
+            color: active ? context.appCardBg : context.appCardBg,
             border: Border.all(
-              color: active ? colors.textSubtle : colors.border,
+              color: active ? context.appTextTertiary : context.appBorder,
             ),
             borderRadius: BorderRadius.circular(14),
           ),
@@ -1560,7 +1889,7 @@ class _FontPickerButtonState extends State<_FontPickerButton> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colors.text,
+                    color: context.appTextPrimary,
                     height: 1.2,
                   ),
                 ),
@@ -1576,7 +1905,7 @@ class _FontPickerButtonState extends State<_FontPickerButton> {
                 Icon(
                   Icons.expand_more_rounded,
                   size: 18,
-                  color: colors.textSubtle,
+                  color: context.appTextTertiary,
                 ),
             ],
           ),
@@ -1600,18 +1929,63 @@ class _FontPickerDialogState extends State<_FontPickerDialog> {
   late final TextEditingController _controller = TextEditingController();
   String _query = '';
   String? _hoveredFont;
+  late final Set<String> _chineseSupportedFonts =
+      SystemFontService.computeChineseSupportedSet(widget.fonts);
 
   List<String> get _fonts {
     final normalizedQuery = _query.trim().toLowerCase();
     final values = ['system', ...widget.fonts];
-    if (normalizedQuery.isEmpty) {
-      return values;
+    final filtered = normalizedQuery.isEmpty
+        ? values
+        : values
+              .where(
+                (font) =>
+                    _fontLabel(font).toLowerCase().contains(normalizedQuery),
+              )
+              .toList();
+    return SystemFontService.sortFonts(filtered, _chineseSupportedFonts);
+  }
+
+  Future<void> _handleFontTap(String font) async {
+    // system 始终视为支持中文，直接应用
+    if (font == 'system') {
+      Navigator.of(context).pop(font);
+      return;
     }
-    return values
-        .where(
-          (font) => _fontLabel(font).toLowerCase().contains(normalizedQuery),
-        )
-        .toList();
+    if (!SystemFontService.isChineseSupported(font)) {
+      final confirmed = await _showUnsupportedFontDialog(font);
+      if (!mounted) {
+        return;
+      }
+      if (confirmed != true) {
+        return; // 用户取消
+      }
+    }
+    Navigator.of(context).pop(font);
+  }
+
+  Future<bool?> _showUnsupportedFontDialog(String font) {
+    return showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.18),
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('字体不支持中文'),
+        content: Text(
+          '"$font" 不包含中文字符，中文将使用微软雅黑显示。\n'
+          '英文和数字将使用该字体。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('仍要使用'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -1623,9 +1997,15 @@ class _FontPickerDialogState extends State<_FontPickerDialog> {
   @override
   Widget build(BuildContext context) {
     final fonts = _fonts;
-    final colors = AppTheme.colors(context);
+    // 弹窗是临时浮层，背景与列表项需始终保持完全不透明，
+    // 不受 transparentControls / controlAlpha 影响。
+    final isDark = context.appIsDark;
+    final dialogBg = isDark ? AppTheme.darkSurface : AppTheme.surface;
+    final tileBg = isDark
+        ? const Color(0xFF25262B)
+        : const Color(0xFFEEEEEE);
     return Dialog(
-      backgroundColor: colors.surface,
+      backgroundColor: dialogBg,
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       child: SizedBox(
@@ -1639,9 +2019,9 @@ class _FontPickerDialogState extends State<_FontPickerDialog> {
                 children: [
                   Text(
                     '选择字体',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.titleMedium?.copyWith(color: colors.text),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: context.appTextPrimary,
+                    ),
                   ),
                   const Spacer(),
                   IconButton(
@@ -1678,6 +2058,10 @@ class _FontPickerDialogState extends State<_FontPickerDialog> {
                           font: font,
                           selected: font == widget.selectedFont,
                           hovered: font == _hoveredFont,
+                          tileBg: tileBg,
+                          showWarningIcon:
+                              font != 'system' &&
+                              !SystemFontService.isChineseSupported(font),
                           onHoverChanged: (hovered) {
                             setState(() {
                               if (hovered) {
@@ -1687,7 +2071,7 @@ class _FontPickerDialogState extends State<_FontPickerDialog> {
                               }
                             });
                           },
-                          onTap: () => Navigator.of(context).pop(font),
+                          onTap: () => _handleFontTap(font),
                         );
                       },
                     ),
@@ -1704,6 +2088,8 @@ class _FontOptionTile extends StatelessWidget {
     required this.font,
     required this.selected,
     required this.hovered,
+    required this.tileBg,
+    required this.showWarningIcon,
     required this.onHoverChanged,
     required this.onTap,
   });
@@ -1711,18 +2097,19 @@ class _FontOptionTile extends StatelessWidget {
   final String font;
   final bool selected;
   final bool hovered;
+  final Color tileBg;
+  final bool showWarningIcon;
   final ValueChanged<bool> onHoverChanged;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final active = selected || hovered;
-    final colors = AppTheme.colors(context);
     final fontFamily = font == 'system' ? null : font;
-    final backgroundColor = selected
-        ? colors.surfacePressed
-        : colors.surfaceHover;
-    final contentColor = active ? colors.text : colors.textMuted;
+    final backgroundColor = tileBg;
+    final contentColor = active
+        ? context.appTextPrimary
+        : context.appTextSecondary;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -1773,8 +2160,20 @@ class _FontOptionTile extends StatelessWidget {
                               ),
                         ),
                       ),
+                      if (showWarningIcon) ...[
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          size: 14,
+                          color: Colors.orange.shade700,
+                        ),
+                        const SizedBox(width: 6),
+                      ],
                       if (selected)
-                        Icon(Icons.check_rounded, size: 17, color: colors.text),
+                        Icon(
+                          Icons.check_rounded,
+                          size: 17,
+                          color: context.appTextPrimary,
+                        ),
                     ],
                   ),
                 ),
@@ -1807,11 +2206,10 @@ class _FontResetButtonState extends State<_FontResetButton> {
   Widget build(BuildContext context) {
     final enabled = widget.onPressed != null;
     final active = enabled && _hovered;
-    final colors = AppTheme.colors(context);
-    final backgroundColor = colors.surfaceHover;
+    final backgroundColor = context.appCardBgHover;
     final iconColor = !enabled
-        ? colors.textSubtle.withValues(alpha: 0.56)
-        : (active ? colors.text : colors.textSubtle);
+        ? context.appTextTertiary.withValues(alpha: 0.56)
+        : (active ? context.appTextPrimary : context.appTextTertiary);
 
     return Tooltip(
       message: '重置字体',

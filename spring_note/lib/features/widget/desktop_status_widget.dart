@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/services/desktop_widget_controller.dart';
 import '../../core/services/level_progress_controller.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/context_extensions.dart';
 
 class DesktopStatusWidget extends StatelessWidget {
   const DesktopStatusWidget({
@@ -22,7 +23,6 @@ class DesktopStatusWidget extends StatelessWidget {
       animation: controller,
       builder: (context, _) {
         final state = controller.state;
-        final colors = AppTheme.colors(context);
         final progress = (levelProgressState.experiencePercent / 100).clamp(
           0.0,
           1.0,
@@ -37,17 +37,17 @@ class DesktopStatusWidget extends StatelessWidget {
               height: 140,
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               decoration: BoxDecoration(
-                color: colors.surface,
-                border: Border.all(color: colors.border),
+                color: context.appCardBg,
+                border: Border.all(color: context.appBorder),
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: colors.shadow.withValues(alpha: 0.16),
+                    color: const Color(0x05000000).withValues(alpha: 0.16),
                     blurRadius: 24,
                     offset: Offset(0, 4),
                   ),
                   BoxShadow(
-                    color: colors.shadow.withValues(alpha: 0.08),
+                    color: const Color(0x05000000).withValues(alpha: 0.08),
                     blurRadius: 2,
                     offset: Offset(0, 1),
                   ),
@@ -63,7 +63,7 @@ class DesktopStatusWidget extends StatelessWidget {
                       Text(
                         'Lv.${levelProgressState.level} 实习生 (${levelProgressState.experiencePercent}%)',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colors.textSubtle,
+                          color: context.appTextTertiary,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.3,
                         ),
@@ -74,8 +74,8 @@ class DesktopStatusWidget extends StatelessWidget {
                         child: LinearProgressIndicator(
                           value: progress,
                           minHeight: 2,
-                          color: colors.textSubtle,
-                          backgroundColor: colors.surfaceMuted,
+                          color: context.appTextTertiary,
+                          backgroundColor: context.appCardBgHover,
                         ),
                       ),
                     ],
@@ -83,7 +83,7 @@ class DesktopStatusWidget extends StatelessWidget {
                   Text(
                     state.coins.toStringAsFixed(2),
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                      color: colors.text,
+                      color: context.appTextPrimary,
                       fontWeight: FontWeight.w500,
                       fontFeatures: const [FontFeature.tabularFigures()],
                       letterSpacing: -1.5,
@@ -115,7 +115,7 @@ class DesktopStatusWidget extends StatelessWidget {
                       Text(
                         _formatDuration(state.workSeconds),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colors.textMuted,
+                          color: context.appTextSecondary,
                           fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
@@ -145,12 +145,11 @@ class _StatusDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Container(
       width: 6,
       height: 6,
       decoration: BoxDecoration(
-        color: running ? const Color(0xFF10B981) : colors.textSubtle,
+        color: running ? const Color(0xFF10B981) : context.appTextTertiary,
         shape: BoxShape.circle,
       ),
     );

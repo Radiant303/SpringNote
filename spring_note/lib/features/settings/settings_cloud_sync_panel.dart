@@ -382,9 +382,8 @@ class _CloudSyncDeleteConfirmDialogState
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Dialog(
-      backgroundColor: colors.surface,
+      backgroundColor: context.appCardBg,
       clipBehavior: Clip.antiAlias,
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -406,7 +405,7 @@ class _CloudSyncDeleteConfirmDialogState
                         '确认删除同步',
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: colors.text,
+                          color: context.appTextPrimary,
                           fontSize: 18,
                           height: 1.2,
                         ),
@@ -415,7 +414,7 @@ class _CloudSyncDeleteConfirmDialogState
                       Text(
                         '检测到删除操作，确认后将同步删除对应文件。',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: colors.textSubtle,
+                          color: context.appTextTertiary,
                           fontSize: 13,
                           fontWeight: FontWeight.w400,
                         ),
@@ -474,8 +473,8 @@ class _CloudSyncDeleteConfirmDialogState
               Container(
                 padding: const EdgeInsets.fromLTRB(28, 16, 28, 20),
                 decoration: BoxDecoration(
-                  color: colors.surface,
-                  border: Border(top: BorderSide(color: colors.divider)),
+                  color: context.appCardBg,
+                  border: Border(top: BorderSide(color: context.appBorder)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -586,12 +585,11 @@ class _CloudSyncDeleteGroupHeaderState
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final backgroundColor = widget.expanded
-        ? colors.surfacePressed
+        ? context.appCardBgHover
         : _hovered
-        ? colors.inputFocusedFill
-        : colors.inputFill;
+        ? context.appCardBg
+        : context.appCardBg;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
@@ -634,18 +632,18 @@ class _CloudSyncDeleteGroupHeaderState
                     child: Icon(
                       Icons.chevron_right_rounded,
                       size: 19,
-                      color: colors.textMuted,
+                      color: context.appTextSecondary,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Icon(widget.icon, size: 17, color: colors.textMuted),
+                  Icon(widget.icon, size: 17, color: context.appTextSecondary),
                   const SizedBox(width: 9),
                   Expanded(
                     child: Text(
                       widget.title,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: colors.text,
+                        color: context.appTextPrimary,
                         fontSize: 13,
                         fontWeight: FontWeight.w400,
                         height: 1.2,
@@ -658,13 +656,13 @@ class _CloudSyncDeleteGroupHeaderState
                       vertical: 3,
                     ),
                     decoration: BoxDecoration(
-                      color: colors.surface.withValues(alpha: 0.75),
+                      color: context.appCardBg.withValues(alpha: 0.75),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
                       widget.count.toString(),
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: colors.textSubtle,
+                        color: context.appTextTertiary,
                         fontWeight: FontWeight.w400,
                         height: 1.1,
                       ),
@@ -695,7 +693,6 @@ class _CloudSyncDeleteFileTileState extends State<_CloudSyncDeleteFileTile> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
@@ -706,7 +703,7 @@ class _CloudSyncDeleteFileTileState extends State<_CloudSyncDeleteFileTile> {
         margin: const EdgeInsets.only(left: 28),
         padding: const EdgeInsets.only(left: 14, right: 10),
         decoration: BoxDecoration(
-          color: _hovered ? colors.surfaceHover : colors.surface,
+          color: _hovered ? context.appCardBgHover : context.appCardBg,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
@@ -719,7 +716,7 @@ class _CloudSyncDeleteFileTileState extends State<_CloudSyncDeleteFileTile> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colors.text,
+                  color: context.appTextPrimary,
                   fontSize: 13,
                   fontWeight: FontWeight.w400,
                   height: 1.2,
@@ -877,9 +874,8 @@ class _DeleteModifyConflictDialogState
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Dialog(
-      backgroundColor: colors.surface,
+      backgroundColor: context.appCardBg,
       clipBehavior: Clip.antiAlias,
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -902,7 +898,7 @@ class _DeleteModifyConflictDialogState
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(
-                                color: colors.text,
+                                color: context.appTextPrimary,
                                 fontSize: 18,
                                 height: 1.2,
                               ),
@@ -912,7 +908,7 @@ class _DeleteModifyConflictDialogState
                           '以下文件在一端已删除，另一端已修改，请选择最终保留的结果。',
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(
-                                color: colors.textSubtle,
+                                color: context.appTextTertiary,
                                 fontSize: 13,
                               ),
                         ),
@@ -1013,7 +1009,6 @@ class _DeleteModifyConflictRowState extends State<_DeleteModifyConflictRow> {
   @override
   Widget build(BuildContext context) {
     final selected = widget.value;
-    final colors = AppTheme.colors(context);
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
@@ -1023,7 +1018,7 @@ class _DeleteModifyConflictRowState extends State<_DeleteModifyConflictRow> {
         constraints: const BoxConstraints(minHeight: 72),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: _hovered ? colors.surfaceHover : colors.surface,
+          color: _hovered ? context.appCardBgHover : context.appCardBg,
           borderRadius: BorderRadius.circular(16),
         ),
         child: LayoutBuilder(
@@ -1076,7 +1071,6 @@ class _DeleteModifyFileCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Row(
       children: [
         const _DeleteModifyFileIcon(size: 26),
@@ -1087,7 +1081,7 @@ class _DeleteModifyFileCell extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: colors.text,
+              color: context.appTextPrimary,
               fontSize: 13,
               fontWeight: FontWeight.w400,
               height: 1.25,
@@ -1158,7 +1152,7 @@ class _DeleteModifyStatusBadge extends StatelessWidget {
       height: 28,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: background,
+        color: context.appCardBg,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -1277,18 +1271,17 @@ class _DeleteModifyActionButtonState extends State<_DeleteModifyActionButton> {
   @override
   Widget build(BuildContext context) {
     final active = widget.selected || _hovered;
-    final colors = AppTheme.colors(context);
     final foreground = widget.enabled
-        ? colors.text
-        : colors.textSubtle.withValues(alpha: 0.45);
+        ? context.appTextPrimary
+        : context.appTextTertiary.withValues(alpha: 0.45);
     final borderColor = widget.enabled
-        ? (active ? colors.textSubtle : colors.border)
-        : colors.border;
+        ? (active ? context.appTextTertiary : context.appBorder)
+        : context.appBorder;
     final background = widget.selected
-        ? colors.surfacePressed
+        ? context.appCardBgHover
         : _hovered
-        ? colors.surfaceHover
-        : colors.surface;
+        ? context.appCardBgHover
+        : context.appCardBg;
 
     return Tooltip(
       message: widget.tooltip,
@@ -1326,7 +1319,7 @@ class _DeleteModifyActionButtonState extends State<_DeleteModifyActionButton> {
               height: 36,
               padding: const EdgeInsets.symmetric(horizontal: 10),
               decoration: BoxDecoration(
-                color: background,
+                color: context.appCardBg,
                 border: Border.all(color: borderColor),
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -1377,12 +1370,11 @@ class _DeleteModifyDialogFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(28, 16, 28, 20),
       decoration: BoxDecoration(
-        color: colors.surface,
-        border: Border(top: BorderSide(color: colors.divider)),
+        color: context.appCardBg,
+        border: Border(top: BorderSide(color: context.appBorder)),
       ),
       child: Row(
         children: [
@@ -1425,7 +1417,6 @@ class _DeleteModifyStatText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Text.rich(
       TextSpan(
         children: [
@@ -1433,12 +1424,15 @@ class _DeleteModifyStatText extends StatelessWidget {
           const TextSpan(text: ' '),
           TextSpan(
             text: value,
-            style: TextStyle(color: colors.text, fontWeight: FontWeight.w400),
+            style: TextStyle(
+              color: context.appTextPrimary,
+              fontWeight: FontWeight.w400,
+            ),
           ),
         ],
       ),
       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-        color: colors.textSubtle,
+        color: context.appTextTertiary,
         fontSize: 13,
         height: 1.3,
       ),
@@ -1478,11 +1472,12 @@ class _DeleteModifyFooterButtonState extends State<_DeleteModifyFooterButton> {
   @override
   Widget build(BuildContext context) {
     final filled = widget.filled;
-    final colors = AppTheme.colors(context);
-    final foreground = filled ? colors.onAccent : colors.text;
+    final foreground = filled ? Colors.white : context.appTextPrimary;
     final background = filled
-        ? (_hovered ? colors.text.withValues(alpha: 0.88) : colors.text)
-        : (_hovered ? colors.surfaceHover : colors.surface);
+        ? (_hovered
+              ? context.appTextPrimary.withValues(alpha: 0.88)
+              : context.appTextPrimary)
+        : (_hovered ? context.appCardBgHover : context.appCardBg);
     return MouseRegion(
       cursor: widget.enabled
           ? SystemMouseCursors.click
@@ -1518,7 +1513,9 @@ class _DeleteModifyFooterButtonState extends State<_DeleteModifyFooterButton> {
               color: widget.enabled
                   ? background
                   : background.withValues(alpha: 0.55),
-              border: Border.all(color: filled ? colors.text : colors.border),
+              border: Border.all(
+                color: filled ? context.appTextPrimary : context.appBorder,
+              ),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Center(

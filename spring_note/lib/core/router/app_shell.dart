@@ -9,9 +9,11 @@ import '../../features/settings/settings_page.dart';
 import '../../features/widget/desktop_status_widget.dart';
 import '../models/app_config.dart';
 import '../models/desktop_widget_position.dart';
+import '../models/desktop_widget_wallpaper_settings.dart';
 import '../models/local_data_state.dart';
 import '../models/note_external_update.dart';
 import '../models/note_file.dart';
+import '../models/wallpaper_settings.dart';
 import '../services/auto_start_service.dart';
 import '../services/cloud_sync_service.dart';
 import '../services/desktop_widget_controller.dart';
@@ -23,7 +25,10 @@ import '../services/note_upload_queue.dart';
 import '../services/startup_report_generation_service.dart';
 import '../services/tray_service.dart';
 import '../services/update_check_service.dart';
+import '../services/wallpaper_service.dart';
 import '../theme/app_theme.dart';
+import '../theme/context_extensions.dart';
+import '../widgets/wallpaper_layer.dart';
 
 enum AppSection { home, notes, memory, settings }
 
@@ -115,6 +120,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       unawaited(_runStartupCloudSync(_localDataState));
       unawaited(_runStartupReportGeneration(_localDataState));
       unawaited(_runUpdateCheck(_localDataState.config, resetRetry: true));
+      unawaited(_validateWallpaperOnStartup());
     });
   }
 
@@ -257,6 +263,24 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       path: path,
       revision: ++_noteExternalUpdateRevision,
     );
+  }
+
+  /// 启动时校验用户自定义壁纸图片是否仍存在。
+  /// 不存在则回退到默认背景，并通过现有 _handleLocalDataStateChanged 链路
+  /// 触发持久化 + UI 重建。
+  Future<void> _validateWallpaperOnStartup() async {
+    final settings = _localDataState.config.wallpaperSettings;
+    if (settings.mode != WallpaperMode.image) return;
+    final validated = await WallpaperService.validateOnLoad(
+      settings: settings,
+      dataDirectory: _localDataState.dataDirectory,
+    );
+    if (validated == settings) return;
+    if (!mounted) return;
+    final state = _localDataState.copyWith(
+      config: _localDataState.config.copyWith(wallpaperSettings: validated),
+    );
+    _handleLocalDataStateChanged(state);
   }
 
   void _notifyAllNotesChanged() {
@@ -540,6 +564,30 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     final config = _localDataState.config;
     final progress = (_levelProgressController.state.experiencePercent / 100)
         .clamp(0.0, 1.0);
+
+    // 解析桌面组件壁纸参数
+    final widgetWp = config.desktopWidgetWallpaperSettings;
+    final widgetWpMode = switch (widgetWp.mode) {
+      DesktopWidgetWallpaperMode.defaultWhite => 0,
+      DesktopWidgetWallpaperMode.solid => 1,
+      DesktopWidgetWallpaperMode.image => 2,
+    };
+    String? widgetWpImagePath;
+    if (widgetWp.mode == DesktopWidgetWallpaperMode.image) {
+      widgetWpImagePath = WallpaperService.resolveAbsolutePath(
+        settings: WallpaperSettings(
+          mode: WallpaperMode.image,
+          imagePath: widgetWp.imagePath,
+          fillMode: WallpaperFillMode.cover,
+          opacity: 1.0,
+          blur: 0.0,
+          maskOpacity: 0.0,
+          solidColorArgb: 0xFFFFFFFF,
+        ),
+        dataDirectory: _localDataState.dataDirectory,
+      );
+    }
+
     unawaited(
       _desktopWidgetWindow.showOrUpdate(
         DesktopWidgetWindowSnapshot(
@@ -555,18 +603,22 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           position: config.desktopWidgetPosition,
           orbMode: config.desktopWidgetOrbMode,
           darkMode: _desktopWidgetDarkMode(config),
+          widgetWallpaperMode: widgetWpMode,
+          widgetWallpaperColor: widgetWp.solidColorArgb,
+          widgetWallpaperImagePath: widgetWpImagePath,
+          widgetWallpaperOpacity: widgetWp.opacity,
         ),
       ),
     );
   }
 
   bool _desktopWidgetDarkMode(AppConfig config) {
-    switch (config.themeMode) {
-      case AppThemePreference.light:
+    switch (config.appThemeMode) {
+      case ThemeMode.light:
         return false;
-      case AppThemePreference.dark:
+      case ThemeMode.dark:
         return true;
-      case AppThemePreference.system:
+      case ThemeMode.system:
         return WidgetsBinding.instance.platformDispatcher.platformBrightness ==
             Brightness.dark;
     }
@@ -574,63 +626,77 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          Row(
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // 第 1 层：壁纸（最底）
+        WallpaperLayer(
+          settings: _localDataState.config.wallpaperSettings,
+          dataDirectory: _localDataState.dataDirectory,
+        ),
+        // 第 2 层：原有 Scaffold（透明背景让壁纸透出）
+        Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Stack(
             children: [
-              GlobalSidebar(
-                selectedSection: _section,
-                onSectionSelected: _selectSection,
+              Row(
+                children: [
+                  GlobalSidebar(
+                    selectedSection: _section,
+                    onSectionSelected: _selectSection,
+                  ),
+                  Expanded(
+                    child: IndexedStack(
+                      index: _section.index,
+                      children: [
+                        HomePage(
+                          localDataState: _localDataState,
+                          desktopWidgetController: _desktopWidgetController,
+                          levelProgressController: _levelProgressController,
+                          updateCheckResult: _updateCheckResult,
+                          updateCheckService: widget.updateCheckService,
+                          startupCloudSyncMessage: _startupCloudSyncMessage,
+                          onDailyNoteSaved: (path) =>
+                              _notifyNoteSaved(NoteKind.daily, path),
+                        ),
+                        NotesPage(
+                          localDataState: _localDataState,
+                          externalNoteUpdate: _noteExternalUpdate,
+                          noteUploadQueue: _noteUploadQueue,
+                        ),
+                        MemoryPage(localDataState: _localDataState),
+                        SettingsPage(
+                          localDataState: _localDataState,
+                          updateCheckService: widget.updateCheckService,
+                          onConfigChanged: (config) {
+                            final state = _localDataState.copyWith(
+                              config: config,
+                            );
+                            _handleLocalDataStateChanged(state);
+                          },
+                          onLocalDataStateChanged: _handleLocalDataStateChanged,
+                          onCloudSyncCompleted: _handleCloudSyncCompleted,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              Expanded(
-                child: IndexedStack(
-                  index: _section.index,
-                  children: [
-                    HomePage(
-                      localDataState: _localDataState,
-                      desktopWidgetController: _desktopWidgetController,
-                      levelProgressController: _levelProgressController,
-                      updateCheckResult: _updateCheckResult,
-                      updateCheckService: widget.updateCheckService,
-                      startupCloudSyncMessage: _startupCloudSyncMessage,
-                      onDailyNoteSaved: (path) =>
-                          _notifyNoteSaved(NoteKind.daily, path),
-                    ),
-                    NotesPage(
-                      localDataState: _localDataState,
-                      externalNoteUpdate: _noteExternalUpdate,
-                      noteUploadQueue: _noteUploadQueue,
-                    ),
-                    MemoryPage(localDataState: _localDataState),
-                    SettingsPage(
-                      localDataState: _localDataState,
-                      updateCheckService: widget.updateCheckService,
-                      onConfigChanged: (config) {
-                        final state = _localDataState.copyWith(config: config);
-                        _handleLocalDataStateChanged(state);
-                      },
-                      onLocalDataStateChanged: _handleLocalDataStateChanged,
-                      onCloudSyncCompleted: _handleCloudSyncCompleted,
-                    ),
-                  ],
+              if (_localDataState.config.showDesktopWidget &&
+                  !_desktopWidgetWindow.isSupported)
+                Positioned(
+                  right: 26,
+                  bottom: 24,
+                  child: DesktopStatusWidget(
+                    controller: _desktopWidgetController,
+                    levelProgressState: _levelProgressController.state,
+                    onOpenHome: _openHomeFromDesktopWidget,
+                  ),
                 ),
-              ),
             ],
           ),
-          if (_localDataState.config.showDesktopWidget &&
-              !_desktopWidgetWindow.isSupported)
-            Positioned(
-              right: 26,
-              bottom: 24,
-              child: DesktopStatusWidget(
-                controller: _desktopWidgetController,
-                levelProgressState: _levelProgressController.state,
-                onOpenHome: _openHomeFromDesktopWidget,
-              ),
-            ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -647,10 +713,9 @@ class GlobalSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Container(
       width: 80,
-      color: colors.sidebar,
+      color: context.appCardBg,
       padding: const EdgeInsets.symmetric(vertical: 28),
       child: Column(
         children: [
@@ -709,12 +774,11 @@ class _SidebarButtonState extends State<_SidebarButton> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final active = widget.selected || _hovered;
     final backgroundColor = widget.selected
-        ? colors.surfacePressed
-        : colors.surfaceHover;
-    final iconColor = active ? colors.text : colors.textSubtle;
+        ? context.appCardBgHover
+        : context.appBgSecondary;
+    final iconColor = active ? context.appTextPrimary : context.appTextTertiary;
 
     return Tooltip(
       message: widget.tooltip,

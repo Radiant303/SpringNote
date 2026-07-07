@@ -44,11 +44,10 @@ class _SettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Container(
       decoration: BoxDecoration(
-        color: colors.surface,
-        border: Border.all(color: colors.border),
+        color: context.appCardBg,
+        border: Border.all(color: context.appBorder),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
@@ -94,9 +93,10 @@ class _ActionSettingRowState extends State<_ActionSettingRow> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final active = _hovered;
-    final foreground = active ? colors.text : colors.textSubtle;
+    final foreground = active
+        ? context.appTextPrimary
+        : context.appTextTertiary;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -108,7 +108,7 @@ class _ActionSettingRowState extends State<_ActionSettingRow> {
         child: Container(
           constraints: const BoxConstraints(minHeight: 58),
           decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: colors.divider)),
+            border: Border(top: BorderSide(color: context.appBorder)),
           ),
           child: Stack(
             alignment: Alignment.centerLeft,
@@ -125,7 +125,7 @@ class _ActionSettingRowState extends State<_ActionSettingRow> {
                     opacity: active ? 1 : 0,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: colors.surfaceHover,
+                        color: context.appCardBgHover,
                         borderRadius: BorderRadius.circular(13),
                       ),
                     ),
@@ -138,11 +138,15 @@ class _ActionSettingRowState extends State<_ActionSettingRow> {
                   vertical: 8,
                 ),
                 child: TweenAnimationBuilder<Color?>(
-                  tween: ColorTween(end: active ? colors.text : colors.text),
+                  tween: ColorTween(
+                    end: active
+                        ? context.appTextPrimary
+                        : context.appTextPrimary,
+                  ),
                   duration: const Duration(milliseconds: 280),
                   curve: Curves.easeOutCubic,
                   builder: (context, color, _) {
-                    final labelColor = color ?? colors.text;
+                    final labelColor = color ?? context.appTextPrimary;
                     return Row(
                       children: [
                         Expanded(
@@ -302,13 +306,12 @@ class _SettingsSearchFieldState extends State<_SettingsSearchField> {
   @override
   Widget build(BuildContext context) {
     final focused = _focusNode.hasFocus;
-    final colors = AppTheme.colors(context);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
       height: 40,
       decoration: BoxDecoration(
-        color: focused ? colors.inputFocusedFill : colors.surfaceMuted,
+        color: focused ? context.appCardBg : context.appCardBgHover,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Center(
@@ -319,19 +322,20 @@ class _SettingsSearchFieldState extends State<_SettingsSearchField> {
           onChanged: widget.onChanged,
           textAlignVertical: TextAlignVertical.center,
           cursorHeight: 16,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: colors.text, height: 1.2),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: context.appTextPrimary,
+            height: 1.2,
+          ),
           decoration: InputDecoration(
             hintText: widget.hintText,
             hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: colors.textSubtle.withValues(alpha: 0.78),
+              color: context.appTextTertiary.withValues(alpha: 0.78),
               height: 1.2,
             ),
             prefixIcon: Icon(
               Icons.search_rounded,
               size: 18,
-              color: colors.textSubtle,
+              color: context.appTextTertiary,
             ),
             prefixIconConstraints: const BoxConstraints(
               minWidth: 40,
@@ -544,103 +548,52 @@ class _SwitchSettingRow extends StatelessWidget {
   }
 }
 
-class _ThemeModeSettingRow extends StatelessWidget {
-  const _ThemeModeSettingRow({required this.value, required this.onChanged});
+class _ChoiceSettingRow<T> extends StatelessWidget {
+  const _ChoiceSettingRow({
+    required this.label,
+    required this.value,
+    required this.options,
+    required this.labels,
+    required this.onChanged,
+    this.description,
+  });
 
-  final AppThemePreference value;
-  final ValueChanged<AppThemePreference> onChanged;
+  final String label;
+  final T value;
+  final List<T> options;
+  final List<String> labels;
+  final ValueChanged<T> onChanged;
+  final String? description;
 
   @override
   Widget build(BuildContext context) {
     return _SettingRowShell(
-      label: '外观模式',
-      child: _ThemeModeSegmentedControl(value: value, onChanged: onChanged),
-    );
-  }
-}
-
-class _ThemeModeSegmentedControl extends StatelessWidget {
-  const _ThemeModeSegmentedControl({
-    required this.value,
-    required this.onChanged,
-  });
-
-  final AppThemePreference value;
-  final ValueChanged<AppThemePreference> onChanged;
-
-  static const _labels = {
-    AppThemePreference.light: '浅色',
-    AppThemePreference.system: '跟随系统',
-    AppThemePreference.dark: '深色',
-  };
-
-  static const _options = [
-    AppThemePreference.light,
-    AppThemePreference.system,
-    AppThemePreference.dark,
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
-    final selectedIndex = _options.indexOf(value);
-
-    return SizedBox(
-      width: 246,
-      height: 42,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final segmentWidth = constraints.maxWidth / 3;
-          return Container(
-            decoration: BoxDecoration(
-              color: colors.surfaceMuted,
-              border: Border.all(color: colors.border),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Stack(
-              children: [
-                AnimatedPositioned(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeOutCubic,
-                  left: selectedIndex * segmentWidth + 3,
-                  top: 3,
-                  width: segmentWidth - 6,
-                  height: 36,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: colors.surface,
-                      borderRadius: BorderRadius.circular(11),
-                      boxShadow: [
-                        BoxShadow(
-                          color: colors.shadow.withValues(alpha: 0.12),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                Row(
-                  children: [
-                    for (final (index, option) in _options.indexed)
-                      _ThemeModeSegment(
-                        label: _labels[option]!,
-                        selected: index == selectedIndex,
-                        onTap: () => onChanged(option),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
+      label: label,
+      description: description,
+      child: Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: context.appCardBgHover,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (int i = 0; i < options.length; i++)
+              _ChoicePill(
+                label: labels[i],
+                selected: options[i] == value,
+                onTap: () => onChanged(options[i]),
+              ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _ThemeModeSegment extends StatelessWidget {
-  const _ThemeModeSegment({
+class _ChoicePill extends StatelessWidget {
+  const _ChoicePill({
     required this.label,
     required this.selected,
     required this.onTap,
@@ -652,28 +605,29 @@ class _ThemeModeSegment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
-    return Expanded(
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: Center(
-          child: AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 140),
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: selected ? colors.text : colors.textSubtle,
-                  fontWeight: FontWeight.w400,
-                  height: 1.2,
-                ) ??
-                TextStyle(
-                  color: selected ? colors.text : colors.textSubtle,
-                  fontWeight: FontWeight.w400,
-                  height: 1.2,
-                ),
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          decoration: BoxDecoration(
+            color: selected ? context.appCardBg : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: selected
+                ? Border.all(color: context.appBorder)
+                : Border.all(color: Colors.transparent),
+          ),
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: selected
+                  ? context.appTextPrimary
+                  : context.appTextSecondary,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
             ),
           ),
         ),
@@ -704,20 +658,19 @@ class _ShortcutKeyField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Container(
       height: 42,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: colors.inputFill,
-        border: Border.all(color: colors.border),
+        color: context.appCardBg,
+        border: Border.all(color: context.appBorder),
         borderRadius: BorderRadius.circular(14),
       ),
       alignment: Alignment.centerLeft,
       child: Text(
         label,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: colors.text,
+          color: context.appTextPrimary,
           fontFeatures: const [FontFeature.tabularFigures()],
         ),
       ),
@@ -740,12 +693,11 @@ class _SettingRowShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Container(
       constraints: const BoxConstraints(minHeight: 58),
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
       decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: colors.divider)),
+        border: Border(top: BorderSide(color: context.appBorder)),
       ),
       child: Row(
         children: [
@@ -757,7 +709,9 @@ class _SettingRowShell extends StatelessWidget {
                 Text(
                   label,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: enabled ? colors.text : colors.textSubtle,
+                    color: enabled
+                        ? context.appTextPrimary
+                        : context.appTextTertiary,
                   ),
                 ),
                 if (description != null && description!.isNotEmpty)
@@ -766,7 +720,7 @@ class _SettingRowShell extends StatelessWidget {
                     child: Text(
                       description!,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colors.textSubtle,
+                        color: context.appTextTertiary,
                         height: 1.15,
                       ),
                     ),
@@ -946,7 +900,6 @@ class _ProtocolFieldState extends State<_ProtocolField> {
     final current = _current;
     final currentLabel = _protocols[current] ?? current;
     final options = _options;
-    final colors = AppTheme.colors(context);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
@@ -1040,13 +993,13 @@ class _ProtocolFieldState extends State<_ProtocolField> {
                         padding: const EdgeInsets.symmetric(horizontal: 14),
                         decoration: BoxDecoration(
                           color: active
-                              ? colors.surfaceHover
-                              : colors.inputFill,
+                              ? context.appCardBgHover
+                              : context.appCardBg,
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
                             color: _menuOpen
-                                ? colors.textSubtle
-                                : colors.border,
+                                ? context.appTextTertiary
+                                : context.appBorder,
                           ),
                         ),
                         child: Row(
@@ -1057,7 +1010,7 @@ class _ProtocolFieldState extends State<_ProtocolField> {
                                 overflow: TextOverflow.ellipsis,
                                 style: Theme.of(context).textTheme.bodyMedium
                                     ?.copyWith(
-                                      color: colors.text,
+                                      color: context.appTextPrimary,
                                       fontWeight: FontWeight.w400,
                                       height: 1.2,
                                     ),
@@ -1070,7 +1023,7 @@ class _ProtocolFieldState extends State<_ProtocolField> {
                               child: Icon(
                                 Icons.expand_more_rounded,
                                 size: 19,
-                                color: colors.textMuted,
+                                color: context.appTextSecondary,
                               ),
                             ),
                           ],
@@ -1098,22 +1051,21 @@ class _ProtocolMenuSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Container(
       width: width,
       padding: const EdgeInsets.symmetric(vertical: verticalPadding),
       decoration: BoxDecoration(
-        color: colors.surface,
-        border: Border.all(color: colors.border),
+        color: context.appCardBg,
+        border: Border.all(color: context.appBorder),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: colors.shadow,
+            color: const Color(0x05000000),
             blurRadius: 24,
             offset: Offset(0, 10),
           ),
           BoxShadow(
-            color: colors.shadow.withValues(alpha: 0.12),
+            color: const Color(0x05000000).withValues(alpha: 0.12),
             blurRadius: 4,
             offset: Offset(0, 1),
           ),
@@ -1148,12 +1100,13 @@ class _ProtocolMenuOptionState extends State<_ProtocolMenuOption> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final active = widget.selected || _hovered;
     final backgroundColor = widget.selected
-        ? colors.surfacePressed
-        : colors.surfaceHover;
-    final contentColor = active ? colors.text : colors.textMuted;
+        ? context.appCardBgHover
+        : context.appCardBgHover;
+    final contentColor = active
+        ? context.appTextPrimary
+        : context.appTextSecondary;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -1203,7 +1156,11 @@ class _ProtocolMenuOptionState extends State<_ProtocolMenuOption> {
                         ),
                       ),
                       if (widget.selected)
-                        Icon(Icons.check_rounded, size: 17, color: colors.text),
+                        Icon(
+                          Icons.check_rounded,
+                          size: 17,
+                          color: context.appTextPrimary,
+                        ),
                     ],
                   ),
                 ),
@@ -1238,7 +1195,6 @@ class _StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Container(
       height: 26,
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -1252,7 +1208,7 @@ class _StatusPill extends StatelessWidget {
                   ? const Color(0xFF3B2714)
                   : const Color(0xFFFFEDD5)),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: colors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Text(
         enabled ? '启用' : '禁用',
@@ -1293,9 +1249,8 @@ class _DialogFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Dialog(
-      backgroundColor: colors.surface,
+      backgroundColor: context.appCardBg,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: width),
@@ -1309,9 +1264,9 @@ class _DialogFrame extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.titleLarge?.copyWith(color: colors.text),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: context.appTextPrimary,
+                    ),
                   ),
                   const Spacer(),
                   IconButton(
@@ -1344,15 +1299,15 @@ class _DialogTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextField(
         controller: controller,
         obscureText: obscureText,
-        style: Theme.of(
-          context,
-        ).textTheme.bodyLarge?.copyWith(color: colors.text, height: 1.25),
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+          color: context.appTextPrimary,
+          height: 1.25,
+        ),
         decoration: InputDecoration(labelText: label),
       ),
     );
@@ -1372,14 +1327,13 @@ class _DialogSwitchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Container(
       height: 56,
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: colors.surfaceMuted,
-        border: Border.all(color: colors.border),
+        color: context.appCardBgHover,
+        border: Border.all(color: context.appBorder),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
@@ -1388,12 +1342,297 @@ class _DialogSwitchRow extends StatelessWidget {
             label,
             style: Theme.of(
               context,
-            ).textTheme.bodyMedium?.copyWith(color: colors.text),
+            ).textTheme.bodyMedium?.copyWith(color: context.appTextPrimary),
           ),
           const Spacer(),
           Switch(value: value, onChanged: onChanged),
         ],
       ),
     );
+  }
+}
+
+/// 滑块设置行（双端标签 + 当前值）。
+class _SliderSettingRow extends StatelessWidget {
+  const _SliderSettingRow({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    this.min = 0,
+    this.max = 1,
+    this.divisions,
+    this.suffix = '',
+    this.enabled = true,
+    this.valueFormatter,
+  });
+
+  final String label;
+  final double value;
+  final double min;
+  final double max;
+  final int? divisions;
+  final String suffix;
+  final bool enabled;
+  final ValueChanged<double> onChanged;
+
+  /// 自定义值格式化；默认显示百分比。
+  final String Function(double v)? valueFormatter;
+
+  @override
+  Widget build(BuildContext context) {
+    final displayValue = valueFormatter != null
+        ? valueFormatter!(value)
+        : '${(value * 100).round()}%';
+    return _SettingRowShell(
+      label: label,
+      enabled: enabled,
+      child: SizedBox(
+        width: 240,
+        child: Row(
+          children: [
+            Expanded(
+              child: SliderTheme(
+                data: SliderThemeData(
+                  activeTrackColor: context.appTextPrimary,
+                  inactiveTrackColor: context.appBorder,
+                  thumbColor: context.appTextPrimary,
+                  overlayColor: context.appTextPrimary.withOpacity(0.08),
+                  trackHeight: 3,
+                ),
+                child: Slider(
+                  value: value.clamp(min, max),
+                  min: min,
+                  max: max,
+                  divisions: divisions,
+                  onChanged: enabled ? onChanged : null,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 56,
+              child: Text(
+                displayValue,
+                textAlign: TextAlign.right,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: context.appTextSecondary,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 颜色选择行（点击后弹出原生颜色选择器）。
+class _ColorSettingRow extends StatelessWidget {
+  const _ColorSettingRow({
+    required this.label,
+    required this.color,
+    required this.onChanged,
+  });
+
+  final String label;
+  final Color color;
+  final ValueChanged<Color> onChanged;
+
+  Future<void> _pickColor(BuildContext context) async {
+    final result = await showModalBottomSheet<Color>(
+      context: context,
+      backgroundColor: context.appCardBg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (ctx) => _ColorPickerSheet(current: color),
+    );
+    if (result != null) onChanged(result);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _SettingRowShell(
+      label: label,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: () => _pickColor(context),
+          child: Container(
+            width: 44,
+            height: 28,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: context.appBorder),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ColorPickerSheet extends StatelessWidget {
+  const _ColorPickerSheet({required this.current});
+
+  final Color current;
+
+  static const _palette = <Color>[
+    Color(0xFFF1FAEF),
+    Color(0xFFFFFFFF),
+    Color(0xFFE2E8F0),
+    Color(0xFFFCE7F3),
+    Color(0xFFFEF3C7),
+    Color(0xFFDCFCE7),
+    Color(0xFFE0E7FF),
+    Color(0xFFFEE2E2),
+    Color(0xFF1F2024),
+    Color(0xFF121316),
+    Color(0xFF0F172A),
+    Color(0xFF1E293B),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('选择颜色', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final c in _palette)
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(c),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: c,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: c.value == current.value
+                              ? context.appTextPrimary
+                              : context.appBorder,
+                          width: c.value == current.value ? 2 : 1,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 实时壁纸预览条。
+class _WallpaperPreview extends StatelessWidget {
+  const _WallpaperPreview({
+    required this.settings,
+    required this.dataDirectory,
+  });
+
+  final WallpaperSettings settings;
+  final String dataDirectory;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 96,
+      decoration: BoxDecoration(
+        color: context.appBgSecondary,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: context.appBorder),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (settings.mode == WallpaperMode.image)
+            _previewImage()
+          else if (settings.mode == WallpaperMode.solid)
+            Container(color: Color(settings.solidColorArgb))
+          else
+            DefaultGreenWallpaper(showLeaves: !context.appIsDark),
+          if (settings.maskOpacity > 0)
+            Container(
+              color: context.appBg.withOpacity(
+                settings.maskOpacity.clamp(0.0, 1.0),
+              ),
+            ),
+          Positioned(
+            left: 12,
+            right: 12,
+            bottom: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: settings.transparentControls
+                    ? context.appCardBg.withOpacity(
+                        settings.controlAlpha.clamp(0.0, 1.0),
+                      )
+                    : context.appCardBg,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: context.appBorder.withOpacity(
+                    settings.showBorders ? 1.0 : 0.0,
+                  ),
+                ),
+              ),
+              child: Text(
+                '预览 · ${_modeLabel(settings.mode)}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: context.appTextSecondary,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _previewImage() {
+    final abs = WallpaperService.resolveAbsolutePath(
+      settings: settings,
+      dataDirectory: dataDirectory,
+    );
+    if (abs == null) return DefaultGreenWallpaper(showLeaves: false);
+    final file = File(abs);
+    return FutureBuilder<bool>(
+      future: file.exists(),
+      builder: (context, snap) {
+        if (snap.data != true) return DefaultGreenWallpaper(showLeaves: false);
+        return Image.file(
+          file,
+          fit: WallpaperService.toBoxFit(settings.fillMode),
+          gaplessPlayback: true,
+          errorBuilder: (_, __, ___) =>
+              DefaultGreenWallpaper(showLeaves: false),
+        );
+      },
+    );
+  }
+
+  static String _modeLabel(WallpaperMode mode) {
+    switch (mode) {
+      case WallpaperMode.defaultBg:
+        return '默认绿叶';
+      case WallpaperMode.image:
+        return '本地图片';
+      case WallpaperMode.solid:
+        return '纯色';
+    }
   }
 }

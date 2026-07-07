@@ -6,6 +6,7 @@ import 'package:gpt_markdown/gpt_markdown.dart';
 
 import '../services/update_check_service.dart';
 import '../theme/app_theme.dart';
+import '../theme/context_extensions.dart';
 import 'markdown_code_block.dart';
 
 Future<void> showAppUpdateDialog({
@@ -51,9 +52,8 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final colors = AppTheme.colors(context);
     return Dialog(
-      backgroundColor: colors.surface,
+      backgroundColor: context.appCardBg,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: ConstrainedBox(
@@ -97,14 +97,14 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: colors.surfaceMuted,
+                    color: context.appCardBgHover,
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: SelectionArea(
                     child: SingleChildScrollView(
                       child: DefaultTextStyle.merge(
                         style: textTheme.bodyLarge?.copyWith(
-                          color: colors.text,
+                          color: context.appTextPrimary,
                           fontSize: 14,
                           height: 1.55,
                         ),
@@ -115,7 +115,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                           codeBuilder: (context, name, code, closed) =>
                               MarkdownCodeBlock(language: name, code: code),
                           style: textTheme.bodyLarge?.copyWith(
-                            color: colors.text,
+                            color: context.appTextPrimary,
                             fontSize: 14,
                             height: 1.55,
                           ),
@@ -193,7 +193,6 @@ class _UpdateInstallStatus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
     final error = errorMessage;
     if (error != null) {
@@ -222,8 +221,8 @@ class _UpdateInstallStatus extends StatelessWidget {
         _StatusBand(
           icon: Icons.downloading_rounded,
           text: text,
-          color: colors.text,
-          background: colors.surfaceMuted,
+          color: context.appTextPrimary,
+          background: context.appCardBgHover,
         ),
         if (current?.stage == UpdateInstallStage.downloading ||
             current?.stage == UpdateInstallStage.extracting) ...[
@@ -232,8 +231,8 @@ class _UpdateInstallStatus extends StatelessWidget {
             value: current?.fraction,
             minHeight: 5,
             borderRadius: BorderRadius.circular(99),
-            backgroundColor: colors.surfacePressed,
-            color: colors.text,
+            backgroundColor: context.appCardBgHover,
+            color: context.appTextPrimary,
           ),
         ],
       ],
@@ -376,21 +375,23 @@ class _UpdateMetaPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
       decoration: BoxDecoration(
-        color: colors.surfaceMuted,
+        color: context.appCardBgHover,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text.rich(
         TextSpan(
           text: '$label ',
-          style: TextStyle(color: colors.textSubtle),
+          style: TextStyle(color: context.appTextTertiary),
           children: [
             TextSpan(
               text: value,
-              style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: context.appTextPrimary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -422,11 +423,12 @@ class _UpdateActionButtonState extends State<_UpdateActionButton> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final enabled = widget.onTap != null;
     final active = enabled && _hovered;
-    final background = active ? colors.textMuted : colors.text;
-    final foreground = colors.onAccent;
+    final background = active
+        ? context.appTextSecondary
+        : context.appTextPrimary;
+    final foreground = Colors.white;
     return MouseRegion(
       cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
       onEnter: (_) {

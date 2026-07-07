@@ -3,6 +3,7 @@ import 'package:window_manager/window_manager.dart';
 
 import '../services/desktop_window_controller.dart';
 import '../theme/app_theme.dart';
+import '../theme/context_extensions.dart';
 
 class AppWindowFrame extends StatelessWidget {
   const AppWindowFrame({super.key, required this.child});
@@ -83,9 +84,8 @@ class _AppWindowTitleBarState extends State<AppWindowTitleBar>
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    final colors = AppTheme.colors(context);
     final textStyle = Theme.of(context).textTheme.labelLarge?.copyWith(
-      color: colors.textMuted,
+      color: context.appTextSecondary,
       fontSize: 12.5,
       fontWeight: FontWeight.w500,
       height: 1,
@@ -93,7 +93,7 @@ class _AppWindowTitleBarState extends State<AppWindowTitleBar>
     );
 
     return ColoredBox(
-      color: colors.background,
+      color: context.appBg,
       child: SizedBox(
         height: AppWindowTitleBar.height,
         child: Row(
