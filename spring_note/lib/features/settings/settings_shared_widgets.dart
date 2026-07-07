@@ -1613,10 +1613,11 @@ class _ColorPickerSheet extends StatelessWidget {
   final Color current;
 
   static const _palette = [
-    Color(0xFFF1FAEF),
     Color(0xFFFFFFFF),
+    Color(0xFFFCFCFC),
     Color(0xFFEDEDED),
     Color(0xFFE2E8F0),
+    Color(0xFFF1FAEF),
     Color(0xFFFCE7F3),
     Color(0xFFFEF3C7),
     Color(0xFFDCFCE7),
@@ -1731,22 +1732,20 @@ class _WallpaperPreview extends StatelessWidget {
   Widget _previewSource(BuildContext context) {
     switch (settings.mode) {
       case WallpaperMode.defaultBg:
-        return DefaultGreenWallpaper(
-          showLeaves: Theme.of(context).brightness != Brightness.dark,
-        );
+        return const DefaultWallpaper();
       case WallpaperMode.image:
         final path = WallpaperService.resolveAbsolutePath(
           settings: settings,
           dataDirectory: dataDirectory,
         );
         if (path == null) {
-          return const DefaultGreenWallpaper();
+          return const DefaultWallpaper();
         }
         return Image.file(
           File(path),
           fit: WallpaperService.toBoxFit(settings.fillMode),
           gaplessPlayback: true,
-          errorBuilder: (_, _, _) => const DefaultGreenWallpaper(),
+          errorBuilder: (_, _, _) => const DefaultWallpaper(),
         );
       case WallpaperMode.solid:
         return ColoredBox(color: Color(settings.solidColorArgb));

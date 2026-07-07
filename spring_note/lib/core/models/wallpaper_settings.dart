@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 /// 壁纸模式
 enum WallpaperMode {
-  /// 程序内置默认绿叶清新背景（CustomPainter 绘制，无外部资源）
+  /// 跟随应用主题的默认纯色背景。
   defaultBg,
 
   /// 用户自定义本地图片
@@ -41,7 +41,7 @@ class WallpaperSettings {
     this.textContrast = 0.0,
   });
 
-  /// 默认配置：使用程序化默认背景，不透明控件，不模糊，无蒙版
+  /// 默认配置：使用应用默认背景，不透明控件，不模糊，无蒙版
   static const WallpaperSettings defaults = WallpaperSettings(
     mode: WallpaperMode.defaultBg,
     imagePath: null,
@@ -49,7 +49,7 @@ class WallpaperSettings {
     opacity: 1.0,
     blur: 0.0,
     maskOpacity: 0.0,
-    solidColorArgb: 0xFFF1FAEF,
+    solidColorArgb: 0xFFFFFFFF,
   );
 
   final WallpaperMode mode;
@@ -144,7 +144,7 @@ class WallpaperSettings {
       opacity: (json['opacity'] as num?)?.toDouble() ?? 1.0,
       blur: (json['blur'] as num?)?.toDouble() ?? 0.0,
       maskOpacity: (json['maskOpacity'] as num?)?.toDouble() ?? 0.0,
-      solidColorArgb: (json['solidColorArgb'] as int?) ?? 0xFFF1FAEF,
+      solidColorArgb: (json['solidColorArgb'] as int?) ?? 0xFFFFFFFF,
       transparentControls: json['transparentControls'] as bool? ?? false,
       controlAlpha: (json['controlAlpha'] as num?)?.toDouble() ?? 1.0,
       showBorders: json['showBorders'] as bool? ?? true,
