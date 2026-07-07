@@ -45,6 +45,7 @@ class MarkdownPreview extends StatelessWidget {
     }
 
     final textTheme = Theme.of(context).textTheme;
+    final markdownTheme = GptMarkdownTheme.of(context);
     return SelectionArea(
       child: SingleChildScrollView(
         controller: scrollController,
@@ -61,25 +62,31 @@ class MarkdownPreview extends StatelessWidget {
                   fontSize: 14,
                   height: 1.55,
                 ),
-                child: GptMarkdown(
-                  _markdownWithRenderableImageUris(markdown),
-                  followLinkColor: true,
-                  useDollarSignsForLatex: true,
-                  codeBuilder: (context, name, code, closed) =>
-                      MarkdownCodeBlock(language: name, code: code),
-                  imageBuilder: (context, url, width, height) =>
-                      _MarkdownPreviewImage(
-                        url: url,
-                        width: width,
-                        height: height,
-                        localImageBasePath: localImageBasePath,
-                      ),
-                  style: textTheme.bodyLarge?.copyWith(
-                    color: colors.text,
-                    fontSize: 14,
-                    height: 1.55,
+                child: GptMarkdownTheme(
+                  gptThemeData: markdownTheme.copyWith(
+                    h1: markdownTheme.h1?.copyWith(height: 1.0),
+                    hrLinePadding: const EdgeInsets.only(bottom: 10),
                   ),
-                  onLinkTap: (url, title) {},
+                  child: GptMarkdown(
+                    _markdownForPreview(markdown),
+                    followLinkColor: true,
+                    useDollarSignsForLatex: true,
+                    codeBuilder: (context, name, code, closed) =>
+                        MarkdownCodeBlock(language: name, code: code),
+                    imageBuilder: (context, url, width, height) =>
+                        _MarkdownPreviewImage(
+                          url: url,
+                          width: width,
+                          height: height,
+                          localImageBasePath: localImageBasePath,
+                        ),
+                    style: textTheme.bodyLarge?.copyWith(
+                      color: colors.text,
+                      fontSize: 14,
+                      height: 1.55,
+                    ),
+                    onLinkTap: (url, title) {},
+                  ),
                 ),
               ),
             ),
@@ -88,6 +95,76 @@ class MarkdownPreview extends StatelessWidget {
       ),
     );
   }
+}
+
+String _markdownForPreview(String markdown) {
+  return _markdownWithRenderableImageUris(
+    _normalizeAtxHeadingSpacing(markdown),
+  );
+}
+
+String _normalizeAtxHeadingSpacing(String markdown) {
+  if (markdown.isEmpty) {
+    return markdown;
+  }
+
+  final lines = markdown
+      .replaceAll('\r\n', '\n')
+      .replaceAll('\r', '\n')
+      .split('\n');
+  final buffer = StringBuffer();
+  var inFence = false;
+  String? fenceCharacter;
+  var fenceLength = 0;
+
+  for (var index = 0; index < lines.length; index++) {
+    final line = lines[index];
+    buffer.write(line);
+    if (index < lines.length - 1) {
+      buffer.write('\n');
+    }
+
+    final fenceMatch = _fencedCodeBlockPattern.firstMatch(line);
+    if (fenceMatch != null) {
+      final fence = fenceMatch.group(1)!;
+      final currentFenceCharacter = fence[0];
+      if (!inFence) {
+        inFence = true;
+        fenceCharacter = currentFenceCharacter;
+        fenceLength = fence.length;
+      } else if (currentFenceCharacter == fenceCharacter &&
+          fence.length >= fenceLength) {
+        inFence = false;
+        fenceCharacter = null;
+        fenceLength = 0;
+      }
+    }
+
+    if (inFence || index >= lines.length - 1 || !_isAtxHeading(line)) {
+      continue;
+    }
+
+    var nextContentIndex = index + 1;
+    while (nextContentIndex < lines.length &&
+        lines[nextContentIndex].trim().isEmpty) {
+      nextContentIndex++;
+    }
+
+    if (nextContentIndex > index + 1 && nextContentIndex < lines.length) {
+      index = nextContentIndex - 1;
+    }
+  }
+
+  return buffer.toString();
+}
+
+final _atxHeadingPattern = RegExp(
+  r'^[ \t]{0,3}#{1,6}(?!#)(?:[ \t]+.*|[ \t]*)$',
+);
+final _fencedCodeBlockPattern = RegExp(r'^[ \t]{0,3}(`{3,}|~{3,})');
+
+bool _isAtxHeading(String line) {
+  return _atxHeadingPattern.hasMatch(line);
 }
 
 String _markdownWithRenderableImageUris(String markdown) {

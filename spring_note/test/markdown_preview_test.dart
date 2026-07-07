@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:spring_note/core/theme/app_theme.dart';
 import 'package:spring_note/features/notes/markdown_local_image_io.dart';
 import 'package:spring_note/features/notes/markdown_preview.dart';
@@ -42,6 +43,41 @@ void main() {
     expect(plainText, contains('SQL 注入'));
     expect(plainText, isNot(contains('**SQL 注入**')));
     expect(_hasBoldText(richTexts, 'SQL 注入'), isTrue);
+  });
+
+  testWidgets('markdown preview keeps h1 divider close to heading', (
+    WidgetTester tester,
+  ) async {
+    await _pumpPreview(tester, '# 标题\n\n正文');
+
+    final markdownTheme = tester.widget<GptMarkdownTheme>(
+      find.byType(GptMarkdownTheme),
+    );
+
+    expect(markdownTheme.gptThemeData.h1?.height, 1.0);
+    expect(
+      markdownTheme.gptThemeData.hrLinePadding,
+      const EdgeInsets.only(bottom: 10),
+    );
+  });
+
+  testWidgets('markdown preview renders h1 followed by text consistently', (
+    WidgetTester tester,
+  ) async {
+    const compact =
+        '# 2026-07-07 日报\n'
+        '今天完成了登录接口的开发工作，目前接口已可正常调用。下午点了一杯咖啡提神，继续跟进后续联调准备。';
+    const spaced =
+        '# 2026-07-07 日报\n\n'
+        '今天完成了登录接口的开发工作，目前接口已可正常调用。下午点了一杯咖啡提神，继续跟进后续联调准备。';
+
+    await _pumpPreview(tester, compact);
+    final compactText = _previewPlainText(tester);
+
+    await _pumpPreview(tester, spaced);
+    final spacedText = _previewPlainText(tester);
+
+    expect(compactText, spacedText);
   });
 
   test(
@@ -357,6 +393,13 @@ Future<void> _pumpPreview(
       ),
     ),
   );
+}
+
+String _previewPlainText(WidgetTester tester) {
+  return tester
+      .widgetList<RichText>(find.byType(RichText))
+      .map((richText) => richText.text.toPlainText())
+      .join('\n');
 }
 
 bool _hasBoldText(Iterable<RichText> richTexts, String text) {
