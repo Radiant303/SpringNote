@@ -11,23 +11,9 @@ import 'app_style_palette.dart';
 /// 旧的 `AppTheme.background` 等静态常量**保留**作为 ThemeData 默认值来源；
 /// UI 渲染处全部走这里。
 extension AppStyleContext on BuildContext {
-  /// 当前主题注入的调色板。
-  ///
-  /// MaterialApp.builder 阶段会注入 [AppStylePalette]，正常业务页面都应该
-  /// 拿到非空值。但有些场景（独立路由、overlay 浮层、未继承 builder Theme
-  /// 的子路由）可能拿到一个不包含该扩展的 ThemeData，此时 `extension<T>()!`
-  /// 会抛出空断言异常，导致打开 [Dialog] / [BottomSheet] / [PopupMenu]
-  /// 时直接崩溃。
-  ///
-  /// 这里采用防御性回退：根据当前 ThemeData 的 brightness 选择一套内置默认
-  /// 调色板，确保任何合法 BuildContext 都能安全访问 [appCardBg] 等扩展。
-  AppStylePalette get appPalette {
-    final injected = Theme.of(this).extension<AppStylePalette>();
-    if (injected != null) return injected;
-    return Theme.of(this).brightness == Brightness.dark
-        ? AppStylePalette.dark()
-        : AppStylePalette.light();
-  }
+  /// 当前主题注入的调色板（必非空，MaterialApp builder 阶段会注入）。
+  AppStylePalette get appPalette =>
+      Theme.of(this).extension<AppStylePalette>()!;
 
   /// 渲染层主背景（默认跟随 scaffold，实际是被 wallpaperLayer 覆盖之前的占位）
   Color get appBg => appPalette.bg;
