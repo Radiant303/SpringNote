@@ -219,10 +219,6 @@ class _PreferencesPanel extends StatelessWidget {
         _SettingsCard(
           title: '壁纸',
           children: [
-            _WallpaperPreview(
-              settings: config.wallpaperSettings,
-              dataDirectory: dataDirectory,
-            ),
             _ChoiceSettingRow<WallpaperMode>(
               label: '模式',
               value: config.wallpaperSettings.mode,

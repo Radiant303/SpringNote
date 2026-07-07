@@ -24,7 +24,6 @@ import '../../core/services/update_check_service.dart';
 import '../../core/services/wallpaper_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/update_dialog.dart';
-import '../../core/widgets/wallpaper_layer.dart';
 import 'settings_stats_panel.dart';
 
 part 'settings_preferences_panel.dart';
