@@ -2218,59 +2218,120 @@ class _WorkspaceModeSegmentedControl extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
+    final textStyle =
+        Theme.of(context).textTheme.bodySmall?.copyWith(
+          fontSize: 11,
+          fontWeight: FontWeight.w400,
+          height: 1.2,
+        ) ??
+        const TextStyle(fontSize: 11, fontWeight: FontWeight.w400, height: 1.2);
+    final textDirection = Directionality.of(context);
+    final textScaler = MediaQuery.textScalerOf(context);
+    final borderColor = colors.border.a == 0
+        ? colors.border
+        : colors.border.withValues(alpha: 0.30);
+    final highlightColor = Theme.of(context).brightness == Brightness.dark
+        ? colors.surface
+        : Colors.white;
     final selectedIndex = _options.indexOf(value);
+    const horizontalPadding = 12.0;
+    const verticalPadding = 4.0;
+    const outerPadding = 2.0;
+    const borderWidth = 1.0;
+    const gap = 4.0;
+    final segmentWidths = [
+      for (final option in _options)
+        _measureTextWidth(
+              label: _labels[option]!,
+              style: textStyle,
+              textDirection: textDirection,
+              textScaler: textScaler,
+            ) +
+            horizontalPadding * 2,
+    ];
+    final selectedLeft = selectedIndex <= 0
+        ? 0.0
+        : segmentWidths
+                  .take(selectedIndex)
+                  .fold(0.0, (sum, width) => sum + width) +
+              gap * selectedIndex;
+    final innerWidth =
+        segmentWidths.fold(0.0, (sum, width) => sum + width) +
+        gap * (_options.length - 1);
+    final controlWidth = innerWidth + outerPadding * 2 + borderWidth * 2;
+
     return SizedBox(
-      width: 156,
-      height: 30,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final segmentWidth = constraints.maxWidth / _options.length;
-          return Container(
-            decoration: BoxDecoration(
-              color: colors.surfaceMuted,
-              border: Border.all(color: colors.border),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Stack(
-              children: [
-                AnimatedPositioned(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeOutCubic,
-                  left: selectedIndex * segmentWidth + 3,
-                  top: 3,
-                  width: segmentWidth - 6,
-                  height: 24,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: colors.surface,
-                      borderRadius: BorderRadius.circular(7),
-                      boxShadow: [
-                        BoxShadow(
-                          color: colors.shadow.withValues(alpha: 0.12),
-                          blurRadius: 7,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+      width: controlWidth,
+      height: 28,
+      child: Container(
+        padding: const EdgeInsets.all(outerPadding),
+        decoration: BoxDecoration(
+          color: colors.surfaceMuted.withValues(alpha: 0.60),
+          border: Border.all(color: borderColor, width: borderWidth),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Stack(
+          children: [
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              left: selectedLeft,
+              top: 0,
+              bottom: 0,
+              width: segmentWidths[selectedIndex],
+              child: Container(
+                decoration: BoxDecoration(
+                  color: highlightColor,
+                  borderRadius: BorderRadius.circular(6),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors.shadow.withValues(alpha: 0.12),
+                      blurRadius: 7,
+                      offset: const Offset(0, 2),
                     ),
-                  ),
-                ),
-                Row(
-                  children: [
-                    for (final option in _options)
-                      _WorkspaceModeSegment(
-                        mode: option,
-                        label: _labels[option]!,
-                        selected: option == value,
-                        onTap: () => onChanged(option),
-                      ),
                   ],
                 ),
+              ),
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final (index, option) in _options.indexed) ...[
+                  SizedBox(
+                    width: segmentWidths[index],
+                    child: _WorkspaceModeSegment(
+                      mode: option,
+                      label: _labels[option]!,
+                      selected: option == value,
+                      textStyle: textStyle,
+                      horizontalPadding: horizontalPadding,
+                      verticalPadding: verticalPadding,
+                      onTap: () => onChanged(option),
+                    ),
+                  ),
+                  if (index != _options.length - 1) const SizedBox(width: gap),
+                ],
               ],
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
+  }
+
+  static double _measureTextWidth({
+    required String label,
+    required TextStyle style,
+    required TextDirection textDirection,
+    required TextScaler textScaler,
+  }) {
+    final painter = TextPainter(
+      text: TextSpan(text: label, style: style),
+      maxLines: 1,
+      textDirection: textDirection,
+      textScaler: textScaler,
+    )..layout();
+    return painter.width;
   }
 }
 
@@ -2279,40 +2340,40 @@ class _WorkspaceModeSegment extends StatelessWidget {
     required this.mode,
     required this.label,
     required this.selected,
+    required this.textStyle,
+    required this.horizontalPadding,
+    required this.verticalPadding,
     required this.onTap,
   });
 
   final _EditorWorkspaceMode mode;
   final String label;
   final bool selected;
+  final TextStyle textStyle;
+  final double horizontalPadding;
+  final double verticalPadding;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
-    return Expanded(
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          key: ValueKey('notes-workspace-mode-${mode.name}'),
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        key: ValueKey('notes-workspace-mode-${mode.name}'),
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: horizontalPadding,
+            vertical: verticalPadding,
+          ),
           child: Center(
             child: AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 140),
-              style:
-                  Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: selected ? colors.text : colors.textSubtle,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w400,
-                    height: 1.2,
-                  ) ??
-                  TextStyle(
-                    color: selected ? colors.text : colors.textSubtle,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w400,
-                    height: 1.2,
-                  ),
+              style: textStyle.copyWith(
+                color: selected ? colors.text : colors.textSubtle,
+              ),
               child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
           ),

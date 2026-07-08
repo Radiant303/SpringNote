@@ -1118,8 +1118,9 @@ class _ThinkingControl extends StatelessWidget {
       height: 36,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final segmentWidth = constraints.maxWidth / 3;
+          final segmentWidth = (constraints.maxWidth - 6) / 3;
           return Container(
+            padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
               color: backgroundColor,
               border: Border.all(color: borderColor),
@@ -1130,10 +1131,10 @@ class _ThinkingControl extends StatelessWidget {
                 AnimatedPositioned(
                   duration: const Duration(milliseconds: 180),
                   curve: Curves.easeOutCubic,
-                  left: selectedIndex * segmentWidth + 3,
-                  top: 3,
-                  width: segmentWidth - 6,
-                  height: 28,
+                  left: selectedIndex * segmentWidth,
+                  top: 0,
+                  bottom: 0,
+                  width: segmentWidth,
                   child: Container(
                     decoration: BoxDecoration(
                       color: thumbColor,
