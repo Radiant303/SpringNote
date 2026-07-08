@@ -124,7 +124,18 @@ class WallpaperService {
     await _pruneOldWallpapers(dir, keepPaths: keepPaths);
 
     final relativePath = p.relative(destPath, from: dataDirectory);
-    return current.copyWith(mode: WallpaperMode.image, imagePath: relativePath);
+    return current.copyWith(
+      mode: WallpaperMode.image,
+      imagePath: relativePath,
+      fillMode: WallpaperFillMode.cover,
+      opacity: 1.0,
+      blur: 0.0,
+      maskOpacity: 0.92,
+      transparentControls: true,
+      controlAlpha: 0.5,
+      showBorders: true,
+      textContrast: 0.0,
+    );
   }
 
   /// 清理 wallpapers 目录中除 [keepPaths] 之外的所有 `wallpaper_*` 文件。
