@@ -1439,7 +1439,7 @@ class _NotesKindMenuState extends State<_NotesKindMenu> {
         width: 190,
         padding: const EdgeInsets.all(7),
         decoration: BoxDecoration(
-          color: colors.surface,
+          color: AppTheme.menuSurface(context),
           border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
@@ -2080,7 +2080,7 @@ class _EditorContent extends StatelessWidget {
                           color: colors.textSubtle.withValues(alpha: 0.58),
                         ),
                         filled: true,
-                        fillColor: colors.surface,
+                        fillColor: colors.background,
                         hoverColor: Colors.transparent,
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
@@ -2365,7 +2365,7 @@ class _PaneFrame extends StatelessWidget {
     final colors = AppTheme.colors(context);
     return Container(
       decoration: BoxDecoration(
-        color: colors.surface,
+        color: colors.background,
         border: Border(left: BorderSide(color: colors.divider)),
       ),
       child: Column(

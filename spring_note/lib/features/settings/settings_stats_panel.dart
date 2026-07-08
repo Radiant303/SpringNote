@@ -924,7 +924,7 @@ class _StatsHeatmapTooltip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: colors.surface,
+          color: AppTheme.menuSurface(context),
           border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(8),
           boxShadow: [
@@ -1582,7 +1582,7 @@ class _UsageBarTooltip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 11, 12, 12),
       decoration: BoxDecoration(
-        color: colors.surface,
+        color: AppTheme.menuSurface(context),
         border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
@@ -1754,7 +1754,7 @@ class _StatsCustomRangeDialogState extends State<_StatsCustomRangeDialog> {
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
     return Dialog(
-      backgroundColor: colors.surface,
+      backgroundColor: AppTheme.dialogSurface(context),
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       child: SizedBox(
@@ -2061,7 +2061,7 @@ class _StatsCalendarDialogState extends State<_StatsCalendarDialog> {
     final dates = _visibleDates(_visibleMonth);
     final colors = AppTheme.colors(context);
     return Dialog(
-      backgroundColor: colors.surface,
+      backgroundColor: AppTheme.dialogSurface(context),
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       child: SizedBox(

@@ -500,7 +500,7 @@ class _DeleteProviderConfirmDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
     return Dialog(
-      backgroundColor: colors.surface,
+      backgroundColor: AppTheme.dialogSurface(context),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 340),
@@ -715,7 +715,7 @@ class _ProviderConnectionTestDialogState
     final colors = AppTheme.colors(context);
     return Dialog(
       key: const ValueKey('provider-connection-test-dialog'),
-      backgroundColor: colors.surface,
+      backgroundColor: AppTheme.dialogSurface(context),
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       child: SizedBox(
@@ -1009,10 +1009,9 @@ class _ProviderConnectionModelPickerDialogState
   @override
   Widget build(BuildContext context) {
     final models = _models;
-    final colors = AppTheme.colors(context);
     return Dialog(
       key: const ValueKey('provider-connection-model-picker-dialog'),
-      backgroundColor: colors.surface,
+      backgroundColor: AppTheme.dialogSurface(context),
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: SizedBox(
@@ -1456,7 +1455,7 @@ class _ProviderModelFetchDialogState extends State<_ProviderModelFetchDialog> {
     final colors = AppTheme.colors(context);
     return Dialog(
       key: const ValueKey('provider-model-fetch-dialog'),
-      backgroundColor: colors.surface,
+      backgroundColor: AppTheme.dialogSurface(context),
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: SizedBox(
@@ -2671,7 +2670,7 @@ class _ModelEditDialogShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
     return Dialog(
-      backgroundColor: colors.surface,
+      backgroundColor: AppTheme.dialogSurface(context),
       insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
       child: ConstrainedBox(

@@ -384,7 +384,7 @@ class _CloudSyncDeleteConfirmDialogState
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
     return Dialog(
-      backgroundColor: colors.surface,
+      backgroundColor: AppTheme.dialogSurface(context),
       clipBehavior: Clip.antiAlias,
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -820,6 +820,8 @@ class _DeleteModifyConflictDialogState
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
+          backgroundColor: AppTheme.dialogSurface(context),
+          surfaceTintColor: Colors.transparent,
           title: const Text('仍有未处理项'),
           content: Text('仍有 $remaining 个文件未选择处理方式，将自动视为“跳过此项”，是否继续？'),
           actions: [
@@ -879,7 +881,7 @@ class _DeleteModifyConflictDialogState
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
     return Dialog(
-      backgroundColor: colors.surface,
+      backgroundColor: AppTheme.dialogSurface(context),
       clipBehavior: Clip.antiAlias,
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),

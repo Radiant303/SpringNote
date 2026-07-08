@@ -635,7 +635,7 @@ class _DataMigrationCompleteDialog extends StatelessWidget {
     final colors = AppTheme.colors(context);
     return Dialog(
       key: const ValueKey('data-migration-complete-dialog'),
-      backgroundColor: colors.surface,
+      backgroundColor: AppTheme.dialogSurface(context),
       insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: SizedBox(
@@ -855,7 +855,7 @@ class _DailyMergePromptDialogState extends State<_DailyMergePromptDialog> {
     final colors = AppTheme.colors(context);
     return Dialog(
       key: const ValueKey('daily-merge-prompt-dialog'),
-      backgroundColor: colors.surface,
+      backgroundColor: AppTheme.dialogSurface(context),
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: SizedBox(
@@ -1958,7 +1958,7 @@ class _FontPickerDialogState extends State<_FontPickerDialog> {
     final fonts = _fonts;
     final colors = AppTheme.colors(context);
     return Dialog(
-      backgroundColor: colors.surface,
+      backgroundColor: AppTheme.dialogSurface(context),
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       child: SizedBox(

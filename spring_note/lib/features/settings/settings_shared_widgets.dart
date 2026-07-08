@@ -1100,7 +1100,7 @@ class _ProtocolMenuSurface extends StatelessWidget {
       width: width,
       padding: const EdgeInsets.symmetric(vertical: verticalPadding),
       decoration: BoxDecoration(
-        color: colors.surface,
+        color: AppTheme.menuSurface(context),
         border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
@@ -1292,7 +1292,7 @@ class _DialogFrame extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
     return Dialog(
-      backgroundColor: colors.surface,
+      backgroundColor: AppTheme.dialogSurface(context),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: width),
@@ -1635,10 +1635,9 @@ class _ColorSettingRow extends StatelessWidget {
   final ValueChanged<Color> onChanged;
 
   Future<void> _pickColor(BuildContext context) async {
-    final colors = AppTheme.colors(context);
     final result = await showModalBottomSheet<Color>(
       context: context,
-      backgroundColor: colors.surface,
+      backgroundColor: AppTheme.dialogSurface(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),

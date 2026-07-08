@@ -67,6 +67,28 @@ Object? _normalizeJsonValue(Object? value) {
   return value;
 }
 
+bool _usesPlainLightMemoryColors(
+  BuildContext context,
+  SpringThemeColors colors,
+) {
+  return Theme.of(context).brightness == Brightness.light &&
+      colors.surface == SpringThemeColors.light.surface &&
+      colors.surfaceMuted == SpringThemeColors.light.surfaceMuted &&
+      colors.border == SpringThemeColors.light.border &&
+      colors.text == SpringThemeColors.light.text &&
+      colors.textMuted == SpringThemeColors.light.textMuted &&
+      colors.textSubtle == SpringThemeColors.light.textSubtle;
+}
+
+Color _memoryLightFallbackColor(
+  BuildContext context,
+  SpringThemeColors colors, {
+  required Color themed,
+  required Color fallback,
+}) {
+  return _usesPlainLightMemoryColors(context, colors) ? fallback : themed;
+}
+
 class MemoryPage extends StatefulWidget {
   const MemoryPage({
     super.key,
@@ -1056,7 +1078,30 @@ class _ThinkingControl extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
-    final dark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = _memoryLightFallbackColor(
+      context,
+      colors,
+      themed: colors.surfaceMuted,
+      fallback: const Color(0xFFEDEDED),
+    );
+    final borderColor = _memoryLightFallbackColor(
+      context,
+      colors,
+      themed: colors.border,
+      fallback: const Color(0xFFE0E0E0),
+    );
+    final thumbColor = _memoryLightFallbackColor(
+      context,
+      colors,
+      themed: colors.surface,
+      fallback: Colors.white,
+    );
+    final thumbShadowColor = _memoryLightFallbackColor(
+      context,
+      colors,
+      themed: colors.shadow.withValues(alpha: 0.12),
+      fallback: const Color(0x14171717),
+    );
     final value = enabled ? effort : 'disabled';
     final labelStyle = Theme.of(
       context,
@@ -1076,10 +1121,8 @@ class _ThinkingControl extends StatelessWidget {
           final segmentWidth = constraints.maxWidth / 3;
           return Container(
             decoration: BoxDecoration(
-              color: dark ? colors.surfaceMuted : const Color(0xFFEDEDED),
-              border: Border.all(
-                color: dark ? colors.border : const Color(0xFFE0E0E0),
-              ),
+              color: backgroundColor,
+              border: Border.all(color: borderColor),
               borderRadius: BorderRadius.circular(999),
             ),
             child: Stack(
@@ -1093,13 +1136,11 @@ class _ThinkingControl extends StatelessWidget {
                   height: 28,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: dark ? colors.surface : Colors.white,
+                      color: thumbColor,
                       borderRadius: BorderRadius.circular(999),
                       boxShadow: [
                         BoxShadow(
-                          color: dark
-                              ? colors.shadow.withValues(alpha: 0.12)
-                              : const Color(0x14171717),
+                          color: thumbShadowColor,
                           blurRadius: 10,
                           offset: Offset(0, 2),
                         ),
@@ -1164,9 +1205,18 @@ class _ThinkingSegment extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final selectedColor = dark ? colors.text : const Color(0xFF171717);
-    final textColor = dark ? colors.textSubtle : const Color(0xFF666666);
+    final selectedColor = _memoryLightFallbackColor(
+      context,
+      colors,
+      themed: colors.text,
+      fallback: const Color(0xFF171717),
+    );
+    final textColor = _memoryLightFallbackColor(
+      context,
+      colors,
+      themed: colors.textSubtle,
+      fallback: const Color(0xFF666666),
+    );
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -1207,8 +1257,13 @@ class _MemoryMessageView extends StatelessWidget {
 
   Widget _buildMessage(BuildContext context) {
     final colors = AppTheme.colors(context);
-    final dark = Theme.of(context).brightness == Brightness.dark;
     if (message.role == 'user') {
+      final bubbleColor = _memoryLightFallbackColor(
+        context,
+        colors,
+        themed: colors.surfaceMuted,
+        fallback: const Color(0xFFF5F5F5),
+      );
       return Align(
         alignment: Alignment.centerRight,
         child: Container(
@@ -1216,7 +1271,7 @@ class _MemoryMessageView extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 28),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           decoration: BoxDecoration(
-            color: dark ? colors.surfaceMuted : const Color(0xFFF5F5F5),
+            color: bubbleColor,
             borderRadius: BorderRadius.circular(22),
           ),
           child: SelectableText(
@@ -1403,7 +1458,7 @@ class _ToolAttachmentChip extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: colors.surface,
+        backgroundColor: AppTheme.dialogSurface(context),
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: ConstrainedBox(
@@ -1587,12 +1642,30 @@ class _ReasoningBlockState extends State<_ReasoningBlock> {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final titleColor = dark ? colors.textSubtle : const Color(0xFF666666);
-    final iconColor = dark ? colors.textMuted : const Color(0xFF4F4F4F);
-    final durationColor = dark
-        ? colors.textSubtle.withValues(alpha: 0.7)
-        : const Color(0xB36B7280);
+    final backgroundColor = _memoryLightFallbackColor(
+      context,
+      colors,
+      themed: colors.surfaceMuted,
+      fallback: const Color(0xFFF5F5F5),
+    );
+    final titleColor = _memoryLightFallbackColor(
+      context,
+      colors,
+      themed: colors.textSubtle,
+      fallback: const Color(0xFF666666),
+    );
+    final iconColor = _memoryLightFallbackColor(
+      context,
+      colors,
+      themed: colors.textMuted,
+      fallback: const Color(0xFF4F4F4F),
+    );
+    final durationColor = _memoryLightFallbackColor(
+      context,
+      colors,
+      themed: colors.textSubtle.withValues(alpha: 0.7),
+      fallback: const Color(0xB36B7280),
+    );
     final titleStyle = Theme.of(context).textTheme.labelMedium?.copyWith(
       color: titleColor,
       fontWeight: FontWeight.w700,
@@ -1600,7 +1673,7 @@ class _ReasoningBlockState extends State<_ReasoningBlock> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: dark ? colors.surfaceMuted : const Color(0xFFF5F5F5),
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -1669,8 +1742,12 @@ class _ReasoningBlockState extends State<_ReasoningBlock> {
 
   Widget _buildReasoningBody(BuildContext context) {
     final colors = AppTheme.colors(context);
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final bodyColor = dark ? colors.textSubtle : const Color(0xFF666666);
+    final bodyColor = _memoryLightFallbackColor(
+      context,
+      colors,
+      themed: colors.textSubtle,
+      fallback: const Color(0xFF666666),
+    );
     final style = Theme.of(
       context,
     ).textTheme.bodySmall?.copyWith(color: bodyColor, height: 1.65);

@@ -11,6 +11,7 @@ import 'package:spring_note/core/models/model_config.dart';
 import 'package:spring_note/core/models/model_reference.dart';
 import 'package:spring_note/core/models/provider_config.dart';
 import 'package:spring_note/core/models/structured_work_note.dart';
+import 'package:spring_note/core/models/wallpaper_settings.dart';
 import 'package:spring_note/app.dart';
 import 'package:spring_note/core/router/app_shell.dart';
 import 'package:spring_note/core/services/cloud_sync_service.dart';
@@ -84,6 +85,36 @@ void main() {
     await tester.tap(find.byIcon(Icons.settings_outlined));
     await tester.pump();
     expect(find.text('偏好设置'), findsOneWidget);
+  });
+
+  testWidgets('wallpaper theme keeps state surfaces readable', (
+    WidgetTester tester,
+  ) async {
+    final localDataState = _testLocalDataState(
+      config: AppConfig.defaults().copyWith(
+        wallpaperSettings: WallpaperSettings.defaults.copyWith(
+          transparentControls: true,
+          controlAlpha: 0.2,
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: AppShell(
+          localDataState: localDataState,
+          updateCheckService: _IdleUpdateCheckService(),
+        ),
+      ),
+    );
+
+    final colors = AppTheme.colors(tester.element(find.byType(HomePage)));
+    expect(colors.surface.a, 0.2);
+    expect(colors.surfaceMuted.a, 0.2);
+    expect(colors.surfaceHover.a, 0.30);
+    expect(colors.surfacePressed.a, 0.30);
+    expect(colors.inputFocusedFill.a, 0.30);
   });
 
   testWidgets('startup cloud sync confirmation shows home warning', (

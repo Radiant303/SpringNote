@@ -299,7 +299,7 @@ class _ModelPickerDialogState extends State<_ModelPickerDialog> {
     final selectedRef = ModelReference.parse(widget.selectedValue);
     final colors = AppTheme.colors(context);
     return Dialog(
-      backgroundColor: colors.surface,
+      backgroundColor: AppTheme.dialogSurface(context),
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: SizedBox(

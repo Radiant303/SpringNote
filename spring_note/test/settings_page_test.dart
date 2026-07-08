@@ -28,6 +28,34 @@ void main() {
     expect(AppTheme.fontScaleFactor(200), 1.4);
   });
 
+  testWidgets('app theme keeps floating surfaces readable over transparency', (
+    WidgetTester tester,
+  ) async {
+    final transparentColors = SpringThemeColors.light.copyWith(
+      surface: SpringThemeColors.light.surface.withValues(alpha: 0.35),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light().copyWith(
+          extensions: <ThemeExtension<dynamic>>[transparentColors],
+        ),
+        home: Builder(
+          builder: (context) {
+            final dialogSurface = AppTheme.dialogSurface(context);
+            final menuSurface = AppTheme.menuSurface(context);
+
+            expect(dialogSurface.a, 0.94);
+            expect(menuSurface.a, 0.90);
+            expect(dialogSurface.r, transparentColors.surface.r);
+            expect(menuSurface.r, transparentColors.surface.r);
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+  });
+
   testWidgets('settings page applies dark theme colors', (
     WidgetTester tester,
   ) async {

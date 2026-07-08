@@ -168,6 +168,22 @@ class AppTheme {
         SpringThemeColors.light;
   }
 
+  static Color dialogSurface(BuildContext context) {
+    return _surfaceWithMinimumAlpha(colors(context).surface, 0.94);
+  }
+
+  static Color menuSurface(BuildContext context) {
+    return _surfaceWithMinimumAlpha(colors(context).surface, 0.90);
+  }
+
+  static Color _surfaceWithMinimumAlpha(Color color, double minimumAlpha) {
+    final alpha = color.a;
+    if (alpha >= 1 || alpha >= minimumAlpha) {
+      return color;
+    }
+    return color.withValues(alpha: minimumAlpha);
+  }
+
   static List<Color> activityHeatmapColors(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark
         ? darkActivityHeatmapColors
@@ -202,8 +218,8 @@ class AppTheme {
     // 为深色模式定制柔和的强调色
     final isDark = brightness == Brightness.dark;
     final linkColor = isDark
-        ? const Color(0xFF6BA4E7)  // 柔和的蓝色链接（降低饱和度和亮度）
-        : const Color(0xFF1E88E5);  // 浅色模式保持鲜艳
+        ? const Color(0xFF6BA4E7) // 柔和的蓝色链接（降低饱和度和亮度）
+        : const Color(0xFF1E88E5); // 浅色模式保持鲜艳
 
     final colorScheme = ColorScheme.fromSeed(
       seedColor: colors.text,
@@ -294,9 +310,9 @@ class AppTheme {
         }),
         trackOutlineColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return Colors.transparent;  // 开启时无边框
+            return Colors.transparent; // 开启时无边框
           }
-          return colors.border;  // 关闭时显示边框
+          return colors.border; // 关闭时显示边框
         }),
         overlayColor: const WidgetStatePropertyAll(Colors.transparent),
         splashRadius: 0,
@@ -330,9 +346,7 @@ class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: linkColor,
-          textStyle: const TextStyle(
-            decoration: TextDecoration.underline,
-          ),
+          textStyle: const TextStyle(decoration: TextDecoration.underline),
         ),
       ),
     );

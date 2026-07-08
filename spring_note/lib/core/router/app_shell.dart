@@ -68,6 +68,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     Duration(seconds: 15),
   ];
   static const _updateCheckResumeInterval = Duration(hours: 1);
+  static const _stateHoverAlphaFloor = 0.30;
+  static const _statePressedAlphaFloor = 0.30;
 
   AppSection _section = AppSection.home;
   late LocalDataState _localDataState = widget.localDataState;
@@ -720,6 +722,12 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     }
 
     final alpha = settings.controlAlpha.clamp(0.0, 1.0).toDouble();
+    final hoverAlpha = alpha < _stateHoverAlphaFloor
+        ? _stateHoverAlphaFloor
+        : alpha;
+    final pressedAlpha = alpha < _statePressedAlphaFloor
+        ? _statePressedAlphaFloor
+        : alpha;
     final text = _contrastText(colors.text, settings.textContrast, brightness);
     final textMuted =
         Color.lerp(colors.textMuted, text, 0.15) ?? colors.textMuted;
@@ -730,15 +738,15 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       sidebar: colors.sidebar.withValues(alpha: alpha),
       surface: colors.surface.withValues(alpha: alpha),
       surfaceMuted: colors.surfaceMuted.withValues(alpha: alpha),
-      surfaceHover: colors.surfaceHover.withValues(alpha: alpha),
-      surfacePressed: colors.surfacePressed.withValues(alpha: alpha),
+      surfaceHover: colors.surfaceHover.withValues(alpha: hoverAlpha),
+      surfacePressed: colors.surfacePressed.withValues(alpha: pressedAlpha),
       border: settings.showBorders ? colors.border : Colors.transparent,
       divider: settings.showBorders ? colors.divider : Colors.transparent,
       text: text,
       textMuted: textMuted,
       textSubtle: textSubtle,
       inputFill: colors.inputFill.withValues(alpha: alpha),
-      inputFocusedFill: colors.inputFocusedFill.withValues(alpha: alpha),
+      inputFocusedFill: colors.inputFocusedFill.withValues(alpha: hoverAlpha),
     );
   }
 
