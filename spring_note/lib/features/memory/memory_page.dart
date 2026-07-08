@@ -1056,6 +1056,7 @@ class _ThinkingControl extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final value = enabled ? effort : 'disabled';
     final labelStyle = Theme.of(
       context,
@@ -1075,8 +1076,10 @@ class _ThinkingControl extends StatelessWidget {
           final segmentWidth = constraints.maxWidth / 3;
           return Container(
             decoration: BoxDecoration(
-              color: colors.surfaceMuted,
-              border: Border.all(color: colors.border),
+              color: dark ? colors.surfaceMuted : const Color(0xFFEDEDED),
+              border: Border.all(
+                color: dark ? colors.border : const Color(0xFFE0E0E0),
+              ),
               borderRadius: BorderRadius.circular(999),
             ),
             child: Stack(
@@ -1090,11 +1093,13 @@ class _ThinkingControl extends StatelessWidget {
                   height: 28,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: colors.surface,
+                      color: dark ? colors.surface : Colors.white,
                       borderRadius: BorderRadius.circular(999),
                       boxShadow: [
                         BoxShadow(
-                          color: colors.shadow.withValues(alpha: 0.12),
+                          color: dark
+                              ? colors.shadow.withValues(alpha: 0.12)
+                              : const Color(0x14171717),
                           blurRadius: 10,
                           offset: Offset(0, 2),
                         ),
@@ -1159,6 +1164,9 @@ class _ThinkingSegment extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final selectedColor = dark ? colors.text : const Color(0xFF171717);
+    final textColor = dark ? colors.textSubtle : const Color(0xFF666666);
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -1167,10 +1175,8 @@ class _ThinkingSegment extends StatelessWidget {
           child: AnimatedDefaultTextStyle(
             duration: const Duration(milliseconds: 140),
             style:
-                style?.copyWith(
-                  color: selected ? colors.text : colors.textSubtle,
-                ) ??
-                TextStyle(color: selected ? colors.text : colors.textSubtle),
+                style?.copyWith(color: selected ? selectedColor : textColor) ??
+                TextStyle(color: selected ? selectedColor : textColor),
             child: Text(label),
           ),
         ),
@@ -1201,6 +1207,7 @@ class _MemoryMessageView extends StatelessWidget {
 
   Widget _buildMessage(BuildContext context) {
     final colors = AppTheme.colors(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
     if (message.role == 'user') {
       return Align(
         alignment: Alignment.centerRight,
@@ -1209,7 +1216,7 @@ class _MemoryMessageView extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 28),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           decoration: BoxDecoration(
-            color: colors.surfaceMuted,
+            color: dark ? colors.surfaceMuted : const Color(0xFFF5F5F5),
             borderRadius: BorderRadius.circular(22),
           ),
           child: SelectableText(
@@ -1580,14 +1587,20 @@ class _ReasoningBlockState extends State<_ReasoningBlock> {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final titleColor = dark ? colors.textSubtle : const Color(0xFF666666);
+    final iconColor = dark ? colors.textMuted : const Color(0xFF4F4F4F);
+    final durationColor = dark
+        ? colors.textSubtle.withValues(alpha: 0.7)
+        : const Color(0xB36B7280);
     final titleStyle = Theme.of(context).textTheme.labelMedium?.copyWith(
-      color: colors.textSubtle,
+      color: titleColor,
       fontWeight: FontWeight.w700,
     );
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: colors.surfaceMuted,
+        color: dark ? colors.surfaceMuted : const Color(0xFFF5F5F5),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -1605,7 +1618,7 @@ class _ReasoningBlockState extends State<_ReasoningBlock> {
                     Icon(
                       Icons.auto_awesome_outlined,
                       size: 17,
-                      color: colors.textMuted,
+                      color: iconColor,
                     ),
                     const SizedBox(width: 6),
                     Expanded(
@@ -1618,9 +1631,7 @@ class _ReasoningBlockState extends State<_ReasoningBlock> {
                                 text:
                                     ' (${_formatReasoningDuration(widget.duration!)})',
                                 style: titleStyle?.copyWith(
-                                  color: colors.textSubtle.withValues(
-                                    alpha: 0.7,
-                                  ),
+                                  color: durationColor,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -1634,7 +1645,7 @@ class _ReasoningBlockState extends State<_ReasoningBlock> {
                           ? Icons.keyboard_arrow_up_rounded
                           : Icons.keyboard_arrow_down_rounded,
                       size: 18,
-                      color: colors.textSubtle,
+                      color: titleColor,
                     ),
                   ],
                 ),
@@ -1658,9 +1669,11 @@ class _ReasoningBlockState extends State<_ReasoningBlock> {
 
   Widget _buildReasoningBody(BuildContext context) {
     final colors = AppTheme.colors(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final bodyColor = dark ? colors.textSubtle : const Color(0xFF666666);
     final style = Theme.of(
       context,
-    ).textTheme.bodySmall?.copyWith(color: colors.textSubtle, height: 1.65);
+    ).textTheme.bodySmall?.copyWith(color: bodyColor, height: 1.65);
     final text = Text(widget.reasoning.trim(), style: style);
     final body = widget.collapsed
         ? Padding(

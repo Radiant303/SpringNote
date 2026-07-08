@@ -708,7 +708,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
     return Material(
-      color: colors.background,
+      color: colors.sidebar,
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1184),
@@ -792,9 +792,25 @@ class _TodayHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return SoftCard(
       padding: const EdgeInsets.all(32),
       borderRadius: 26,
+      borderColor: dark ? null : const Color(0x99E0E0E0),
+      boxShadow: dark
+          ? null
+          : const [
+              BoxShadow(
+                color: Color(0x05000000),
+                blurRadius: 30,
+                offset: Offset(0, 4),
+              ),
+              BoxShadow(
+                color: Color(0x05000000),
+                blurRadius: 3,
+                offset: Offset(0, 1),
+              ),
+            ],
       child: LayoutBuilder(
         builder: (context, constraints) {
           final narrow = constraints.maxWidth < 860;

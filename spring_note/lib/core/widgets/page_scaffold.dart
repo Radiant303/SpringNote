@@ -84,6 +84,8 @@ class SoftCard extends StatelessWidget {
     this.borderRadius = 24,
     this.backgroundColor = AppTheme.surface,
     this.withShadow = true,
+    this.borderColor,
+    this.boxShadow,
   });
 
   final Widget child;
@@ -91,6 +93,8 @@ class SoftCard extends StatelessWidget {
   final double borderRadius;
   final Color backgroundColor;
   final bool withShadow;
+  final Color? borderColor;
+  final List<BoxShadow>? boxShadow;
 
   @override
   Widget build(BuildContext context) {
@@ -101,21 +105,22 @@ class SoftCard extends StatelessWidget {
         color: backgroundColor == AppTheme.surface
             ? colors.surface
             : backgroundColor,
-        border: Border.all(color: colors.border),
+        border: Border.all(color: borderColor ?? colors.border),
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: withShadow
-            ? [
-                BoxShadow(
-                  color: colors.shadow.withValues(alpha: 0.08),
-                  blurRadius: 30,
-                  offset: Offset(0, 4),
-                ),
-                BoxShadow(
-                  color: colors.shadow.withValues(alpha: 0.06),
-                  blurRadius: 3,
-                  offset: Offset(0, 1),
-                ),
-              ]
+            ? boxShadow ??
+                  [
+                    BoxShadow(
+                      color: colors.shadow.withValues(alpha: 0.08),
+                      blurRadius: 30,
+                      offset: Offset(0, 4),
+                    ),
+                    BoxShadow(
+                      color: colors.shadow.withValues(alpha: 0.06),
+                      blurRadius: 3,
+                      offset: Offset(0, 1),
+                    ),
+                  ]
             : null,
       ),
       child: child,

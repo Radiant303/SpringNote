@@ -293,6 +293,7 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Material(
       color: colors.background,
       child: Row(
@@ -301,7 +302,7 @@ class _SettingsPageState extends State<SettingsPage> {
             width: 220,
             padding: const EdgeInsets.fromLTRB(18, 28, 18, 18),
             decoration: BoxDecoration(
-              color: colors.background,
+              color: dark ? colors.background : colors.sidebar,
               border: Border(right: BorderSide(color: colors.divider)),
             ),
             child: Column(
