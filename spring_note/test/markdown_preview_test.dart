@@ -91,10 +91,41 @@ void main() {
     expect(padding.bottom, closeTo(15.68, 0.001));
   });
 
+  testWidgets('markdown preview centers images with balanced padding', (
+    WidgetTester tester,
+  ) async {
+    await _pumpPreview(tester, '![remote](https://example.com/image.png)');
+
+    final imageFrame = tester.widget<Container>(
+      find.byKey(const ValueKey('markdown-image-frame')),
+    );
+
+    expect(imageFrame.alignment, Alignment.center);
+    final padding = imageFrame.padding as EdgeInsets;
+    expect(padding.top, closeTo(10.08, 0.001));
+    expect(padding.bottom, closeTo(10.08, 0.001));
+  });
+
+  testWidgets('markdown preview renders retained blank lines by count', (
+    WidgetTester tester,
+  ) async {
+    await _pumpPreview(tester, '上\n\n\n\n下');
+
+    expect(_previewPlainText(tester), contains('上\n\n\n\n下'));
+  });
+
   test('spring markdown collapses blank lines after display math', () {
     expect(
       prepareSpringMarkdownText('\\[E = mc^2\\]\n\n正文'),
       '\\[E = mc^2\\]\n正文',
+    );
+    expect(
+      prepareSpringMarkdownText('\\[E = mc^2\\]\n\n\n\n正文'),
+      '\\[E = mc^2\\]\n\n正文',
+    );
+    expect(
+      prepareSpringMarkdownText('\\[E = mc^2\\]\n\n\n\n\n正文'),
+      '\\[E = mc^2\\]\n\n\n正文',
     );
   });
 
@@ -103,10 +134,60 @@ void main() {
       prepareSpringMarkdownText('正文\n\n\\[E = mc^2\\]'),
       '正文\n\\[E = mc^2\\]',
     );
+    expect(
+      prepareSpringMarkdownText('正文\n\n\n\n\\[E = mc^2\\]'),
+      '正文\n\n\\[E = mc^2\\]',
+    );
+    expect(
+      prepareSpringMarkdownText('正文\n\n\n\n\n\\[E = mc^2\\]'),
+      '正文\n\n\n\\[E = mc^2\\]',
+    );
+  });
+
+  test('spring markdown collapses blank lines around standalone images', () {
+    expect(
+      prepareSpringMarkdownText('正文\n\n![chart](images/chart.png)\n\n正文'),
+      '正文\n![chart](images/chart.png)\n正文',
+    );
+    expect(
+      prepareSpringMarkdownText(
+        '正文\n\n\n\n![chart](images/chart.png)\n\n\n\n正文',
+      ),
+      '正文\n\n![chart](images/chart.png)\n\n正文',
+    );
+    expect(
+      prepareSpringMarkdownText(
+        '正文\n\n\n\n\n![chart](images/chart.png)\n\n\n\n\n正文',
+      ),
+      '正文\n\n\n![chart](images/chart.png)\n\n\n正文',
+    );
+  });
+
+  test('spring markdown keeps extra blank lines around headings after two', () {
+    expect(prepareSpringMarkdownText('# 标题\n\n正文'), '# 标题\n正文');
+    expect(prepareSpringMarkdownText('# 标题\n\n\n\n正文'), '# 标题\n\n正文');
+    expect(prepareSpringMarkdownText('# 标题\n\n\n\n\n正文'), '# 标题\n\n\n正文');
+    expect(prepareSpringMarkdownText('正文\n\n# 标题'), '正文\n# 标题');
+    expect(prepareSpringMarkdownText('正文\n\n\n\n# 标题'), '正文\n\n# 标题');
+    expect(prepareSpringMarkdownText('正文\n\n\n\n\n# 标题'), '正文\n\n\n# 标题');
+  });
+
+  test('spring markdown promotes inline images to media blocks', () {
+    expect(
+      prepareSpringMarkdownText('正文 ![chart](images/chart.png) 后文'),
+      '正文\n![chart](images/chart.png)\n后文',
+    );
   });
 
   test('spring markdown preserves display math markers inside fenced code', () {
     const markdown = '```\n正文\n\n\\[E = mc^2\\]\n\n\\]\n\n正文\n```';
+
+    expect(prepareSpringMarkdownText(markdown), markdown);
+  });
+
+  test('spring markdown preserves standalone images inside fenced code', () {
+    const markdown =
+        '```\n正文 ![chart](images/chart.png) 后文\n\n![chart](images/chart.png)\n\n正文\n```';
 
     expect(prepareSpringMarkdownText(markdown), markdown);
   });

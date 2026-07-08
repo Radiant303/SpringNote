@@ -65,10 +65,16 @@ GptMarkdownThemeData springMarkdownThemeData(
 }
 
 final _springTaskCheckboxMd = _SpringTaskCheckboxMd();
+final _springNewLines = _SpringNewLines();
 
 final List<MarkdownComponent> springMarkdownComponents = [
   for (final component in MarkdownComponent.globalComponents)
-    if (component is CheckBoxMd) _springTaskCheckboxMd else component,
+    if (component is CheckBoxMd)
+      _springTaskCheckboxMd
+    else if (component is NewLines)
+      _springNewLines
+    else
+      component,
 ];
 
 Widget springMarkdownUnorderedListBuilder(
@@ -122,10 +128,9 @@ String normalizeSpringMarkdownText(String markdown) {
     return markdown;
   }
 
-  final lines = markdown
-      .replaceAll('\r\n', '\n')
-      .replaceAll('\r', '\n')
-      .split('\n');
+  final lines = _normalizeHeadingLeadingBlankLines(
+    markdown.replaceAll('\r\n', '\n').replaceAll('\r', '\n').split('\n'),
+  );
   final buffer = StringBuffer();
   var inFence = false;
   String? fenceCharacter;
@@ -178,22 +183,22 @@ String normalizeSpringMarkdownText(String markdown) {
       continue;
     }
 
+    final blankRun = nextContentIndex - index - 1;
     final nextLineIsHeading = _isAtxHeading(lines[nextContentIndex]);
-    final shouldKeepBlockGap = headingLevel > 1 || nextLineIsHeading;
-    final hadBlockGap = nextContentIndex > index + 1;
+    final structuralGap = headingLevel > 1 || nextLineIsHeading ? 1 : 0;
+    final outputGap = structuralGap + (blankRun - 2).clamp(0, blankRun);
 
-    if (shouldKeepBlockGap) {
-      if (!hadBlockGap) {
-        buffer.write('\n');
-      } else {
-        index = nextContentIndex - 2;
-      }
-    } else if (hadBlockGap) {
+    for (var gapIndex = 0; gapIndex < outputGap; gapIndex++) {
+      buffer.write('\n');
+    }
+    if (blankRun > 0) {
       index = nextContentIndex - 1;
     }
   }
 
-  return _normalizeDisplayMathBlankLines(buffer.toString());
+  return _normalizeMediaBlankLines(
+    _normalizeImagesAsMediaBlocks(buffer.toString()),
+  );
 }
 
 class SpringMarkdownImage extends StatelessWidget {
@@ -252,8 +257,13 @@ class _MarkdownImageFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+    final fontSize =
+        DefaultTextStyle.of(context).style.fontSize ?? kDefaultFontSize;
+    return Container(
+      key: const ValueKey('markdown-image-frame'),
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(vertical: fontSize * 0.72),
+      alignment: Alignment.center,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: ConstrainedBox(
@@ -378,6 +388,21 @@ class _SpringTaskCheckboxMd extends CheckBoxMd {
   }
 }
 
+class _SpringNewLines extends NewLines {
+  @override
+  InlineSpan span(BuildContext context, String text, GptMarkdownConfig config) {
+    final style = config.style ?? DefaultTextStyle.of(context).style;
+    return TextSpan(
+      text: text,
+      style: TextStyle(
+        fontSize: style.fontSize ?? kDefaultFontSize,
+        height: 1.15,
+        color: style.color,
+      ),
+    );
+  }
+}
+
 class _SpringTaskCheckboxRow extends StatelessWidget {
   const _SpringTaskCheckboxRow({
     required this.checked,
@@ -463,12 +488,124 @@ final _atxHeadingPattern = RegExp(
 final _fencedCodeBlockPattern = RegExp(r'^[ \t]{0,3}(`{3,}|~{3,})');
 final _displayMathOpeningLinePattern = RegExp(r'\\\[');
 final _displayMathClosingLinePattern = RegExp(r'\\\]\s*$');
+final _markdownImagePattern = RegExp(r'!\[[^\[\]]*\]\([^\s]*\)');
+final _standaloneImageLinePattern = RegExp(
+  r'^[ \t]{0,3}!\[[^\[\]]*\]\([^\s]*\)\s*$',
+);
 
 bool _isAtxHeading(String line) {
   return _atxHeadingPattern.hasMatch(line);
 }
 
-String _normalizeDisplayMathBlankLines(String markdown) {
+List<String> _normalizeHeadingLeadingBlankLines(List<String> lines) {
+  final normalized = <String>[];
+  var inFence = false;
+  String? fenceCharacter;
+  var fenceLength = 0;
+
+  for (final line in lines) {
+    final headingLevel = inFence ? null : _atxHeadingLevel(line);
+    if (headingLevel != null && normalized.isNotEmpty) {
+      final blankRun = _removeTrailingBlankLines(normalized);
+      final structuralGap = headingLevel > 1 && normalized.isNotEmpty ? 1 : 0;
+      final outputGap = structuralGap + (blankRun - 2).clamp(0, blankRun);
+      for (var index = 0; index < outputGap; index++) {
+        normalized.add('');
+      }
+    }
+
+    normalized.add(line);
+
+    final fenceMatch = _fencedCodeBlockPattern.firstMatch(line);
+    if (fenceMatch == null) {
+      continue;
+    }
+    final fence = fenceMatch.group(1)!;
+    final currentFenceCharacter = fence[0];
+    if (!inFence) {
+      inFence = true;
+      fenceCharacter = currentFenceCharacter;
+      fenceLength = fence.length;
+    } else if (currentFenceCharacter == fenceCharacter &&
+        fence.length >= fenceLength) {
+      inFence = false;
+      fenceCharacter = null;
+      fenceLength = 0;
+    }
+  }
+
+  return normalized;
+}
+
+int _removeTrailingBlankLines(List<String> lines) {
+  var removed = 0;
+  while (lines.isNotEmpty && lines.last.trim().isEmpty) {
+    lines.removeLast();
+    removed++;
+  }
+  return removed;
+}
+
+String _normalizeImagesAsMediaBlocks(String markdown) {
+  final lines = markdown.split('\n');
+  final normalized = <String>[];
+  var inFence = false;
+  String? fenceCharacter;
+  var fenceLength = 0;
+
+  for (final line in lines) {
+    final fenceMatch = _fencedCodeBlockPattern.firstMatch(line);
+    final splitLine = !inFence && fenceMatch == null
+        ? _splitImagesAsMediaBlocks(line)
+        : [line];
+    normalized.addAll(splitLine);
+
+    if (fenceMatch == null) {
+      continue;
+    }
+    final fence = fenceMatch.group(1)!;
+    final currentFenceCharacter = fence[0];
+    if (!inFence) {
+      inFence = true;
+      fenceCharacter = currentFenceCharacter;
+      fenceLength = fence.length;
+    } else if (currentFenceCharacter == fenceCharacter &&
+        fence.length >= fenceLength) {
+      inFence = false;
+      fenceCharacter = null;
+      fenceLength = 0;
+    }
+  }
+
+  return normalized.join('\n');
+}
+
+List<String> _splitImagesAsMediaBlocks(String line) {
+  final matches = _markdownImagePattern.allMatches(line).toList();
+  if (matches.isEmpty || _standaloneImageLinePattern.hasMatch(line)) {
+    return [line];
+  }
+
+  final result = <String>[];
+  var start = 0;
+  for (final match in matches) {
+    _addNonEmptyMediaSegment(result, line.substring(start, match.start));
+    result.add(match.group(0)!);
+    start = match.end;
+  }
+  _addNonEmptyMediaSegment(result, line.substring(start));
+
+  return result.isEmpty ? [line] : result;
+}
+
+void _addNonEmptyMediaSegment(List<String> result, String value) {
+  final trimmed = value.trim();
+  if (trimmed.isNotEmpty) {
+    result.add(trimmed);
+  }
+}
+
+String _normalizeMediaBlankLines(String markdown) {
   final lines = markdown.split('\n');
   final normalized = <String>[];
   var inFence = false;
@@ -478,12 +615,12 @@ String _normalizeDisplayMathBlankLines(String markdown) {
 
   for (var index = 0; index < lines.length; index++) {
     final line = lines[index];
-    if (!inFence &&
-        _displayMathOpeningLinePattern.hasMatch(line) &&
-        normalized.isNotEmpty) {
-      while (normalized.isNotEmpty && normalized.last.trim().isEmpty) {
-        normalized.removeLast();
-      }
+    final isStandaloneImage =
+        !inFence && _standaloneImageLinePattern.hasMatch(line);
+    final opensDisplayMath =
+        !inFence && _displayMathOpeningLinePattern.hasMatch(line);
+    if ((opensDisplayMath || isStandaloneImage) && normalized.isNotEmpty) {
+      _removeUpToTwoTrailingBlankLines(normalized);
     }
     normalized.add(line);
 
@@ -503,7 +640,7 @@ String _normalizeDisplayMathBlankLines(String markdown) {
       }
     }
 
-    if (!inFence && _displayMathOpeningLinePattern.hasMatch(line)) {
+    if (opensDisplayMath) {
       inDisplayMath = true;
     }
     final closesDisplayMath =
@@ -514,15 +651,27 @@ String _normalizeDisplayMathBlankLines(String markdown) {
       inDisplayMath = false;
     }
 
-    if (!closesDisplayMath) {
+    if (!closesDisplayMath && !isStandaloneImage) {
       continue;
     }
-    while (index + 1 < lines.length && lines[index + 1].trim().isEmpty) {
+    var skippedBlankLines = 0;
+    while (skippedBlankLines < 2 &&
+        index + 1 < lines.length &&
+        lines[index + 1].trim().isEmpty) {
       index++;
+      skippedBlankLines++;
     }
   }
 
   return normalized.join('\n');
+}
+
+void _removeUpToTwoTrailingBlankLines(List<String> lines) {
+  var removed = 0;
+  while (removed < 2 && lines.isNotEmpty && lines.last.trim().isEmpty) {
+    lines.removeLast();
+    removed++;
+  }
 }
 
 bool _needsLeadingHeadingGap(List<String> lines, int index) {
