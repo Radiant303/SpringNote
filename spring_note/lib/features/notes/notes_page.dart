@@ -1249,12 +1249,11 @@ class _NotesSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
-    final dark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: 278,
       padding: const EdgeInsets.fromLTRB(18, 24, 14, 20),
       decoration: BoxDecoration(
-        color: dark ? colors.background : colors.sidebar,
+        color: colors.sidebar,
         border: Border(right: BorderSide(color: colors.divider)),
       ),
       child: Column(
