@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gpt_markdown/custom_widgets/unordered_ordered_list.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:spring_note/core/theme/app_theme.dart';
 import 'package:spring_note/features/notes/markdown_local_image_io.dart';
@@ -43,6 +44,35 @@ void main() {
     expect(plainText, contains('SQL 注入'));
     expect(plainText, isNot(contains('**SQL 注入**')));
     expect(_hasBoldText(richTexts, 'SQL 注入'), isTrue);
+  });
+
+  testWidgets('markdown preview renders task checkbox like Typora', (
+    WidgetTester tester,
+  ) async {
+    await _pumpPreview(tester, '- [x] 完成任务\n- 普通列表');
+
+    expect(find.byType(Checkbox), findsNothing);
+    expect(
+      find.byKey(const ValueKey('markdown-task-checkbox-checked')),
+      findsOneWidget,
+    );
+    final checkboxSize = tester.getSize(
+      find.byKey(const ValueKey('markdown-task-checkbox-checked')),
+    );
+    expect(checkboxSize.width, closeTo(11.2, 0.001));
+    expect(checkboxSize.height, closeTo(11.2, 0.001));
+    expect(_previewPlainText(tester), contains('完成任务'));
+
+    final lists = tester.widgetList<UnorderedListView>(
+      find.byType(UnorderedListView),
+    );
+
+    expect(lists.any((list) => list.bulletSize == 0), isTrue);
+    expect(lists.any((list) => list.bulletSize > 0), isTrue);
+    expect(
+      lists.any((list) => list.bulletSize == 0 && list.padding == 7),
+      isTrue,
+    );
   });
 
   testWidgets('markdown preview keeps h1 divider close to heading', (

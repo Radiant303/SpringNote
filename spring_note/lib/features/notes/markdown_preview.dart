@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:gpt_markdown/custom_widgets/markdown_config.dart';
+import 'package:gpt_markdown/custom_widgets/unordered_ordered_list.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -73,6 +75,8 @@ class MarkdownPreview extends StatelessWidget {
                     _markdownForPreview(markdown),
                     followLinkColor: true,
                     useDollarSignsForLatex: true,
+                    components: _previewMarkdownComponents,
+                    unOrderedListBuilder: _previewUnorderedListBuilder,
                     codeBuilder: (context, name, code, closed) =>
                         MarkdownCodeBlock(language: name, code: code),
                     imageBuilder: (context, url, width, height) =>
@@ -153,6 +157,116 @@ GptMarkdownThemeData _previewMarkdownTheme(
     ),
     hrLinePadding: const EdgeInsets.only(bottom: 16),
   );
+}
+
+final _previewTaskCheckboxMd = _PreviewTaskCheckboxMd();
+
+final List<MarkdownComponent> _previewMarkdownComponents = [
+  for (final component in MarkdownComponent.globalComponents)
+    if (component is CheckBoxMd) _previewTaskCheckboxMd else component,
+];
+
+Widget _previewUnorderedListBuilder(
+  BuildContext context,
+  Widget child,
+  GptMarkdownConfig config,
+) {
+  final isTaskItem =
+      child is MdWidget &&
+      _previewTaskCheckboxMd.exp.hasMatch(child.exp.trim());
+  final style = config.style ?? DefaultTextStyle.of(context).style;
+  return UnorderedListView(
+    bulletColor: style.color,
+    padding: 7,
+    spacing: isTaskItem ? 0 : 10,
+    bulletSize: isTaskItem ? 0 : 0.3 * (style.fontSize ?? kDefaultFontSize),
+    textDirection: config.textDirection,
+    child: child,
+  );
+}
+
+class _PreviewTaskCheckboxMd extends CheckBoxMd {
+  @override
+  Widget build(BuildContext context, String text, GptMarkdownConfig config) {
+    final match = exp.firstMatch(text.trim());
+    final checked = match?.group(1) == 'x';
+    final content = match?.group(2) ?? '';
+    final fontSize =
+        config.style?.fontSize ??
+        DefaultTextStyle.of(context).style.fontSize ??
+        kDefaultFontSize;
+    return _PreviewTaskCheckboxRow(
+      checked: checked,
+      textDirection: config.textDirection,
+      checkboxSize: fontSize * 0.8,
+      topPadding: fontSize * 0.36,
+      child: MdWidget(context, content, false, config: config),
+    );
+  }
+}
+
+class _PreviewTaskCheckboxRow extends StatelessWidget {
+  const _PreviewTaskCheckboxRow({
+    required this.checked,
+    required this.textDirection,
+    required this.checkboxSize,
+    required this.topPadding,
+    required this.child,
+  });
+
+  final bool checked;
+  final TextDirection textDirection;
+  final double checkboxSize;
+  final double topPadding;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: textDirection,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: EdgeInsetsDirectional.only(top: topPadding, end: 8),
+            child: _PreviewTaskCheckboxIcon(
+              checked: checked,
+              size: checkboxSize,
+            ),
+          ),
+          Flexible(child: child),
+        ],
+      ),
+    );
+  }
+}
+
+class _PreviewTaskCheckboxIcon extends StatelessWidget {
+  const _PreviewTaskCheckboxIcon({required this.checked, required this.size});
+
+  static const _blue = Color(0xFF1677FF);
+  final bool checked;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: ValueKey(
+        checked ? 'markdown-task-checkbox-checked' : 'markdown-task-checkbox',
+      ),
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: checked ? _blue : Colors.transparent,
+        border: Border.all(color: _blue, width: 1.1),
+        borderRadius: BorderRadius.circular(2.2),
+      ),
+      child: checked
+          ? Icon(Icons.check_rounded, size: size * 0.78, color: Colors.white)
+          : null,
+    );
+  }
 }
 
 TextStyle _headingStyle(
