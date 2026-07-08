@@ -142,6 +142,37 @@ final value = 1;
     expect(find.text('三态内容', findRichText: true), findsOneWidget);
   });
 
+  testWidgets('notes workspace mode control stays stable at 140 percent font', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const notePath = 'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-21.md';
+    final noteService = _MemoryNoteService({notePath: '# 初始内容'});
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(1.4)),
+          child: NotesPage(
+            localDataState: _localDataState,
+            noteService: noteService,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('编辑'), findsOneWidget);
+    expect(find.text('分栏'), findsOneWidget);
+    expect(find.text('预览'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('split workspace scrolls editor and preview independently', (
     WidgetTester tester,
   ) async {

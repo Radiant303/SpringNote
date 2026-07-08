@@ -2226,7 +2226,7 @@ class _WorkspaceModeSegmentedControl extends StatelessWidget {
         ) ??
         const TextStyle(fontSize: 11, fontWeight: FontWeight.w400, height: 1.2);
     final textDirection = Directionality.of(context);
-    final textScaler = MediaQuery.textScalerOf(context);
+    const textScaler = TextScaler.noScaling;
     final borderColor = colors.border.a == 0
         ? colors.border
         : colors.border.withValues(alpha: 0.30);
@@ -2260,60 +2260,64 @@ class _WorkspaceModeSegmentedControl extends StatelessWidget {
         gap * (_options.length - 1);
     final controlWidth = innerWidth + outerPadding * 2 + borderWidth * 2;
 
-    return SizedBox(
-      width: controlWidth,
-      height: 28,
-      child: Container(
-        padding: const EdgeInsets.all(outerPadding),
-        decoration: BoxDecoration(
-          color: colors.surfaceMuted.withValues(alpha: 0.60),
-          border: Border.all(color: borderColor, width: borderWidth),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Stack(
-          children: [
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOutCubic,
-              left: selectedLeft,
-              top: 0,
-              bottom: 0,
-              width: segmentWidths[selectedIndex],
-              child: Container(
-                decoration: BoxDecoration(
-                  color: highlightColor,
-                  borderRadius: BorderRadius.circular(6),
-                  boxShadow: [
-                    BoxShadow(
-                      color: colors.shadow.withValues(alpha: 0.12),
-                      blurRadius: 7,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+      child: SizedBox(
+        width: controlWidth,
+        height: 28,
+        child: Container(
+          padding: const EdgeInsets.all(outerPadding),
+          decoration: BoxDecoration(
+            color: colors.surfaceMuted.withValues(alpha: 0.60),
+            border: Border.all(color: borderColor, width: borderWidth),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Stack(
+            children: [
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutCubic,
+                left: selectedLeft,
+                top: 0,
+                bottom: 0,
+                width: segmentWidths[selectedIndex],
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: highlightColor,
+                    borderRadius: BorderRadius.circular(6),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colors.shadow.withValues(alpha: 0.12),
+                        blurRadius: 7,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final (index, option) in _options.indexed) ...[
-                  SizedBox(
-                    width: segmentWidths[index],
-                    child: _WorkspaceModeSegment(
-                      mode: option,
-                      label: _labels[option]!,
-                      selected: option == value,
-                      textStyle: textStyle,
-                      horizontalPadding: horizontalPadding,
-                      verticalPadding: verticalPadding,
-                      onTap: () => onChanged(option),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final (index, option) in _options.indexed) ...[
+                    SizedBox(
+                      width: segmentWidths[index],
+                      child: _WorkspaceModeSegment(
+                        mode: option,
+                        label: _labels[option]!,
+                        selected: option == value,
+                        textStyle: textStyle,
+                        horizontalPadding: horizontalPadding,
+                        verticalPadding: verticalPadding,
+                        onTap: () => onChanged(option),
+                      ),
                     ),
-                  ),
-                  if (index != _options.length - 1) const SizedBox(width: gap),
+                    if (index != _options.length - 1)
+                      const SizedBox(width: gap),
+                  ],
                 ],
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
