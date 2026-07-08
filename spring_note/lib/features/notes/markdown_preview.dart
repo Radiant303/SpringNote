@@ -67,6 +67,7 @@ class MarkdownPreview extends StatelessWidget {
                     prepareSpringMarkdownText(markdown),
                     followLinkColor: true,
                     useDollarSignsForLatex: true,
+                    latexBuilder: springMarkdownLatexBuilder,
                     components: springMarkdownComponents,
                     unOrderedListBuilder: springMarkdownUnorderedListBuilder,
                     codeBuilder: (context, name, code, closed) =>

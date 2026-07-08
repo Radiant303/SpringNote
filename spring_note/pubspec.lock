@@ -204,7 +204,7 @@ packages:
     source: sdk
     version: "0.0.0"
   flutter_math_fork:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: flutter_math_fork
       sha256: "6d5f2f1aa57ae539ffb0a04bb39d2da67af74601d685a161aff7ce5bda5fa407"

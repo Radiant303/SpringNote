@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gpt_markdown/custom_widgets/unordered_ordered_list.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:spring_note/core/theme/app_theme.dart';
+import 'package:spring_note/core/widgets/spring_markdown.dart';
 import 'package:spring_note/features/notes/markdown_local_image_io.dart';
 import 'package:spring_note/features/notes/markdown_preview.dart';
 
@@ -73,6 +74,41 @@ void main() {
       lists.any((list) => list.bulletSize == 0 && list.padding == 7),
       isTrue,
     );
+  });
+
+  testWidgets('markdown preview centers display math with balanced padding', (
+    WidgetTester tester,
+  ) async {
+    await _pumpPreview(tester, r'\[E = mc^2\]');
+
+    final displayMath = tester.widget<Container>(
+      find.byKey(const ValueKey('markdown-display-math')),
+    );
+
+    expect(displayMath.alignment, Alignment.center);
+    final padding = displayMath.padding as EdgeInsets;
+    expect(padding.top, closeTo(15.68, 0.001));
+    expect(padding.bottom, closeTo(15.68, 0.001));
+  });
+
+  test('spring markdown collapses blank lines after display math', () {
+    expect(
+      prepareSpringMarkdownText('\\[E = mc^2\\]\n\n正文'),
+      '\\[E = mc^2\\]\n正文',
+    );
+  });
+
+  test('spring markdown collapses blank lines before display math', () {
+    expect(
+      prepareSpringMarkdownText('正文\n\n\\[E = mc^2\\]'),
+      '正文\n\\[E = mc^2\\]',
+    );
+  });
+
+  test('spring markdown preserves display math markers inside fenced code', () {
+    const markdown = '```\n正文\n\n\\[E = mc^2\\]\n\n\\]\n\n正文\n```';
+
+    expect(prepareSpringMarkdownText(markdown), markdown);
   });
 
   testWidgets('markdown preview keeps h1 divider close to heading', (

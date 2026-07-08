@@ -102,7 +102,7 @@ void main() {
               initialMessages: [
                 MemoryMessage(
                   role: 'ai',
-                  content: '# 今日完成\n- [x] 修复任务\n正文',
+                  content: '# 今日完成\n- [x] 修复任务\n\\[E = mc^2\\]\n正文',
                   createdAt: DateTime(2026, 7, 8),
                 ),
               ],
@@ -130,6 +130,7 @@ void main() {
     );
     expect(checkboxSize.width, closeTo(11.2, 0.001));
     expect(checkboxSize.height, closeTo(11.2, 0.001));
+    expect(find.byKey(const ValueKey('markdown-display-math')), findsOneWidget);
 
     final lists = tester.widgetList<UnorderedListView>(
       find.byType(UnorderedListView),

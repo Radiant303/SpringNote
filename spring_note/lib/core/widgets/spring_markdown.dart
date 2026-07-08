@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:gpt_markdown/custom_widgets/markdown_config.dart';
 import 'package:gpt_markdown/custom_widgets/unordered_ordered_list.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
@@ -88,6 +89,28 @@ Widget springMarkdownUnorderedListBuilder(
   );
 }
 
+Widget springMarkdownLatexBuilder(
+  BuildContext context,
+  String tex,
+  TextStyle textStyle,
+  bool inline,
+) {
+  final colors = AppTheme.colors(context);
+  final defaultStyle = DefaultTextStyle.of(context).style;
+  final baseStyle = defaultStyle
+      .merge(textStyle)
+      .copyWith(color: textStyle.color ?? defaultStyle.color ?? colors.text);
+  final fontSize = baseStyle.fontSize ?? kDefaultFontSize;
+  if (inline) {
+    return _SpringInlineMath(tex: tex, style: baseStyle, fontSize: fontSize);
+  }
+  return _SpringDisplayMath(
+    tex: tex,
+    style: baseStyle.copyWith(fontSize: fontSize * 1.08),
+    padding: EdgeInsets.symmetric(vertical: fontSize * 1.12),
+  );
+}
+
 String prepareSpringMarkdownText(String markdown) {
   return _markdownWithRenderableImageUris(
     normalizeSpringMarkdownText(markdown),
@@ -170,7 +193,7 @@ String normalizeSpringMarkdownText(String markdown) {
     }
   }
 
-  return buffer.toString();
+  return _normalizeDisplayMathBlankLines(buffer.toString());
 }
 
 class SpringMarkdownImage extends StatelessWidget {
@@ -254,6 +277,83 @@ class _ImageFallbackIcon extends StatelessWidget {
       alignment: Alignment.center,
       color: colors.surfaceMuted,
       child: Icon(Icons.image_not_supported_outlined, color: colors.textSubtle),
+    );
+  }
+}
+
+class _SpringDisplayMath extends StatelessWidget {
+  const _SpringDisplayMath({
+    required this.tex,
+    required this.style,
+    required this.padding,
+  });
+
+  final String tex;
+  final TextStyle style;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const ValueKey('markdown-display-math'),
+      width: double.infinity,
+      padding: padding,
+      alignment: Alignment.center,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: _SpringMath(
+          tex: tex,
+          style: style,
+          mathStyle: MathStyle.display,
+        ),
+      ),
+    );
+  }
+}
+
+class _SpringInlineMath extends StatelessWidget {
+  const _SpringInlineMath({
+    required this.tex,
+    required this.style,
+    required this.fontSize,
+  });
+
+  final String tex;
+  final TextStyle style;
+  final double fontSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SpringMath(
+      key: const ValueKey('markdown-inline-math'),
+      tex: tex,
+      style: style.copyWith(fontSize: fontSize),
+      mathStyle: MathStyle.text,
+    );
+  }
+}
+
+class _SpringMath extends StatelessWidget {
+  const _SpringMath({
+    super.key,
+    required this.tex,
+    required this.style,
+    required this.mathStyle,
+  });
+
+  final String tex;
+  final TextStyle style;
+  final MathStyle mathStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Math.tex(
+      tex,
+      textStyle: style,
+      mathStyle: mathStyle,
+      textScaleFactor: 1,
+      settings: const TexParserSettings(strict: Strict.ignore),
+      onErrorFallback: (error) => Text(tex, style: style),
     );
   }
 }
@@ -361,9 +461,68 @@ final _atxHeadingPattern = RegExp(
   r'^[ \t]{0,3}#{1,6}(?!#)(?:[ \t]+.*|[ \t]*)$',
 );
 final _fencedCodeBlockPattern = RegExp(r'^[ \t]{0,3}(`{3,}|~{3,})');
+final _displayMathOpeningLinePattern = RegExp(r'\\\[');
+final _displayMathClosingLinePattern = RegExp(r'\\\]\s*$');
 
 bool _isAtxHeading(String line) {
   return _atxHeadingPattern.hasMatch(line);
+}
+
+String _normalizeDisplayMathBlankLines(String markdown) {
+  final lines = markdown.split('\n');
+  final normalized = <String>[];
+  var inFence = false;
+  var inDisplayMath = false;
+  String? fenceCharacter;
+  var fenceLength = 0;
+
+  for (var index = 0; index < lines.length; index++) {
+    final line = lines[index];
+    if (!inFence &&
+        _displayMathOpeningLinePattern.hasMatch(line) &&
+        normalized.isNotEmpty) {
+      while (normalized.isNotEmpty && normalized.last.trim().isEmpty) {
+        normalized.removeLast();
+      }
+    }
+    normalized.add(line);
+
+    final fenceMatch = _fencedCodeBlockPattern.firstMatch(line);
+    if (fenceMatch != null) {
+      final fence = fenceMatch.group(1)!;
+      final currentFenceCharacter = fence[0];
+      if (!inFence) {
+        inFence = true;
+        fenceCharacter = currentFenceCharacter;
+        fenceLength = fence.length;
+      } else if (currentFenceCharacter == fenceCharacter &&
+          fence.length >= fenceLength) {
+        inFence = false;
+        fenceCharacter = null;
+        fenceLength = 0;
+      }
+    }
+
+    if (!inFence && _displayMathOpeningLinePattern.hasMatch(line)) {
+      inDisplayMath = true;
+    }
+    final closesDisplayMath =
+        !inFence &&
+        inDisplayMath &&
+        _displayMathClosingLinePattern.hasMatch(line);
+    if (closesDisplayMath) {
+      inDisplayMath = false;
+    }
+
+    if (!closesDisplayMath) {
+      continue;
+    }
+    while (index + 1 < lines.length && lines[index + 1].trim().isEmpty) {
+      index++;
+    }
+  }
+
+  return normalized.join('\n');
 }
 
 bool _needsLeadingHeadingGap(List<String> lines, int index) {
