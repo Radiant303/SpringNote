@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gpt_markdown/custom_widgets/unordered_ordered_list.dart';
+import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:spring_note/core/models/app_config.dart';
 import 'package:spring_note/core/models/local_data_state.dart';
 import 'package:spring_note/core/models/memory_message.dart';
@@ -83,6 +87,94 @@ void main() {
     expect(content, contains('2026-06-24'));
   });
 
+  testWidgets('memory markdown uses shared preview rendering', (tester) async {
+    tester.view.physicalSize = const Size(1200, 760);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MemoryPage(
+            localDataState: _localDataState(),
+            conversationService: _FakeMemoryConversationService(
+              initialMessages: [
+                MemoryMessage(
+                  role: 'ai',
+                  content: '# 今日完成\n- [x] 修复任务\n正文',
+                  createdAt: DateTime(2026, 7, 8),
+                ),
+              ],
+            ),
+            searchService: const _FakeMemorySearchService(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final markdownTheme = tester.widget<GptMarkdownTheme>(
+      find.byType(GptMarkdownTheme),
+    );
+    expect(markdownTheme.gptThemeData.h1?.height, 0.92);
+    expect(markdownTheme.gptThemeData.h1?.color, const Color(0xFF333333));
+    expect(find.byType(Checkbox), findsNothing);
+    expect(
+      find.byKey(const ValueKey('markdown-task-checkbox-checked')),
+      findsOneWidget,
+    );
+
+    final checkboxSize = tester.getSize(
+      find.byKey(const ValueKey('markdown-task-checkbox-checked')),
+    );
+    expect(checkboxSize.width, closeTo(11.2, 0.001));
+    expect(checkboxSize.height, closeTo(11.2, 0.001));
+
+    final lists = tester.widgetList<UnorderedListView>(
+      find.byType(UnorderedListView),
+    );
+    expect(lists.any((list) => list.bulletSize == 0), isTrue);
+  });
+
+  test('memory image bases include source note and notes directories', () {
+    final localDataState = _localDataState(
+      dataDirectory: _joinPath('D:\\Temp', 'SpringNote'),
+      dailyNotesDirectory: _joinPath(
+        _joinPath('D:\\Temp\\SpringNote', 'notes'),
+        'daily',
+      ),
+      weeklyNotesDirectory: _joinPath(
+        _joinPath('D:\\Temp\\SpringNote', 'notes'),
+        'weekly',
+      ),
+      monthlyNotesDirectory: _joinPath(
+        _joinPath('D:\\Temp\\SpringNote', 'notes'),
+        'monthly',
+      ),
+    );
+    final dailyDirectory = localDataState.dailyNotesDirectory;
+    final notesDirectory = _joinPath('D:\\Temp\\SpringNote', 'notes');
+    final message = MemoryMessage(
+      role: 'ai',
+      content: '![chart](../images/chart.png)',
+      createdAt: DateTime(2026, 7, 8),
+      sources: [
+        MemorySource(
+          title: '日报 2026-07-08',
+          path: _joinPath(dailyDirectory, '2026-07-08.md'),
+          snippet: '![chart](../images/chart.png)',
+          score: 100,
+        ),
+      ],
+    );
+
+    final paths = memoryImageBasePaths(message, localDataState);
+
+    expect(paths, contains(dailyDirectory));
+    expect(paths, contains(notesDirectory));
+  });
+
   for (final shortcut in const [
     (name: 'ctrl enter', key: LogicalKeyboardKey.controlLeft),
     (name: 'meta enter', key: LogicalKeyboardKey.metaLeft),
@@ -94,20 +186,11 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
 
       final conversationService = _FakeMemoryConversationService();
-      final localDataState = LocalDataState(
-        dataDirectory: 'D:\\Temp\\SpringNote',
-        configPath: 'D:\\Temp\\SpringNote\\config.json',
-        dailyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\daily',
-        weeklyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\weekly',
-        monthlyNotesDirectory: 'D:\\Temp\\SpringNote\\notes\\monthly',
-        config: AppConfig.defaults(),
-      );
-
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: MemoryPage(
-              localDataState: localDataState,
+              localDataState: _localDataState(),
               conversationService: conversationService,
               searchService: const _FakeMemorySearchService(),
             ),
@@ -144,11 +227,14 @@ void main() {
 }
 
 class _FakeMemoryConversationService extends MemoryConversationService {
+  _FakeMemoryConversationService({this.initialMessages = const []});
+
+  final List<MemoryMessage> initialMessages;
   List<MemoryMessage> savedMessages = const [];
 
   @override
   Future<List<MemoryMessage>> readMessages({required String appDataDir}) async {
-    return const [];
+    return initialMessages;
   }
 
   @override
@@ -158,6 +244,29 @@ class _FakeMemoryConversationService extends MemoryConversationService {
   }) async {
     savedMessages = messages;
   }
+}
+
+LocalDataState _localDataState({
+  String dataDirectory = 'D:\\Temp\\SpringNote',
+  String dailyNotesDirectory = 'D:\\Temp\\SpringNote\\notes\\daily',
+  String weeklyNotesDirectory = 'D:\\Temp\\SpringNote\\notes\\weekly',
+  String monthlyNotesDirectory = 'D:\\Temp\\SpringNote\\notes\\monthly',
+}) {
+  return LocalDataState(
+    dataDirectory: dataDirectory,
+    configPath: _joinPath(dataDirectory, 'config.json'),
+    dailyNotesDirectory: dailyNotesDirectory,
+    weeklyNotesDirectory: weeklyNotesDirectory,
+    monthlyNotesDirectory: monthlyNotesDirectory,
+    config: AppConfig.defaults(),
+  );
+}
+
+String _joinPath(String left, String right) {
+  if (left.endsWith(Platform.pathSeparator)) {
+    return '$left$right';
+  }
+  return '$left${Platform.pathSeparator}$right';
 }
 
 class _FakeMemorySearchService extends MemorySearchService {

@@ -12,6 +12,7 @@ import '../../core/services/memory_conversation_service.dart';
 import '../../core/services/memory_search_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/markdown_code_block.dart';
+import '../../core/widgets/spring_markdown.dart';
 
 bool shouldCollapseMemoryReasoning(MemoryMessage message) {
   return message.content.trim().isNotEmpty || message.toolCalls.isNotEmpty;
@@ -739,6 +740,7 @@ class _MemoryPageState extends State<MemoryPage> {
                     for (final message in visibleMessages)
                       _MemoryMessageView(
                         message: message,
+                        localDataState: widget.localDataState,
                         attachments: _toolAttachmentsFor(message),
                       ),
                     if (_waitingForMemoryResponse)
@@ -1237,9 +1239,14 @@ class _ThinkingSegment extends StatelessWidget {
 }
 
 class _MemoryMessageView extends StatelessWidget {
-  const _MemoryMessageView({required this.message, required this.attachments});
+  const _MemoryMessageView({
+    required this.message,
+    required this.localDataState,
+    required this.attachments,
+  });
 
   final MemoryMessage message;
+  final LocalDataState localDataState;
   final List<_MemoryToolAttachment> attachments;
 
   @override
@@ -1303,14 +1310,34 @@ class _MemoryMessageView extends StatelessWidget {
             if (message.content.trim().isNotEmpty)
               SizedBox(
                 width: double.infinity,
-                child: GptMarkdown(
-                  message.content,
-                  codeBuilder: (context, name, code, closed) =>
-                      MarkdownCodeBlock(language: name, code: code),
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: colors.textMuted,
-                    fontSize: 14,
-                    height: 1.55,
+                child: GptMarkdownTheme(
+                  gptThemeData: springMarkdownThemeData(
+                    context,
+                    GptMarkdownTheme.of(context),
+                  ),
+                  child: GptMarkdown(
+                    prepareSpringMarkdownText(message.content),
+                    followLinkColor: true,
+                    useDollarSignsForLatex: true,
+                    components: springMarkdownComponents,
+                    unOrderedListBuilder: springMarkdownUnorderedListBuilder,
+                    codeBuilder: (context, name, code, closed) =>
+                        MarkdownCodeBlock(language: name, code: code),
+                    imageBuilder: (context, url, width, height) =>
+                        SpringMarkdownImage(
+                          url: url,
+                          width: width,
+                          height: height,
+                          localImageBasePaths: memoryImageBasePaths(
+                            message,
+                            localDataState,
+                          ),
+                        ),
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: colors.textMuted,
+                      fontSize: 14,
+                      height: 1.55,
+                    ),
                   ),
                 ),
               ),
@@ -1323,6 +1350,67 @@ class _MemoryMessageView extends StatelessWidget {
       ),
     );
   }
+}
+
+List<String> memoryImageBasePaths(
+  MemoryMessage message,
+  LocalDataState localDataState,
+) {
+  final paths = <String>[];
+  for (final source in message.sources) {
+    final sourceDirectory = _parentDirectoryPath(source.path);
+    if (sourceDirectory != null) {
+      paths.add(sourceDirectory);
+      final notesDirectory = _parentDirectoryPath(sourceDirectory);
+      if (notesDirectory != null) {
+        paths.add(notesDirectory);
+      }
+    }
+  }
+  paths.addAll([
+    localDataState.dailyNotesDirectory,
+    localDataState.weeklyNotesDirectory,
+    localDataState.monthlyNotesDirectory,
+  ]);
+  for (final directory in [
+    localDataState.dailyNotesDirectory,
+    localDataState.weeklyNotesDirectory,
+    localDataState.monthlyNotesDirectory,
+  ]) {
+    final notesDirectory = _parentDirectoryPath(directory);
+    if (notesDirectory != null) {
+      paths.add(notesDirectory);
+    }
+  }
+
+  return _dedupeNonEmptyPaths(paths);
+}
+
+List<String> _dedupeNonEmptyPaths(Iterable<String> paths) {
+  final seen = <String>{};
+  final result = <String>[];
+  for (final path in paths) {
+    final trimmed = path.trim();
+    if (trimmed.isEmpty || !seen.add(trimmed)) {
+      continue;
+    }
+    result.add(trimmed);
+  }
+  return result;
+}
+
+String? _parentDirectoryPath(String path) {
+  final trimmed = path.trim();
+  if (trimmed.isEmpty) {
+    return null;
+  }
+  final slash = trimmed.lastIndexOf('/');
+  final backslash = trimmed.lastIndexOf('\\');
+  final index = slash > backslash ? slash : backslash;
+  if (index <= 0) {
+    return null;
+  }
+  return trimmed.substring(0, index);
 }
 
 class _MemoryWaitingIndicator extends StatelessWidget {
