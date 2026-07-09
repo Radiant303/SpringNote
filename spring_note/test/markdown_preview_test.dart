@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gpt_markdown/custom_widgets/custom_divider.dart';
+import 'package:gpt_markdown/custom_widgets/indent_widget.dart';
 import 'package:gpt_markdown/custom_widgets/unordered_ordered_list.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:spring_note/core/theme/app_theme.dart';
@@ -240,11 +242,15 @@ void main() {
   ) async {
     await _pumpPreview(tester, '# 标题\n\n正文');
 
+    final markdown = tester.widget<GptMarkdown>(find.byType(GptMarkdown));
     final markdownTheme = tester.widget<GptMarkdownTheme>(
       find.byType(GptMarkdownTheme),
     );
 
+    expect(markdown.style?.color, const Color(0xFF333333));
     expect(markdownTheme.gptThemeData.h1?.height, 0.92);
+    expect(markdownTheme.gptThemeData.hrLineThickness, 1);
+    expect(markdownTheme.gptThemeData.hrLineColor, const Color(0xFFEEEEEE));
     expect(
       markdownTheme.gptThemeData.hrLinePadding,
       const EdgeInsets.only(bottom: 16),
@@ -275,7 +281,45 @@ void main() {
       markdownTheme.gptThemeData.h6?.fontSize,
       closeTo(h1FontSize * 0.425, 0.001),
     );
+    expect(markdownTheme.gptThemeData.h6?.color, const Color(0xFF777777));
     expect(markdownTheme.gptThemeData.h6?.fontWeight, FontWeight.w700);
+  });
+
+  testWidgets('markdown preview uses github css line colors', (
+    WidgetTester tester,
+  ) async {
+    await _pumpPreview(tester, '# 标题\n\n---\n\n> 引用\n\n| A |\n|---|\n| B |');
+
+    final dividers = tester.widgetList<CustomDivider>(
+      find.byType(CustomDivider),
+    );
+    expect(
+      dividers
+          .where(
+            (divider) =>
+                divider.height == 1 && divider.color == const Color(0xFFEEEEEE),
+          )
+          .length,
+      2,
+    );
+    expect(
+      dividers.every(
+        (divider) =>
+            divider.color != const Color(0xFFE7E7E7) && divider.height != 2,
+      ),
+      isTrue,
+    );
+
+    final quote = tester.widget<BlockQuoteWidget>(
+      find.byType(BlockQuoteWidget),
+    );
+    expect(quote.color, const Color(0xFFDFE2E5));
+    expect(quote.width, 4);
+
+    final table = tester.widget<Table>(find.byType(Table));
+    final border = table.border as TableBorder;
+    expect(border.top.color, const Color(0xFFDFE2E5));
+    expect(border.top.width, 1);
   });
 
   testWidgets('markdown preview renders h1 followed by text consistently', (
@@ -650,7 +694,7 @@ String _previewPlainText(WidgetTester tester) {
 }
 
 Color _bodyTextColor(WidgetTester tester) {
-  return AppTheme.colors(tester.element(find.byType(MarkdownPreview))).text;
+  return springMarkdownTextColor(tester.element(find.byType(MarkdownPreview)));
 }
 
 bool _hasBoldText(Iterable<RichText> richTexts, String text) {

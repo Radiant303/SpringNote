@@ -57,7 +57,7 @@ class MarkdownPreview extends StatelessWidget {
               width: double.infinity,
               child: DefaultTextStyle.merge(
                 style: textTheme.bodyLarge?.copyWith(
-                  color: colors.text,
+                  color: springMarkdownTextColor(context),
                   fontSize: 14,
                   height: 1.55,
                 ),
@@ -71,6 +71,7 @@ class MarkdownPreview extends StatelessWidget {
                     components: springMarkdownComponents,
                     inlineComponents: springMarkdownInlineComponents,
                     unOrderedListBuilder: springMarkdownUnorderedListBuilder,
+                    tableBuilder: springMarkdownTableBuilder,
                     codeBuilder: (context, name, code, closed) =>
                         MarkdownCodeBlock(language: name, code: code),
                     imageBuilder: (context, url, width, height) =>
@@ -81,7 +82,7 @@ class MarkdownPreview extends StatelessWidget {
                           localImageBasePaths: [localImageBasePath],
                         ),
                     style: textTheme.bodyLarge?.copyWith(
-                      color: colors.text,
+                      color: springMarkdownTextColor(context),
                       fontSize: 14,
                       height: 1.55,
                     ),

@@ -1323,6 +1323,7 @@ class _MemoryMessageView extends StatelessWidget {
                     components: springMarkdownComponents,
                     inlineComponents: springMarkdownInlineComponents,
                     unOrderedListBuilder: springMarkdownUnorderedListBuilder,
+                    tableBuilder: springMarkdownTableBuilder,
                     codeBuilder: (context, name, code, closed) =>
                         MarkdownCodeBlock(language: name, code: code),
                     imageBuilder: (context, url, width, height) =>
@@ -1336,7 +1337,10 @@ class _MemoryMessageView extends StatelessWidget {
                           ),
                         ),
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: colors.textMuted,
+                      color: springMarkdownTextColor(
+                        context,
+                        darkFallback: colors.textMuted,
+                      ),
                       fontSize: 14,
                       height: 1.55,
                     ),
