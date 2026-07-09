@@ -411,17 +411,52 @@ class MarkdownEditorHighlightSpanBuilder {
       }
 
       final contentStyle = _delimiterContentStyle(style, delimiter);
-      final markerStyle = contentStyle;
-      _appendStyled(children, delimiter, markerStyle);
+      _appendOpeningDelimiter(children, delimiter, style);
       _appendInline(
         children,
         text.substring(index + delimiter.length, end),
         contentStyle,
       );
-      _appendStyled(children, delimiter, markerStyle);
+      _appendClosingDelimiter(children, delimiter, style);
       return end + delimiter.length;
     }
     return null;
+  }
+
+  void _appendOpeningDelimiter(
+    List<InlineSpan> children,
+    String delimiter,
+    TextStyle base,
+  ) {
+    if (delimiter == '***') {
+      _appendStyled(children, '*', _emphasisMarkerStyle(base));
+      _appendStyled(children, '**', _delimiterMarkerStyle(base, delimiter));
+      return;
+    }
+    if (delimiter == '___') {
+      _appendStyled(children, '_', _emphasisMarkerStyle(base));
+      _appendStyled(children, '__', _delimiterMarkerStyle(base, delimiter));
+      return;
+    }
+    _appendStyled(children, delimiter, _delimiterMarkerStyle(base, delimiter));
+  }
+
+  void _appendClosingDelimiter(
+    List<InlineSpan> children,
+    String delimiter,
+    TextStyle base,
+  ) {
+    if (delimiter == '***') {
+      _appendStyled(children, '**', _delimiterMarkerStyle(base, delimiter));
+      _appendStyled(children, '*', _emphasisMarkerStyle(base));
+      return;
+    }
+    if (delimiter == '___') {
+      _appendStyled(children, '__', _delimiterMarkerStyle(base, delimiter));
+      _appendStyled(children, '_', _emphasisMarkerStyle(base));
+      return;
+    }
+    _appendStyled(children, delimiter, _delimiterMarkerStyle(base, delimiter));
   }
 
   int? _findClosingDelimiter(String text, String delimiter, int start) {
@@ -511,6 +546,10 @@ class MarkdownEditorHighlightSpanBuilder {
     return base.copyWith(color: _palette.image);
   }
 
+  TextStyle _emphasisMarkerStyle(TextStyle base) {
+    return base.copyWith(color: _palette.emphasis);
+  }
+
   TextStyle _inlineCodeStyle(TextStyle base) {
     return base.copyWith(color: _palette.code);
   }
@@ -533,6 +572,16 @@ class MarkdownEditorHighlightSpanBuilder {
         color: _palette.strong,
         fontWeight: FontWeight.w700,
       ),
+      '*' || '_' => base.copyWith(color: _palette.emphasis),
+      '~~' => base.copyWith(color: _palette.strike),
+      _ => base,
+    };
+  }
+
+  TextStyle _delimiterMarkerStyle(TextStyle base, String delimiter) {
+    return switch (delimiter) {
+      '***' || '___' => base.copyWith(color: _palette.strongEmphasis),
+      '**' || '__' => base.copyWith(color: _palette.strong),
       '*' || '_' => base.copyWith(color: _palette.emphasis),
       '~~' => base.copyWith(color: _palette.strike),
       _ => base,

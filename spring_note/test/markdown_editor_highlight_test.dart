@@ -11,6 +11,7 @@ void main() {
         '# 🚀 1级标题: 欢迎测试高亮器\r\n'
         '**`memory_page.dart` 工具调用缓存策略**:\r\n'
         '*`memory_page.dart` 工具调用缓存策略*:\r\n'
+        '***粗斜体***\r\n'
         '* `memory_page.dart`\r\n'
         '* 这是**加粗文本**，用于测试强重音。\r\n'
         '* 这是*斜体文本*，用于测试弱重音。\r\n'
@@ -56,6 +57,8 @@ void main() {
     );
     expect(_styleOfText(span, '加粗文本')?.color, const Color(0xFFAD6E25));
     expect(_styleOfText(span, '加粗文本')?.fontWeight, FontWeight.w700);
+    expect(_styleOfText(span, '粗斜体')?.color, const Color(0xFFAD6E25));
+    expect(_styleOfText(span, '粗斜体')?.fontWeight, FontWeight.w700);
     expect(_styleOfText(span, '斜体文本')?.color, const Color(0xFF5B79E3));
     expect(_styleOfText(span, '斜体文本')?.fontStyle, isNull);
     expect(
@@ -95,9 +98,25 @@ void main() {
     expect(_stylesOfText(span, '**').map((style) => style.color), {
       const Color(0xFFAD6E25),
     });
-    expect(_stylesOfText(span, '**').map((style) => style.fontWeight), {
-      FontWeight.w700,
-    });
+    expect(
+      _stylesOfText(span, '**').every((style) => style.fontWeight == null),
+      isTrue,
+    );
+    expect(
+      _stylesOfText(
+        span,
+        '*',
+      ).map((style) => style.color).contains(const Color(0xFF5B79E3)),
+      isTrue,
+    );
+    expect(
+      _stylesOfText(span, '*').any(
+        (style) =>
+            style.color == const Color(0xFF5B79E3) &&
+            style.fontWeight == FontWeight.w700,
+      ),
+      isFalse,
+    );
     expect(
       _stylesOfText(
         span,
