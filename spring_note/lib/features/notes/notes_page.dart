@@ -15,6 +15,7 @@ import '../../core/services/note_service.dart';
 import '../../core/services/note_upload_queue.dart';
 import '../../core/services/pasted_image_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/markdown_editor_highlight.dart';
 import '../../core/widgets/page_scaffold.dart';
 import 'markdown_preview.dart';
 
@@ -1200,23 +1201,21 @@ class _FimTextEditingController extends TextEditingController {
         offset == null ||
         offset < 0 ||
         offset > text.length) {
-      return TextSpan(
-        style: effectiveStyle,
-        children: [
-          super.buildTextSpan(
-            context: context,
-            style: style,
-            withComposing: withComposing,
-          ),
-          _bottomSpacer(effectiveStyle),
-        ],
+      return MarkdownEditorHighlightSpanBuilder(context).buildTextEditingValue(
+        value,
+        textStyle: effectiveStyle,
+        withComposing: withComposing,
       );
     }
 
+    final highlighter = MarkdownEditorHighlightSpanBuilder(
+      context,
+      includeBottomSpacer: false,
+    );
     return TextSpan(
       style: effectiveStyle,
       children: [
-        TextSpan(text: text.substring(0, offset)),
+        highlighter.build(text.substring(0, offset), textStyle: effectiveStyle),
         TextSpan(
           text: prediction,
           style: effectiveStyle.copyWith(
@@ -1225,7 +1224,7 @@ class _FimTextEditingController extends TextEditingController {
                 : const Color(0xFF9AA0A6), // 浅色模式：保持原有灰色
           ),
         ),
-        TextSpan(text: text.substring(offset)),
+        highlighter.build(text.substring(offset), textStyle: effectiveStyle),
         _bottomSpacer(effectiveStyle),
       ],
     );

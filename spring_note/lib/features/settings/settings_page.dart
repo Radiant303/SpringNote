@@ -23,6 +23,7 @@ import '../../core/services/system_font_service.dart';
 import '../../core/services/update_check_service.dart';
 import '../../core/services/wallpaper_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/markdown_editor_highlight.dart';
 import '../../core/widgets/update_dialog.dart';
 import 'settings_stats_panel.dart';
 
