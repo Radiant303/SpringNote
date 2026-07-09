@@ -222,7 +222,10 @@ final value = 1;
         .dy;
 
     expect(editorScrollController.position.maxScrollExtent, greaterThan(0));
-    expect(previewScrollView.padding, const EdgeInsets.fromLTRB(32, 0, 32, 56));
+    final editorContentPadding =
+        editorField.decoration?.contentPadding as EdgeInsets;
+    expect(editorContentPadding.top, 7);
+    expect(previewScrollView.padding, const EdgeInsets.fromLTRB(32, 7, 32, 56));
     expect(headingTop - previewTop, lessThan(80));
     expect(previewScrollController.offset, 0);
 

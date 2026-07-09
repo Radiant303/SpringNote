@@ -22,6 +22,9 @@ typedef NoteImagePicker = Future<List<NoteImageAttachment>> Function();
 
 enum _EditorWorkspaceMode { edit, split, preview }
 
+const _notesEditorBodyFontSize = 14.0;
+const _notesEditorTopContentPadding = _notesEditorBodyFontSize / 2;
+
 class NoteImageAttachment {
   const NoteImageAttachment({required this.path, required this.name});
 
@@ -1924,7 +1927,7 @@ class _EditorWorkspaceState extends State<_EditorWorkspace> {
       localImageBasePath: widget.localImageBasePath,
       scrollController: _previewScrollController,
       padding: widget.mode == _EditorWorkspaceMode.split
-          ? const EdgeInsets.fromLTRB(32, 0, 32, 56)
+          ? const EdgeInsets.fromLTRB(32, _notesEditorTopContentPadding, 32, 56)
           : const EdgeInsets.fromLTRB(32, 20, 32, 56),
     );
 
@@ -2038,10 +2041,14 @@ class _EditorContent extends StatelessWidget {
     final editorStyle =
         Theme.of(context).textTheme.bodyLarge?.copyWith(
           color: colors.text,
-          fontSize: 14,
+          fontSize: _notesEditorBodyFontSize,
           height: 1.55,
         ) ??
-        TextStyle(color: colors.text, fontSize: 14, height: 1.55);
+        TextStyle(
+          color: colors.text,
+          fontSize: _notesEditorBodyFontSize,
+          height: 1.55,
+        );
     return LayoutBuilder(
       builder: (context, constraints) {
         final sideInset = constraints.maxWidth > 720
@@ -2087,7 +2094,7 @@ class _EditorContent extends StatelessWidget {
                         disabledBorder: InputBorder.none,
                         contentPadding: EdgeInsets.fromLTRB(
                           sideInset,
-                          0,
+                          _notesEditorTopContentPadding,
                           sideInset / 2,
                           0,
                         ),
