@@ -75,6 +75,21 @@ struct MonitorSearchContext {
   HMONITOR monitor = nullptr;
 };
 
+bool PointInRoundRectRegion(const POINT& client_point,
+                            int width,
+                            int height,
+                            int radius) {
+  HRGN region =
+      CreateRoundRectRgn(0, 0, width + 1, height + 1, radius * 2, radius * 2);
+  if (!region) {
+    return client_point.x >= 0 && client_point.x < width &&
+           client_point.y >= 0 && client_point.y < height;
+  }
+  const bool inside = PtInRegion(region, client_point.x, client_point.y) != 0;
+  DeleteObject(region);
+  return inside;
+}
+
 int ReadInt(const flutter::EncodableMap& map,
             const char* key,
             int fallback = 0) {
@@ -461,6 +476,7 @@ void DesktopWidgetWindow::RegisterChannelHandler() {
 }
 
 void DesktopWidgetWindow::ShowOrUpdate(const flutter::EncodableMap& arguments) {
+  const bool was_visible = window_ && IsWindowVisible(window_) != FALSE;
   const bool was_orb_mode = state_.orb_mode;
   state_.running = ReadBool(arguments, "running", state_.running);
   state_.work_seconds = ReadInt(arguments, "workSeconds", state_.work_seconds);
@@ -501,6 +517,7 @@ void DesktopWidgetWindow::ShowOrUpdate(const flutter::EncodableMap& arguments) {
   } else if (!was_orb_mode || window_ == nullptr) {
     expanded_ = false;
   }
+
   // Position priority: 1) Dart arguments  2) Registry  3) Default.
   // Only call UpdateSavedPosition when Dart explicitly passes a position;
   // otherwise try the registry so stale in-memory state doesn't block
@@ -522,10 +539,13 @@ void DesktopWidgetWindow::ShowOrUpdate(const flutter::EncodableMap& arguments) {
   } else {
     ClampWindowToVisibleMonitor(false);
   }
-  ShowWindow(window_, SW_SHOWNOACTIVATE);
-  SetWindowPos(window_, HWND_TOPMOST, 0, 0, 0, 0,
-               SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-  InvalidateRect(window_, nullptr, FALSE);
+  if (!was_visible) {
+    ShowWindow(window_, SW_SHOWNOACTIVATE);
+    SetWindowPos(window_, HWND_TOPMOST, 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+  }
+  RedrawWindow(window_, nullptr, nullptr,
+               RDW_INVALIDATE | RDW_UPDATENOW | RDW_NOERASE);
 }
 
 void DesktopWidgetWindow::Hide() {
@@ -628,8 +648,10 @@ void DesktopWidgetWindow::ApplyWindowShapeAndSize(bool preserve_bottom_right) {
       x, y, MonitorFromRect(&rect, MONITOR_DEFAULTTONEAREST));
   const bool changed = next.left != rect.left || next.top != rect.top ||
                        width != old_width || height != old_height;
-  SetWindowPos(window_, HWND_TOPMOST, next.left, next.top, width, height,
-               SWP_NOACTIVATE | SWP_NOCOPYBITS | SWP_DEFERERASE);
+  if (changed) {
+    SetWindowPos(window_, HWND_TOPMOST, next.left, next.top, width, height,
+                 SWP_NOACTIVATE | SWP_NOCOPYBITS | SWP_DEFERERASE);
+  }
   const bool region_changed = UpdateWindowRegion(width, height, false);
   if (changed || region_changed) {
     RedrawWindow(window_, nullptr, nullptr,
@@ -650,8 +672,12 @@ bool DesktopWidgetWindow::UpdateWindowRegion(int width,
   }
   HRGN region =
       CreateRoundRectRgn(0, 0, width + 1, height + 1, radius * 2, radius * 2);
+  SetWindowRgn(window_, nullptr, FALSE);
   if (SetWindowRgn(window_, region, redraw ? TRUE : FALSE) == 0) {
     DeleteObject(region);
+    region_width_ = -1;
+    region_height_ = -1;
+    region_radius_ = -1;
     OutputDebugStringW(
         L"SpringNote: failed to update desktop widget window region.\n");
     return false;
@@ -667,11 +693,17 @@ void DesktopWidgetWindow::SetExpanded(bool expanded) {
     return;
   }
   expanded_ = expanded;
+  region_width_ = -1;
+  region_height_ = -1;
+  region_radius_ = -1;
   ApplyWindowShapeAndSize(true);
 }
 
 void DesktopWidgetWindow::TrackMouseLeave() {
   if (!window_) {
+    return;
+  }
+  if (tracking_mouse_leave_) {
     return;
   }
   TRACKMOUSEEVENT event{};
@@ -1265,7 +1297,7 @@ LRESULT DesktopWidgetWindow::HandleMessage(HWND hwnd,
     case WM_PAINT:
       Paint();
       return 0;
-    case WM_LBUTTONDOWN:
+    case WM_LBUTTONDOWN: {
       dragging_ = true;
       moved_while_pressed_ = false;
       drag_start_screen_ = {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
@@ -1273,12 +1305,26 @@ LRESULT DesktopWidgetWindow::HandleMessage(HWND hwnd,
       GetWindowRect(hwnd, &drag_start_rect_);
       SetCapture(hwnd);
       return 0;
+    }
     case WM_MOUSEMOVE:
       if (state_.orb_mode) {
-        SetExpanded(true);
-        TrackMouseLeave();
+        POINT mouse_point{GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+        if (expanded_ || PointInRoundRectRegion(mouse_point, CurrentWidth(),
+                                                CurrentHeight(),
+                                                CurrentCornerRadius())) {
+          SetExpanded(true);
+          TrackMouseLeave();
+        }
       }
       if (dragging_) {
+        if ((wparam & MK_LBUTTON) == 0) {
+          if (GetCapture() == hwnd) {
+            ReleaseCapture();
+          }
+          dragging_ = false;
+          moved_while_pressed_ = false;
+          return 0;
+        }
         POINT current{GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
         ClientToScreen(hwnd, &current);
         const int dx = current.x - drag_start_screen_.x;
@@ -1290,42 +1336,60 @@ LRESULT DesktopWidgetWindow::HandleMessage(HWND hwnd,
                                drag_start_rect_.top + dy);
       }
       return 0;
-    case WM_MOUSELEAVE:
+    case WM_MOUSELEAVE: {
       tracking_mouse_leave_ = false;
+      POINT cursor{};
+      GetCursorPos(&cursor);
+      POINT client_cursor = cursor;
+      ScreenToClient(hwnd, &client_cursor);
+      const bool cursor_in_region = PointInRoundRectRegion(
+          client_cursor, CurrentWidth(), CurrentHeight(), CurrentCornerRadius());
       if (dragging_) {
         return 0;
       }
       if (state_.orb_mode) {
-        POINT cursor{};
-        GetCursorPos(&cursor);
-        RECT window_rect{};
-        GetWindowRect(hwnd, &window_rect);
-        if (PtInRect(&window_rect, cursor)) {
-          TrackMouseLeave();
+        if (cursor_in_region) {
           return 0;
         }
       }
       SetExpanded(false);
       return 0;
+    }
     case WM_LBUTTONUP:
       if (dragging_) {
-        ReleaseCapture();
-        dragging_ = false;
-        if (!moved_while_pressed_) {
-          InvokeFlutterMethod("toggle");
+        const bool moved = moved_while_pressed_;
+        if (GetCapture() == hwnd) {
+          ReleaseCapture();
         }
-        ClampWindowToVisibleMonitor(true);
-        RECT client{};
-        GetClientRect(hwnd, &client);
+        dragging_ = false;
+        if (!moved) {
+          InvokeFlutterMethod("toggle");
+        } else {
+          ClampWindowToVisibleMonitor(true);
+        }
         POINT release_point{GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
         if (state_.orb_mode) {
-          if (PtInRect(&client, release_point)) {
+          if (PointInRoundRectRegion(release_point, CurrentWidth(),
+                                     CurrentHeight(), CurrentCornerRadius())) {
             TrackMouseLeave();
           } else {
             SetExpanded(false);
           }
         }
       }
+      return 0;
+    case WM_CAPTURECHANGED:
+      if (reinterpret_cast<HWND>(lparam) != hwnd) {
+        dragging_ = false;
+        moved_while_pressed_ = false;
+      }
+      return 0;
+    case WM_CANCELMODE:
+      if (GetCapture() == hwnd) {
+        ReleaseCapture();
+      }
+      dragging_ = false;
+      moved_while_pressed_ = false;
       return 0;
     case WM_RBUTTONUP:
       OpenMainWindow();
@@ -1335,6 +1399,8 @@ LRESULT DesktopWidgetWindow::HandleMessage(HWND hwnd,
       if (hwnd == window_) {
         window_ = nullptr;
         tracking_mouse_leave_ = false;
+        dragging_ = false;
+        moved_while_pressed_ = false;
         region_width_ = -1;
         region_height_ = -1;
         region_radius_ = -1;
