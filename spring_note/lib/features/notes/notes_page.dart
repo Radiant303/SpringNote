@@ -5,12 +5,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/models/app_config.dart';
 import '../../core/models/local_data_state.dart';
 import '../../core/models/note_external_update.dart';
 import '../../core/models/note_file.dart';
 import '../../core/services/ai_client_service.dart';
 import '../../core/services/clipboard_image_service.dart';
 import '../../core/services/cloud_sync_service.dart';
+import '../../core/services/local_data_service.dart';
 import '../../core/services/note_service.dart';
 import '../../core/services/note_upload_queue.dart';
 import '../../core/services/pasted_image_service.dart';
@@ -25,6 +27,15 @@ enum _EditorWorkspaceMode { edit, split, preview }
 
 const _notesEditorBodyFontSize = 14.0;
 const _notesEditorTopContentPadding = _notesEditorBodyFontSize / 2;
+
+_EditorWorkspaceMode _workspaceModeFromConfig(AppConfig config) {
+  for (final mode in _EditorWorkspaceMode.values) {
+    if (mode.name == config.notesEditorWorkspaceMode) {
+      return mode;
+    }
+  }
+  return _EditorWorkspaceMode.split;
+}
 
 class NoteImageAttachment {
   const NoteImageAttachment({required this.path, required this.name});
@@ -45,6 +56,8 @@ class NotesPage extends StatefulWidget {
     this.pastedImageService = const PastedImageService(),
     this.externalNoteUpdate,
     this.imagePicker,
+    this.localDataService,
+    this.onConfigChanged,
   });
 
   final LocalDataState localDataState;
@@ -56,6 +69,8 @@ class NotesPage extends StatefulWidget {
   final PastedImageService pastedImageService;
   final ValueListenable<NoteExternalUpdate?>? externalNoteUpdate;
   final NoteImagePicker? imagePicker;
+  final LocalDataService? localDataService;
+  final ValueChanged<AppConfig>? onConfigChanged;
 
   @override
   State<NotesPage> createState() => _NotesPageState();
@@ -93,7 +108,7 @@ class _NotesPageState extends State<NotesPage> {
   Timer? _autoCloudSyncTimer;
   bool _autoCloudUploadAfterSave = false;
   bool _editorFocusedByPointer = false;
-  _EditorWorkspaceMode _workspaceMode = _EditorWorkspaceMode.split;
+  late _EditorWorkspaceMode _workspaceMode;
   NoteUploadQueue? _ownedNoteUploadQueue;
 
   static const Duration _autoCloudSyncInterval = Duration(seconds: 3);
@@ -101,6 +116,7 @@ class _NotesPageState extends State<NotesPage> {
   @override
   void initState() {
     super.initState();
+    _workspaceMode = _workspaceModeFromConfig(widget.localDataState.config);
     _editorController.markdownSyntaxHighlightEnabled =
         widget.localDataState.config.markdownSyntaxHighlightEnabled;
     _editorFocusNode = FocusNode(onKeyEvent: _handleEditorKeyEvent);
@@ -121,6 +137,10 @@ class _NotesPageState extends State<NotesPage> {
     super.didUpdateWidget(oldWidget);
     _editorController.markdownSyntaxHighlightEnabled =
         widget.localDataState.config.markdownSyntaxHighlightEnabled;
+    if (widget.localDataState.config.notesEditorWorkspaceMode !=
+        oldWidget.localDataState.config.notesEditorWorkspaceMode) {
+      _workspaceMode = _workspaceModeFromConfig(widget.localDataState.config);
+    }
     if (widget.externalNoteUpdate != oldWidget.externalNoteUpdate) {
       oldWidget.externalNoteUpdate?.removeListener(_handleExternalNoteUpdate);
       widget.externalNoteUpdate?.addListener(_handleExternalNoteUpdate);
@@ -131,6 +151,23 @@ class _NotesPageState extends State<NotesPage> {
     if (widget.localDataState != oldWidget.localDataState ||
         widget.noteUploadQueue != oldWidget.noteUploadQueue) {
       _noteUploadQueue.attach(widget.localDataState);
+    }
+  }
+
+  void _handleWorkspaceModeChanged(_EditorWorkspaceMode mode) {
+    if (_workspaceMode == mode) {
+      return;
+    }
+    setState(() => _workspaceMode = mode);
+
+    final nextConfig = widget.localDataState.config.copyWith(
+      notesEditorWorkspaceMode: mode.name,
+    );
+    widget.onConfigChanged?.call(nextConfig);
+
+    final localDataService = widget.localDataService;
+    if (localDataService != null) {
+      unawaited(localDataService.saveConfig(nextConfig).catchError((_) {}));
     }
   }
 
@@ -1134,7 +1171,7 @@ class _NotesPageState extends State<NotesPage> {
                   : _parentDirectoryPath(selected.path),
               onInsertImage: _insertImageFromPicker,
               onPointerFocus: _handleEditorPointerFocus,
-              onModeChanged: (mode) => setState(() => _workspaceMode = mode),
+              onModeChanged: _handleWorkspaceModeChanged,
             ),
           ),
         ],

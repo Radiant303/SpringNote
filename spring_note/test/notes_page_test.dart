@@ -12,6 +12,7 @@ import 'package:spring_note/core/models/provider_config.dart';
 import 'package:spring_note/core/services/ai_client_service.dart';
 import 'package:spring_note/core/services/clipboard_image_service.dart';
 import 'package:spring_note/core/services/cloud_sync_service.dart';
+import 'package:spring_note/core/services/local_data_service.dart';
 import 'package:spring_note/core/services/note_service.dart';
 import 'package:spring_note/core/services/pasted_image_service.dart';
 import 'package:spring_note/core/theme/app_theme.dart';
@@ -173,6 +174,42 @@ final value = 1;
     expect(find.byType(TextField), findsWidgets);
     expect(find.byType(SelectionArea), findsOneWidget);
     expect(find.text('三态内容', findRichText: true), findsOneWidget);
+  });
+
+  testWidgets('notes editor persists workspace mode changes', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final noteService = _MemoryNoteService({
+      'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-18.md': '# 日报\n',
+    });
+    final localDataService = _MemoryLocalDataService(AppConfig.defaults());
+    AppConfig? changedConfig;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: NotesPage(
+          localDataState: _localDataState,
+          noteService: noteService,
+          localDataService: localDataService,
+          onConfigChanged: (config) => changedConfig = config,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(
+      find.byKey(const ValueKey('notes-workspace-mode-preview')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(changedConfig?.notesEditorWorkspaceMode, 'preview');
+    expect(localDataService.savedConfig.notesEditorWorkspaceMode, 'preview');
   });
 
   testWidgets('notes workspace mode control stays stable at 140 percent font', (
@@ -1279,6 +1316,17 @@ final _fimLocalDataState = LocalDataState(
     },
   ),
 );
+
+class _MemoryLocalDataService extends LocalDataService {
+  _MemoryLocalDataService(this.savedConfig);
+
+  AppConfig savedConfig;
+
+  @override
+  Future<void> saveConfig(AppConfig config) async {
+    savedConfig = config;
+  }
+}
 
 class _MemoryNoteService extends NoteService {
   _MemoryNoteService(this.contents);

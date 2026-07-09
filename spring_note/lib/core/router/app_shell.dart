@@ -672,6 +672,13 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                             localDataState: _localDataState,
                             externalNoteUpdate: _noteExternalUpdate,
                             noteUploadQueue: _noteUploadQueue,
+                            localDataService: widget.localDataService,
+                            onConfigChanged: (config) {
+                              final state = _localDataState.copyWith(
+                                config: config,
+                              );
+                              _handleLocalDataStateChanged(state);
+                            },
                           ),
                           MemoryPage(localDataState: _localDataState),
                           SettingsPage(

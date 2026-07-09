@@ -81,6 +81,24 @@ void main() {
     expect(AppConfig.fromJson({}).markdownSyntaxHighlightEnabled, isTrue);
   });
 
+  test('app config round trips notes editor workspace mode', () {
+    final config = AppConfig.defaults().copyWith(
+      notesEditorWorkspaceMode: 'preview',
+    );
+
+    final reloaded = AppConfig.fromJson(config.toJson());
+
+    expect(AppConfig.defaults().notesEditorWorkspaceMode, 'split');
+    expect(reloaded.notesEditorWorkspaceMode, 'preview');
+    expect(AppConfig.fromJson({}).notesEditorWorkspaceMode, 'split');
+    expect(
+      AppConfig.fromJson({
+        'notesEditorWorkspaceMode': 'invalid',
+      }).notesEditorWorkspaceMode,
+      'split',
+    );
+  });
+
   test('app config round trips cloud sync config', () {
     final syncedAt = DateTime.utc(2026, 6, 28, 12, 40);
     final config = AppConfig.defaults().copyWith(

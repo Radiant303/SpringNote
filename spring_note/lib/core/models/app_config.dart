@@ -38,6 +38,7 @@ class AppConfig {
     required this.appFont,
     required this.fontScale,
     required this.markdownSyntaxHighlightEnabled,
+    required this.notesEditorWorkspaceMode,
     required this.themeMode,
     required this.customDataDirectory,
     required this.autoStart,
@@ -70,6 +71,7 @@ class AppConfig {
   final String appFont;
   final double fontScale;
   final bool markdownSyntaxHighlightEnabled;
+  final String notesEditorWorkspaceMode;
   final AppThemePreference themeMode;
   final String? customDataDirectory;
   final bool autoStart;
@@ -102,6 +104,7 @@ class AppConfig {
       appFont: 'system',
       fontScale: 100,
       markdownSyntaxHighlightEnabled: true,
+      notesEditorWorkspaceMode: 'split',
       themeMode: AppThemePreference.system,
       customDataDirectory: null,
       autoStart: false,
@@ -145,6 +148,9 @@ class AppConfig {
       fontScale: _readDouble(json['fontScale'], 100),
       markdownSyntaxHighlightEnabled:
           json['markdownSyntaxHighlightEnabled'] as bool? ?? true,
+      notesEditorWorkspaceMode: _readNotesEditorWorkspaceMode(
+        json['notesEditorWorkspaceMode'],
+      ),
       themeMode: _readThemePreference(json['themeMode']),
       customDataDirectory: _readOptionalString(json['customDataDirectory']),
       autoStart: json['autoStart'] as bool? ?? false,
@@ -210,6 +216,7 @@ class AppConfig {
       'appFont': appFont,
       'fontScale': fontScale,
       'markdownSyntaxHighlightEnabled': markdownSyntaxHighlightEnabled,
+      'notesEditorWorkspaceMode': notesEditorWorkspaceMode,
       'themeMode': themeMode.name,
       'customDataDirectory': customDataDirectory,
       'autoStart': autoStart,
@@ -243,6 +250,7 @@ class AppConfig {
     String? appFont,
     double? fontScale,
     bool? markdownSyntaxHighlightEnabled,
+    String? notesEditorWorkspaceMode,
     AppThemePreference? themeMode,
     Object? customDataDirectory = _sentinel,
     bool? autoStart,
@@ -278,6 +286,8 @@ class AppConfig {
       fontScale: fontScale ?? this.fontScale,
       markdownSyntaxHighlightEnabled:
           markdownSyntaxHighlightEnabled ?? this.markdownSyntaxHighlightEnabled,
+      notesEditorWorkspaceMode:
+          notesEditorWorkspaceMode ?? this.notesEditorWorkspaceMode,
       themeMode: themeMode ?? this.themeMode,
       customDataDirectory: customDataDirectory == _sentinel
           ? this.customDataDirectory
@@ -346,6 +356,17 @@ class AppConfig {
       }
     }
     return AppThemePreference.system;
+  }
+
+  static String _readNotesEditorWorkspaceMode(Object? value) {
+    if (value is! String) {
+      return 'split';
+    }
+    final normalized = value.trim().toLowerCase();
+    return switch (normalized) {
+      'edit' || 'split' || 'preview' => normalized,
+      _ => 'split',
+    };
   }
 
   static List<ProviderConfig> _readProviders(Object? value) {
