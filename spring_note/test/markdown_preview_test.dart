@@ -65,6 +65,12 @@ void main() {
     );
     final decoration = inlineCode.decoration as BoxDecoration;
     final border = decoration.border as Border;
+    final opticalOffset = tester.widget<Transform>(
+      find.descendant(
+        of: find.byKey(const ValueKey('markdown-inline-code')),
+        matching: find.byType(Transform),
+      ),
+    );
 
     expect(text.style?.fontWeight, FontWeight.w400);
     expect(text.style?.fontSize, closeTo(12.6, 0.001));
@@ -72,6 +78,7 @@ void main() {
     expect(decoration.borderRadius, BorderRadius.circular(3));
     expect(border.top.width, 1);
     expect(inlineCode.padding, const EdgeInsets.symmetric(horizontal: 2));
+    expect(opticalOffset.transform.getTranslation().y, closeTo(0.5, 0.001));
   });
 
   testWidgets('markdown preview keeps bold nesting for inline code', (

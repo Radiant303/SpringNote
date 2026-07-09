@@ -592,15 +592,18 @@ class _SpringInlineCodeMd extends HighlightedText {
           ),
           borderRadius: BorderRadius.circular(3),
         ),
-        child: Text(
-          code,
-          style: baseStyle.copyWith(
-            color: textColor,
-            fontSize: fontSize * 0.9,
-            height: 1.08,
-            fontWeight: baseStyle.fontWeight,
-            fontFamily: 'monospace',
-            background: null,
+        child: Transform.translate(
+          offset: const Offset(0, 0.5),
+          child: Text(
+            code,
+            style: baseStyle.copyWith(
+              color: textColor,
+              fontSize: fontSize * 0.9,
+              height: 1.08,
+              fontWeight: baseStyle.fontWeight,
+              fontFamily: 'monospace',
+              background: null,
+            ),
           ),
         ),
       ),
