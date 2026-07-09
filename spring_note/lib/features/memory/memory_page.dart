@@ -1321,6 +1321,7 @@ class _MemoryMessageView extends StatelessWidget {
                     useDollarSignsForLatex: true,
                     latexBuilder: springMarkdownLatexBuilder,
                     components: springMarkdownComponents,
+                    inlineComponents: springMarkdownInlineComponents,
                     unOrderedListBuilder: springMarkdownUnorderedListBuilder,
                     codeBuilder: (context, name, code, closed) =>
                         MarkdownCodeBlock(language: name, code: code),

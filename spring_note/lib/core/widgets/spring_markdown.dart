@@ -66,6 +66,7 @@ GptMarkdownThemeData springMarkdownThemeData(
 
 final _springTaskCheckboxMd = _SpringTaskCheckboxMd();
 final _springNewLines = _SpringNewLines();
+final _springInlineCodeMd = _SpringInlineCodeMd();
 
 final List<MarkdownComponent> springMarkdownComponents = [
   for (final component in MarkdownComponent.globalComponents)
@@ -73,8 +74,15 @@ final List<MarkdownComponent> springMarkdownComponents = [
       _springTaskCheckboxMd
     else if (component is NewLines)
       _springNewLines
+    else if (component is HighlightedText)
+      _springInlineCodeMd
     else
       component,
+];
+
+final List<MarkdownComponent> springMarkdownInlineComponents = [
+  for (final component in MarkdownComponent.inlineComponents)
+    if (component is HighlightedText) _springInlineCodeMd else component,
 ];
 
 Widget springMarkdownUnorderedListBuilder(
@@ -398,6 +406,47 @@ class _SpringNewLines extends NewLines {
         fontSize: style.fontSize ?? kDefaultFontSize,
         height: 1.15,
         color: style.color,
+      ),
+    );
+  }
+}
+
+class _SpringInlineCodeMd extends HighlightedText {
+  @override
+  InlineSpan span(BuildContext context, String text, GptMarkdownConfig config) {
+    final match = exp.firstMatch(text.trim());
+    final code = match?[1] ?? '';
+    final colors = AppTheme.colors(context);
+    final baseStyle = config.style ?? DefaultTextStyle.of(context).style;
+    final fontSize = baseStyle.fontSize ?? kDefaultFontSize;
+    final textColor = baseStyle.color ?? colors.text;
+    final inheritedWeight = baseStyle.fontWeight;
+
+    return WidgetSpan(
+      alignment: PlaceholderAlignment.middle,
+      child: Container(
+        key: const ValueKey('markdown-inline-code'),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+        decoration: BoxDecoration(
+          color: colors.surfaceMuted.withValues(alpha: 0.45),
+          border: Border.all(color: colors.border.withValues(alpha: 0.75)),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          code,
+          style: baseStyle.copyWith(
+            color: textColor,
+            fontSize: fontSize * 0.94,
+            height: 1.08,
+            fontWeight:
+                inheritedWeight == null ||
+                    inheritedWeight.value < FontWeight.w600.value
+                ? FontWeight.w400
+                : inheritedWeight,
+            fontFamily: 'monospace',
+            background: null,
+          ),
+        ),
       ),
     );
   }

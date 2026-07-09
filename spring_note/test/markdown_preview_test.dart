@@ -47,6 +47,50 @@ void main() {
     expect(_hasBoldText(richTexts, 'SQL 注入'), isTrue);
   });
 
+  testWidgets('markdown preview renders inline code subtly', (
+    WidgetTester tester,
+  ) async {
+    await _pumpPreview(tester, '这是 `语法` 测试');
+
+    final inlineCode = tester.widget<Container>(
+      find.byKey(const ValueKey('markdown-inline-code')),
+    );
+    final text = tester.widget<Text>(
+      find.descendant(
+        of: find.byKey(const ValueKey('markdown-inline-code')),
+        matching: find.text('语法'),
+      ),
+    );
+    final decoration = inlineCode.decoration as BoxDecoration;
+    final border = decoration.border as Border;
+
+    expect(text.style?.fontWeight, FontWeight.w400);
+    expect(text.style?.fontSize, closeTo(13.16, 0.001));
+    expect(text.style?.fontFamily, 'monospace');
+    expect(decoration.borderRadius, BorderRadius.circular(4));
+    expect(border.top.width, 1);
+    expect(
+      inlineCode.padding,
+      const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+    );
+  });
+
+  testWidgets('markdown preview keeps bold nesting for inline code', (
+    WidgetTester tester,
+  ) async {
+    await _pumpPreview(tester, '这是 **`语法`** 测试');
+
+    final text = tester.widget<Text>(
+      find.descendant(
+        of: find.byKey(const ValueKey('markdown-inline-code')),
+        matching: find.text('语法'),
+      ),
+    );
+
+    expect(text.style?.fontWeight, FontWeight.w700);
+    expect(text.style?.color, _bodyTextColor(tester));
+  });
+
   testWidgets('markdown preview renders task checkbox like Typora', (
     WidgetTester tester,
   ) async {
@@ -604,6 +648,10 @@ String _previewPlainText(WidgetTester tester) {
       .widgetList<RichText>(find.byType(RichText))
       .map((richText) => richText.text.toPlainText())
       .join('\n');
+}
+
+Color _bodyTextColor(WidgetTester tester) {
+  return AppTheme.colors(tester.element(find.byType(MarkdownPreview))).text;
 }
 
 bool _hasBoldText(Iterable<RichText> richTexts, String text) {
