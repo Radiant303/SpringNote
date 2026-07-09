@@ -7,6 +7,7 @@ import 'package:gpt_markdown/gpt_markdown.dart';
 import '../services/update_check_service.dart';
 import '../theme/app_theme.dart';
 import 'markdown_code_block.dart';
+import 'spring_markdown.dart';
 
 Future<void> showAppUpdateDialog({
   required BuildContext context,
@@ -104,20 +105,39 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                     child: SingleChildScrollView(
                       child: DefaultTextStyle.merge(
                         style: textTheme.bodyLarge?.copyWith(
-                          color: colors.text,
+                          color: springMarkdownTextColor(context),
                           fontSize: 14,
                           height: 1.55,
                         ),
-                        child: GptMarkdown(
-                          widget.latest.changelog,
-                          followLinkColor: true,
-                          useDollarSignsForLatex: true,
-                          codeBuilder: (context, name, code, closed) =>
-                              MarkdownCodeBlock(language: name, code: code),
-                          style: textTheme.bodyLarge?.copyWith(
-                            color: colors.text,
-                            fontSize: 14,
-                            height: 1.55,
+                        child: GptMarkdownTheme(
+                          gptThemeData: springMarkdownThemeData(
+                            context,
+                            GptMarkdownTheme.of(context),
+                          ),
+                          child: GptMarkdown(
+                            prepareSpringMarkdownText(widget.latest.changelog),
+                            followLinkColor: true,
+                            useDollarSignsForLatex: true,
+                            latexBuilder: springMarkdownLatexBuilder,
+                            components: springMarkdownComponents,
+                            inlineComponents: springMarkdownInlineComponents,
+                            unOrderedListBuilder:
+                                springMarkdownUnorderedListBuilder,
+                            tableBuilder: springMarkdownTableBuilder,
+                            imageBuilder: (context, url, width, height) =>
+                                SpringMarkdownImage(
+                                  url: url,
+                                  width: width,
+                                  height: height,
+                                  localImageBasePaths: const [],
+                                ),
+                            codeBuilder: (context, name, code, closed) =>
+                                MarkdownCodeBlock(language: name, code: code),
+                            style: textTheme.bodyLarge?.copyWith(
+                              color: springMarkdownTextColor(context),
+                              fontSize: 14,
+                              height: 1.55,
+                            ),
                           ),
                         ),
                       ),
