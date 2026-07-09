@@ -656,16 +656,16 @@ class _MarkdownEditorHighlightPalette {
     final colors = AppTheme.colors(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
     return _MarkdownEditorHighlightPalette(
-      markup: dark ? const Color(0xFFD3604F) : const Color(0xFFD3604F),
-      heading: dark ? const Color(0xFFD3604F) : const Color(0xFFD3604F),
-      checkbox: dark ? const Color(0xFF5B79E3) : const Color(0xFF5B79E3),
-      link: dark ? const Color(0xFF3882B7) : const Color(0xFF3882B7),
-      image: dark ? const Color(0xFF5B79E3) : const Color(0xFF5B79E3),
-      code: dark ? const Color(0xFF9FCA8F) : const Color(0xFF3E8B45),
-      math: dark ? const Color(0xFF5B79E3) : const Color(0xFF5B79E3),
-      strong: dark ? const Color(0xFFAD6E25) : const Color(0xFFAD6E25),
-      strongEmphasis: dark ? const Color(0xFFAD6E25) : const Color(0xFFAD6E25),
-      emphasis: dark ? const Color(0xFF5B79E3) : const Color(0xFF5B79E3),
+      markup: dark ? const Color(0xFFE58B7E) : const Color(0xFFD3604F),
+      heading: dark ? const Color(0xFFE58B7E) : const Color(0xFFD3604F),
+      checkbox: dark ? const Color(0xFF8AA3EB) : const Color(0xFF5B79E3),
+      image: dark ? const Color(0xFF8AA3EB) : const Color(0xFF5B79E3),
+      math: dark ? const Color(0xFF8AA3EB) : const Color(0xFF5B79E3),
+      emphasis: dark ? const Color(0xFF8AA3EB) : const Color(0xFF5B79E3),
+      link: dark ? const Color(0xFF6CB5E8) : const Color(0xFF3882B7),
+      code: dark ? const Color(0xFF86C67C) : const Color(0xFF4B8043),
+      strong: dark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
+      strongEmphasis: dark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
       strike: colors.textSubtle.withValues(alpha: dark ? 0.86 : 0.78),
     );
   }
