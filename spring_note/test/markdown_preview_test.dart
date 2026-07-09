@@ -231,6 +231,22 @@ void main() {
     );
   });
 
+  test('spring markdown preserves image syntax inside inline code', () {
+    expect(
+      prepareSpringMarkdownText('正文 `![chart](images/chart.png)` 后文'),
+      '正文 `![chart](images/chart.png)` 后文',
+    );
+  });
+
+  test('spring markdown preserves image syntax inside table inline code', () {
+    const markdown =
+        '| 功能 | 语法示例 | 说明 |\n'
+        '|:---|:---:|---:|\n'
+        '| 图片 | `![alt](url)` | 感叹号+方括号+圆括号 |';
+
+    expect(prepareSpringMarkdownText(markdown), markdown);
+  });
+
   test('spring markdown preserves display math markers inside fenced code', () {
     const markdown = '```\n正文\n\n\\[E = mc^2\\]\n\n\\]\n\n正文\n```';
 

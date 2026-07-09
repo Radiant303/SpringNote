@@ -863,7 +863,10 @@ String _normalizeImagesAsMediaBlocks(String markdown) {
 }
 
 List<String> _splitImagesAsMediaBlocks(String line) {
-  final matches = _markdownImagePattern.allMatches(line).toList();
+  final matches = _markdownImagePattern
+      .allMatches(line)
+      .where((match) => !_isRangeInsideInlineCode(line, match.start, match.end))
+      .toList();
   if (matches.isEmpty || _standaloneImageLinePattern.hasMatch(line)) {
     return [line];
   }
@@ -878,6 +881,52 @@ List<String> _splitImagesAsMediaBlocks(String line) {
   _addNonEmptyMediaSegment(result, line.substring(start));
 
   return result.isEmpty ? [line] : result;
+}
+
+bool _isRangeInsideInlineCode(String text, int rangeStart, int rangeEnd) {
+  var index = 0;
+  while (index < text.length) {
+    if (text.codeUnitAt(index) != 0x60) {
+      index++;
+      continue;
+    }
+
+    final tickCount = _countBackticks(text, index);
+    final contentStart = index + tickCount;
+    final closingStart = _findClosingBackticks(text, contentStart, tickCount);
+    if (closingStart == -1) {
+      index = contentStart;
+      continue;
+    }
+
+    if (rangeStart >= contentStart && rangeEnd <= closingStart) {
+      return true;
+    }
+    index = closingStart + tickCount;
+  }
+
+  return false;
+}
+
+int _countBackticks(String text, int start) {
+  var count = 0;
+  while (start + count < text.length &&
+      text.codeUnitAt(start + count) == 0x60) {
+    count++;
+  }
+  return count;
+}
+
+int _findClosingBackticks(String text, int start, int tickCount) {
+  for (var index = start; index < text.length; index++) {
+    if (text.codeUnitAt(index) != 0x60) {
+      continue;
+    }
+    if (_countBackticks(text, index) == tickCount) {
+      return index;
+    }
+  }
+  return -1;
 }
 
 void _addNonEmptyMediaSegment(List<String> result, String value) {
