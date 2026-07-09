@@ -50,7 +50,7 @@ void main() {
   testWidgets('markdown preview renders inline code subtly', (
     WidgetTester tester,
   ) async {
-    await _pumpPreview(tester, '这是 `语法` 测试');
+    await _pumpPreview(tester, '这是 `syntax` 测试');
 
     final inlineCode = tester.widget<Container>(
       find.byKey(const ValueKey('markdown-inline-code')),
@@ -58,21 +58,18 @@ void main() {
     final text = tester.widget<Text>(
       find.descendant(
         of: find.byKey(const ValueKey('markdown-inline-code')),
-        matching: find.text('语法'),
+        matching: find.text('syntax'),
       ),
     );
     final decoration = inlineCode.decoration as BoxDecoration;
     final border = decoration.border as Border;
 
     expect(text.style?.fontWeight, FontWeight.w400);
-    expect(text.style?.fontSize, closeTo(13.16, 0.001));
+    expect(text.style?.fontSize, closeTo(12.6, 0.001));
     expect(text.style?.fontFamily, 'monospace');
-    expect(decoration.borderRadius, BorderRadius.circular(4));
+    expect(decoration.borderRadius, BorderRadius.circular(3));
     expect(border.top.width, 1);
-    expect(
-      inlineCode.padding,
-      const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-    );
+    expect(inlineCode.padding, const EdgeInsets.symmetric(horizontal: 2));
   });
 
   testWidgets('markdown preview keeps bold nesting for inline code', (
@@ -88,6 +85,8 @@ void main() {
     );
 
     expect(text.style?.fontWeight, FontWeight.w700);
+    expect(text.style?.fontSize, closeTo(12.6, 0.001));
+    expect(text.style?.fontFamily, 'monospace');
     expect(text.style?.color, _bodyTextColor(tester));
   });
 

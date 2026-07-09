@@ -420,29 +420,31 @@ class _SpringInlineCodeMd extends HighlightedText {
     final baseStyle = config.style ?? DefaultTextStyle.of(context).style;
     final fontSize = baseStyle.fontSize ?? kDefaultFontSize;
     final textColor = baseStyle.color ?? colors.text;
-    final inheritedWeight = baseStyle.fontWeight;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return WidgetSpan(
       alignment: PlaceholderAlignment.middle,
       child: Container(
         key: const ValueKey('markdown-inline-code'),
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+        padding: const EdgeInsets.symmetric(horizontal: 2),
         decoration: BoxDecoration(
-          color: colors.surfaceMuted.withValues(alpha: 0.45),
-          border: Border.all(color: colors.border.withValues(alpha: 0.75)),
-          borderRadius: BorderRadius.circular(4),
+          color: isDark
+              ? colors.surfaceMuted.withValues(alpha: 0.45)
+              : const Color(0xFFF3F4F4),
+          border: Border.all(
+            color: isDark
+                ? colors.border.withValues(alpha: 0.75)
+                : const Color(0xFFE7EAED),
+          ),
+          borderRadius: BorderRadius.circular(3),
         ),
         child: Text(
           code,
           style: baseStyle.copyWith(
             color: textColor,
-            fontSize: fontSize * 0.94,
+            fontSize: fontSize * 0.9,
             height: 1.08,
-            fontWeight:
-                inheritedWeight == null ||
-                    inheritedWeight.value < FontWeight.w600.value
-                ? FontWeight.w400
-                : inheritedWeight,
+            fontWeight: baseStyle.fontWeight,
             fontFamily: 'monospace',
             background: null,
           ),
