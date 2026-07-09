@@ -10,6 +10,7 @@ import 'package:spring_note/core/models/local_data_state.dart';
 import 'package:spring_note/core/models/memory_message.dart';
 import 'package:spring_note/core/services/memory_conversation_service.dart';
 import 'package:spring_note/core/services/memory_search_service.dart';
+import 'package:spring_note/core/widgets/spring_markdown.dart';
 import 'package:spring_note/features/memory/memory_page.dart';
 
 void main() {
@@ -117,8 +118,10 @@ void main() {
     final markdownTheme = tester.widget<GptMarkdownTheme>(
       find.byType(GptMarkdownTheme),
     );
+    final markdown = tester.widget<GptMarkdown>(find.byType(GptMarkdown));
     expect(markdownTheme.gptThemeData.h1?.height, 0.92);
     expect(markdownTheme.gptThemeData.h1?.color, const Color(0xFF333333));
+    expect(markdown.onLinkTap, same(openSpringMarkdownLink));
     expect(find.byType(Checkbox), findsNothing);
     expect(
       find.byKey(const ValueKey('markdown-task-checkbox-checked')),

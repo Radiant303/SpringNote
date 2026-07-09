@@ -138,6 +138,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                               fontSize: 14,
                               height: 1.55,
                             ),
+                            onLinkTap: openSpringMarkdownLink,
                           ),
                         ),
                       ),

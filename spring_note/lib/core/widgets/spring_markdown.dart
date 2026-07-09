@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:gpt_markdown/custom_widgets/custom_divider.dart';
 import 'package:gpt_markdown/custom_widgets/indent_widget.dart';
@@ -6,6 +8,7 @@ import 'package:gpt_markdown/custom_widgets/markdown_config.dart';
 import 'package:gpt_markdown/custom_widgets/unordered_ordered_list.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
+import '../services/external_link_service.dart';
 import '../theme/app_theme.dart';
 import 'markdown_local_image_stub.dart'
     if (dart.library.io) 'markdown_local_image_io.dart';
@@ -16,6 +19,7 @@ const Color _githubHeadingLineColor = Color(0xFFEEEEEE);
 const Color _githubBorderColor = Color(0xFFDFE2E5);
 const Color _githubLinkColor = Color(0xFF4183C4);
 const Color _githubTableHeaderColor = Color(0xFFF8F8F8);
+const _springMarkdownExternalLinkService = ExternalLinkService();
 
 bool _isLightMarkdownTheme(BuildContext context) =>
     Theme.of(context).brightness == Brightness.light;
@@ -35,6 +39,10 @@ Color springMarkdownMutedTextColor(
   return _isLightMarkdownTheme(context)
       ? _githubMutedTextColor
       : darkFallback ?? colors.textSubtle;
+}
+
+void openSpringMarkdownLink(String url, String title) {
+  unawaited(_springMarkdownExternalLinkService.open(url));
 }
 
 GptMarkdownThemeData springMarkdownThemeData(

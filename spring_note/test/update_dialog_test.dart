@@ -4,6 +4,7 @@ import 'package:gpt_markdown/custom_widgets/custom_divider.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:spring_note/core/services/update_check_service.dart';
 import 'package:spring_note/core/theme/app_theme.dart';
+import 'package:spring_note/core/widgets/spring_markdown.dart';
 import 'package:spring_note/core/widgets/update_dialog.dart';
 
 void main() {
@@ -47,6 +48,7 @@ void main() {
     );
 
     expect(markdown.style?.color, const Color(0xFF333333));
+    expect(markdown.onLinkTap, same(openSpringMarkdownLink));
     expect(markdownTheme.gptThemeData.h1?.color, const Color(0xFF333333));
     expect(markdownTheme.gptThemeData.h1?.height, 0.92);
     expect(markdownTheme.gptThemeData.hrLineThickness, 1);

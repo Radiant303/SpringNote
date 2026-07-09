@@ -86,7 +86,7 @@ class MarkdownPreview extends StatelessWidget {
                       fontSize: 14,
                       height: 1.55,
                     ),
-                    onLinkTap: (url, title) {},
+                    onLinkTap: openSpringMarkdownLink,
                   ),
                 ),
               ),

@@ -49,6 +49,16 @@ void main() {
     expect(_hasBoldText(richTexts, 'SQL 注入'), isTrue);
   });
 
+  testWidgets('markdown preview wires browser link opener', (
+    WidgetTester tester,
+  ) async {
+    await _pumpPreview(tester, '[官网](https://example.com)');
+
+    final markdown = tester.widget<GptMarkdown>(find.byType(GptMarkdown));
+
+    expect(markdown.onLinkTap, same(openSpringMarkdownLink));
+  });
+
   testWidgets('markdown preview renders inline code subtly', (
     WidgetTester tester,
   ) async {
