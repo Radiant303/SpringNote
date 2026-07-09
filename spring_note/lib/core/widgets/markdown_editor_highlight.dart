@@ -589,14 +589,8 @@ class MarkdownEditorHighlightSpanBuilder {
 
   TextStyle _delimiterContentStyle(TextStyle base, String delimiter) {
     return switch (delimiter) {
-      '***' || '___' => base.copyWith(
-        color: _palette.strongEmphasis,
-        fontWeight: FontWeight.w700,
-      ),
-      '**' || '__' => base.copyWith(
-        color: _palette.strong,
-        fontWeight: FontWeight.w700,
-      ),
+      '***' || '___' => base.copyWith(color: _palette.strongEmphasis),
+      '**' || '__' => base.copyWith(color: _palette.strong),
       '*' || '_' => base.copyWith(color: _palette.emphasis),
       '~~' => base.copyWith(color: _palette.strike),
       _ => base,
