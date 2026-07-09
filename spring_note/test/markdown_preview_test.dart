@@ -295,7 +295,10 @@ void main() {
   testWidgets('markdown preview uses github css line colors', (
     WidgetTester tester,
   ) async {
-    await _pumpPreview(tester, '# 标题\n\n---\n\n> 引用\n\n| A |\n|---|\n| B |');
+    await _pumpPreview(
+      tester,
+      '# 标题\n\n---\n\n> 引用\n\n| A |\n|---|\n| B |\n| C |',
+    );
 
     final dividers = tester.widgetList<CustomDivider>(
       find.byType(CustomDivider),
@@ -324,9 +327,36 @@ void main() {
     expect(quote.width, 4);
 
     final table = tester.widget<Table>(find.byType(Table));
+    final tableSize = tester.getSize(find.byType(Table));
     final border = table.border as TableBorder;
+    expect(tableSize.width, greaterThan(500));
     expect(border.top.color, const Color(0xFFDFE2E5));
     expect(border.top.width, 1);
+    expect(
+      (table.children[0].decoration as BoxDecoration).color,
+      const Color(0xFFF8F8F8),
+    );
+    expect(table.children[1].decoration, isNull);
+    expect(
+      (table.children[2].decoration as BoxDecoration).color,
+      const Color(0xFFF8F8F8),
+    );
+
+    final tableCellPaddings = tester.widgetList<Padding>(
+      find.descendant(of: find.byType(Table), matching: find.byType(Padding)),
+    );
+    expect(
+      tableCellPaddings.any(
+        (padding) =>
+            padding.padding ==
+            const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
+      ),
+      isTrue,
+    );
+    expect(
+      _hasBoldText(tester.widgetList<RichText>(find.byType(RichText)), 'A'),
+      isTrue,
+    );
   });
 
   testWidgets('markdown preview renders h1 followed by text consistently', (

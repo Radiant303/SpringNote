@@ -155,29 +155,61 @@ Widget springMarkdownTableBuilder(
     (previous, row) =>
         previous > row.fields.length ? previous : row.fields.length,
   );
+  if (maxColumns == 0) {
+    return const SizedBox.shrink();
+  }
   final tableConfig = config.copyWith(style: textStyle);
 
-  return SingleChildScrollView(
-    scrollDirection: Axis.horizontal,
-    child: Table(
-      defaultColumnWidth: CustomTableColumnWidth(),
-      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-      border: TableBorder.all(width: 1, color: borderColor),
-      children: [
-        for (final row in tableRows)
-          TableRow(
-            decoration: row.isHeader ? BoxDecoration(color: headerColor) : null,
-            children: [
-              for (var index = 0; index < maxColumns; index++)
-                _SpringTableCell(
-                  field: index < row.fields.length ? row.fields[index] : null,
-                  config: tableConfig,
-                ),
-            ],
-          ),
-      ],
-    ),
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      final table = Table(
+        columnWidths: {
+          for (var index = 0; index < maxColumns; index++)
+            index: const FlexColumnWidth(),
+        },
+        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+        border: TableBorder.all(width: 1, color: borderColor),
+        children: [
+          for (var rowIndex = 0; rowIndex < tableRows.length; rowIndex++)
+            TableRow(
+              decoration:
+                  tableRows[rowIndex].isHeader ||
+                      _isEvenGithubTableBodyRow(tableRows, rowIndex)
+                  ? BoxDecoration(color: headerColor)
+                  : null,
+              children: [
+                for (var index = 0; index < maxColumns; index++)
+                  _SpringTableCell(
+                    field: index < tableRows[rowIndex].fields.length
+                        ? tableRows[rowIndex].fields[index]
+                        : null,
+                    config: tableConfig,
+                    isHeader: tableRows[rowIndex].isHeader,
+                  ),
+              ],
+            ),
+        ],
+      );
+
+      if (!constraints.hasBoundedWidth) {
+        return table;
+      }
+      return SizedBox(width: constraints.maxWidth, child: table);
+    },
   );
+}
+
+bool _isEvenGithubTableBodyRow(List<CustomTableRow> tableRows, int rowIndex) {
+  if (tableRows[rowIndex].isHeader) {
+    return false;
+  }
+  var bodyRowIndex = 0;
+  for (var index = 0; index <= rowIndex; index++) {
+    if (!tableRows[index].isHeader) {
+      bodyRowIndex++;
+    }
+  }
+  return bodyRowIndex.isEven;
 }
 
 Widget springMarkdownLatexBuilder(
@@ -612,10 +644,15 @@ class _SpringInlineCodeMd extends HighlightedText {
 }
 
 class _SpringTableCell extends StatelessWidget {
-  const _SpringTableCell({required this.field, required this.config});
+  const _SpringTableCell({
+    required this.field,
+    required this.config,
+    required this.isHeader,
+  });
 
   final CustomTableField? field;
   final GptMarkdownConfig config;
+  final bool isHeader;
 
   @override
   Widget build(BuildContext context) {
@@ -624,9 +661,15 @@ class _SpringTableCell extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    final baseStyle = config.style ?? DefaultTextStyle.of(context).style;
+    final cellConfig = isHeader
+        ? config.copyWith(
+            style: baseStyle.copyWith(fontWeight: FontWeight.w700),
+          )
+        : config;
     Widget content = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: MdWidget(context, field.data.trim(), false, config: config),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
+      child: MdWidget(context, field.data.trim(), false, config: cellConfig),
     );
 
     content = switch (field.alignment) {
