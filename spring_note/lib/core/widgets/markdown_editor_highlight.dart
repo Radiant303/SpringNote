@@ -261,13 +261,13 @@ class MarkdownEditorHighlightSpanBuilder {
       return null;
     }
 
-    final labelEnd = _findUnescaped(text, ']', cursor + 1);
+    final labelEnd = _findClosingBracket(text, cursor);
     if (labelEnd == null ||
         labelEnd + 1 >= text.length ||
         text[labelEnd + 1] != '(') {
       return null;
     }
-    final urlEnd = _findUnescaped(text, ')', labelEnd + 2);
+    final urlEnd = _findClosingParenthesis(text, labelEnd + 1);
     if (urlEnd == null) {
       return null;
     }
@@ -288,6 +288,42 @@ class MarkdownEditorHighlightSpanBuilder {
     );
     _appendStyled(children, ')', _linkSyntaxStyle(style));
     return urlEnd + 1;
+  }
+
+  int? _findClosingBracket(String text, int openingBracketIndex) {
+    var depth = 0;
+    var index = openingBracketIndex;
+    while (index < text.length) {
+      final char = text[index];
+      if (char == '[' && !_isEscaped(text, index)) {
+        depth += 1;
+      } else if (char == ']' && !_isEscaped(text, index)) {
+        depth -= 1;
+        if (depth == 0) {
+          return index;
+        }
+      }
+      index += 1;
+    }
+    return null;
+  }
+
+  int? _findClosingParenthesis(String text, int openingParenthesisIndex) {
+    var depth = 0;
+    var index = openingParenthesisIndex;
+    while (index < text.length) {
+      final char = text[index];
+      if (char == '(' && !_isEscaped(text, index)) {
+        depth += 1;
+      } else if (char == ')' && !_isEscaped(text, index)) {
+        depth -= 1;
+        if (depth == 0) {
+          return index;
+        }
+      }
+      index += 1;
+    }
+    return null;
   }
 
   int? _appendInlineCode(
@@ -470,17 +506,6 @@ class MarkdownEditorHighlightSpanBuilder {
         return found;
       }
       index = found + delimiter.length;
-    }
-    return null;
-  }
-
-  int? _findUnescaped(String text, String target, int start) {
-    var index = start;
-    while (index < text.length) {
-      if (text[index] == target && !_isEscaped(text, index)) {
-        return index;
-      }
-      index += 1;
     }
     return null;
   }

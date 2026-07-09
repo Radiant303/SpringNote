@@ -25,6 +25,7 @@ void main() {
         '- [x] 完成任务\r\n'
         '> ### 引用里面的标题\r\n'
         '![图表](images/chart.png)\r\n'
+        '[![Star History Chart](https://api.star-history.com/svg?repos=Radiant303/SpringNote&type=Date)](https://star-history.com/#Radiant303/SpringNote&Date)\r\n'
         '[链接](https://example.com)\r\n'
         '[#71](https://github.com/Radiant303/SpringNote/issues/71)\r\n'
         '```dart\r\n'
@@ -68,6 +69,17 @@ void main() {
     expect(_styleOfText(span, 'inline code test()')?.fontFamily, isNull);
     expect(_styleOfText(span, 'https://example.com')?.fontFamily, isNull);
     expect(_styleOfText(span, '图表')?.color, const Color(0xFF5B79E3));
+    expect(
+      _styleOfText(span, 'Star History Chart')?.color,
+      const Color(0xFF5B79E3),
+    );
+    expect(
+      _styleOfText(
+        span,
+        'https://star-history.com/#Radiant303/SpringNote&Date',
+      )?.color,
+      const Color(0xFF3882B7),
+    );
     expect(_styleOfText(span, '链接')?.color, const Color(0xFF5B79E3));
     expect(_styleOfText(span, '#71')?.color, const Color(0xFF5B79E3));
     expect(
