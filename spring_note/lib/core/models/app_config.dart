@@ -37,6 +37,7 @@ class AppConfig {
     required this.industry,
     required this.appFont,
     required this.fontScale,
+    required this.markdownSyntaxHighlightEnabled,
     required this.themeMode,
     required this.customDataDirectory,
     required this.autoStart,
@@ -68,6 +69,7 @@ class AppConfig {
   final String industry;
   final String appFont;
   final double fontScale;
+  final bool markdownSyntaxHighlightEnabled;
   final AppThemePreference themeMode;
   final String? customDataDirectory;
   final bool autoStart;
@@ -99,6 +101,7 @@ class AppConfig {
       industry: '互联网',
       appFont: 'system',
       fontScale: 100,
+      markdownSyntaxHighlightEnabled: true,
       themeMode: AppThemePreference.system,
       customDataDirectory: null,
       autoStart: false,
@@ -140,6 +143,8 @@ class AppConfig {
       industry: json['industry'] as String? ?? '互联网',
       appFont: json['appFont'] as String? ?? 'system',
       fontScale: _readDouble(json['fontScale'], 100),
+      markdownSyntaxHighlightEnabled:
+          json['markdownSyntaxHighlightEnabled'] as bool? ?? true,
       themeMode: _readThemePreference(json['themeMode']),
       customDataDirectory: _readOptionalString(json['customDataDirectory']),
       autoStart: json['autoStart'] as bool? ?? false,
@@ -204,6 +209,7 @@ class AppConfig {
       'industry': industry,
       'appFont': appFont,
       'fontScale': fontScale,
+      'markdownSyntaxHighlightEnabled': markdownSyntaxHighlightEnabled,
       'themeMode': themeMode.name,
       'customDataDirectory': customDataDirectory,
       'autoStart': autoStart,
@@ -236,6 +242,7 @@ class AppConfig {
     String? industry,
     String? appFont,
     double? fontScale,
+    bool? markdownSyntaxHighlightEnabled,
     AppThemePreference? themeMode,
     Object? customDataDirectory = _sentinel,
     bool? autoStart,
@@ -269,6 +276,8 @@ class AppConfig {
       industry: industry ?? this.industry,
       appFont: appFont ?? this.appFont,
       fontScale: fontScale ?? this.fontScale,
+      markdownSyntaxHighlightEnabled:
+          markdownSyntaxHighlightEnabled ?? this.markdownSyntaxHighlightEnabled,
       themeMode: themeMode ?? this.themeMode,
       customDataDirectory: customDataDirectory == _sentinel
           ? this.customDataDirectory

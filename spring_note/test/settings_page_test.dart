@@ -113,7 +113,13 @@ void main() {
     await tester.pump();
     expect(service.savedConfig.dailyWorkHours, 9);
 
-    await tester.tap(find.byType(Switch).at(2));
+    expect(service.savedConfig.markdownSyntaxHighlightEnabled, isTrue);
+    await tester.tap(_settingSwitch('Markdown 语法高亮'));
+    await tester.pump();
+    expect(service.savedConfig.markdownSyntaxHighlightEnabled, isFalse);
+    expect(latestConfig?.markdownSyntaxHighlightEnabled, isFalse);
+
+    await tester.tap(_settingSwitch('记录 API 网络日志'));
     await tester.pump();
     expect(service.savedConfig.apiLogEnabled, isTrue);
     expect(latestConfig?.apiLogEnabled, isTrue);
@@ -973,6 +979,13 @@ Finder _cloudSyncTextFieldWithText(String text) {
         (widget) => widget is TextField && widget.controller?.text == text,
       )
       .first;
+}
+
+Finder _settingSwitch(String label) {
+  final row = find
+      .ancestor(of: find.text(label), matching: find.byType(Row))
+      .first;
+  return find.descendant(of: row, matching: find.byType(Switch));
 }
 
 class _MemoryLocalDataService extends LocalDataService {

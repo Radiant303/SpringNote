@@ -101,6 +101,8 @@ class _NotesPageState extends State<NotesPage> {
   @override
   void initState() {
     super.initState();
+    _editorController.markdownSyntaxHighlightEnabled =
+        widget.localDataState.config.markdownSyntaxHighlightEnabled;
     _editorFocusNode = FocusNode(onKeyEvent: _handleEditorKeyEvent);
     _editorFocusNode.addListener(_handleEditorFocusChanged);
     _editorController.addListener(_handleEditorChanged);
@@ -117,6 +119,8 @@ class _NotesPageState extends State<NotesPage> {
   @override
   void didUpdateWidget(covariant NotesPage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _editorController.markdownSyntaxHighlightEnabled =
+        widget.localDataState.config.markdownSyntaxHighlightEnabled;
     if (widget.externalNoteUpdate != oldWidget.externalNoteUpdate) {
       oldWidget.externalNoteUpdate?.removeListener(_handleExternalNoteUpdate);
       widget.externalNoteUpdate?.addListener(_handleExternalNoteUpdate);
@@ -1160,6 +1164,15 @@ enum _FimAcceptMode { all, line, character }
 class _FimTextEditingController extends TextEditingController {
   String? _fimPrediction;
   int? _fimOffset;
+  bool _markdownSyntaxHighlightEnabled = true;
+
+  set markdownSyntaxHighlightEnabled(bool value) {
+    if (_markdownSyntaxHighlightEnabled == value) {
+      return;
+    }
+    _markdownSyntaxHighlightEnabled = value;
+    notifyListeners();
+  }
 
   void setFimPrediction(String prediction, {required int offset}) {
     final normalizedOffset = offset.clamp(0, text.length);
@@ -1201,6 +1214,19 @@ class _FimTextEditingController extends TextEditingController {
         offset == null ||
         offset < 0 ||
         offset > text.length) {
+      if (!_markdownSyntaxHighlightEnabled) {
+        return TextSpan(
+          style: effectiveStyle,
+          children: [
+            super.buildTextSpan(
+              context: context,
+              style: style,
+              withComposing: withComposing,
+            ),
+            _bottomSpacer(effectiveStyle),
+          ],
+        );
+      }
       return MarkdownEditorHighlightSpanBuilder(context).buildTextEditingValue(
         value,
         textStyle: effectiveStyle,
@@ -1215,7 +1241,12 @@ class _FimTextEditingController extends TextEditingController {
     return TextSpan(
       style: effectiveStyle,
       children: [
-        highlighter.build(text.substring(0, offset), textStyle: effectiveStyle),
+        _markdownSyntaxHighlightEnabled
+            ? highlighter.build(
+                text.substring(0, offset),
+                textStyle: effectiveStyle,
+              )
+            : TextSpan(text: text.substring(0, offset)),
         TextSpan(
           text: prediction,
           style: effectiveStyle.copyWith(
@@ -1224,7 +1255,12 @@ class _FimTextEditingController extends TextEditingController {
                 : const Color(0xFF9AA0A6), // 浅色模式：保持原有灰色
           ),
         ),
-        highlighter.build(text.substring(offset), textStyle: effectiveStyle),
+        _markdownSyntaxHighlightEnabled
+            ? highlighter.build(
+                text.substring(offset),
+                textStyle: effectiveStyle,
+              )
+            : TextSpan(text: text.substring(offset)),
         _bottomSpacer(effectiveStyle),
       ],
     );

@@ -69,6 +69,18 @@ void main() {
     );
   });
 
+  test('app config round trips markdown syntax highlight preference', () {
+    final config = AppConfig.defaults().copyWith(
+      markdownSyntaxHighlightEnabled: false,
+    );
+
+    final reloaded = AppConfig.fromJson(config.toJson());
+
+    expect(AppConfig.defaults().markdownSyntaxHighlightEnabled, isTrue);
+    expect(reloaded.markdownSyntaxHighlightEnabled, isFalse);
+    expect(AppConfig.fromJson({}).markdownSyntaxHighlightEnabled, isTrue);
+  });
+
   test('app config round trips cloud sync config', () {
     final syncedAt = DateTime.utc(2026, 6, 28, 12, 40);
     final config = AppConfig.defaults().copyWith(

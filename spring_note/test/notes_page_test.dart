@@ -92,6 +92,39 @@ final value = 1;
     expect(noteService.contents.values.single, edited);
   });
 
+  testWidgets('notes editor can disable markdown syntax highlight', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final noteService = _MemoryNoteService({
+      'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-18.md':
+          '# 高亮关闭测试\n\n**首页工作台**',
+    });
+    final state = _localDataState.copyWith(
+      config: _localDataState.config.copyWith(
+        markdownSyntaxHighlightEnabled: false,
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: NotesPage(localDataState: state, noteService: noteService),
+      ),
+    );
+    await tester.pump();
+
+    final span = _editableTextSpan(tester);
+
+    expect(span.toPlainText(), contains('# 高亮关闭测试'));
+    expect(_spanHasColor(span, const Color(0xFFD3604F)), isFalse);
+    expect(_spanHasColor(span, const Color(0xFFAD6E25)), isFalse);
+  });
+
   testWidgets('notes editor switches workspace modes without losing text', (
     WidgetTester tester,
   ) async {
@@ -1133,16 +1166,33 @@ final value = 1;
 }
 
 String _editablePlainText(WidgetTester tester) {
+  return _editableTextSpan(tester).toPlainText();
+}
+
+TextSpan _editableTextSpan(WidgetTester tester) {
   final finder = find.byType(EditableText).last;
   final editableText = tester.widget<EditableText>(finder);
   final context = tester.element(finder);
-  return editableText.controller
-      .buildTextSpan(
-        context: context,
-        style: editableText.style,
-        withComposing: false,
-      )
-      .toPlainText();
+  return editableText.controller.buildTextSpan(
+    context: context,
+    style: editableText.style,
+    withComposing: false,
+  );
+}
+
+bool _spanHasColor(InlineSpan span, Color color) {
+  var found = false;
+  if (span is TextSpan && span.style?.color == color) {
+    found = true;
+  }
+  span.visitChildren((child) {
+    if (child is TextSpan && child.style?.color == color) {
+      found = true;
+      return false;
+    }
+    return true;
+  });
+  return found;
 }
 
 String _editableRealText(WidgetTester tester) {

@@ -186,6 +186,13 @@ class _PreferencesPanel extends StatelessWidget {
               onChanged: (value) =>
                   onChanged(config.copyWith(fontScale: value)),
             ),
+            _SwitchSettingRow(
+              label: 'Markdown 语法高亮',
+              value: config.markdownSyntaxHighlightEnabled,
+              onChanged: (value) => onChanged(
+                config.copyWith(markdownSyntaxHighlightEnabled: value),
+              ),
+            ),
           ],
         ),
         _SettingsCard(
@@ -835,6 +842,8 @@ class _DailyMergePromptDialogState extends State<_DailyMergePromptDialog> {
   @override
   void initState() {
     super.initState();
+    _controller.markdownSyntaxHighlightEnabled =
+        widget.config.markdownSyntaxHighlightEnabled;
     _controller.addListener(_handleChanged);
   }
 
@@ -1317,6 +1326,15 @@ class _PromptFimTextEditingController extends TextEditingController {
 
   String? _fimPrediction;
   int? _fimOffset;
+  bool _markdownSyntaxHighlightEnabled = true;
+
+  set markdownSyntaxHighlightEnabled(bool value) {
+    if (_markdownSyntaxHighlightEnabled == value) {
+      return;
+    }
+    _markdownSyntaxHighlightEnabled = value;
+    notifyListeners();
+  }
 
   void setFimPrediction(String prediction, {required int offset}) {
     final normalizedOffset = offset.clamp(0, text.length);
@@ -1358,6 +1376,19 @@ class _PromptFimTextEditingController extends TextEditingController {
         offset == null ||
         offset < 0 ||
         offset > text.length) {
+      if (!_markdownSyntaxHighlightEnabled) {
+        return TextSpan(
+          style: effectiveStyle,
+          children: [
+            super.buildTextSpan(
+              context: context,
+              style: style,
+              withComposing: withComposing,
+            ),
+            _bottomSpacer(effectiveStyle),
+          ],
+        );
+      }
       return MarkdownEditorHighlightSpanBuilder(context).buildTextEditingValue(
         value,
         textStyle: effectiveStyle,
@@ -1371,12 +1402,22 @@ class _PromptFimTextEditingController extends TextEditingController {
     return TextSpan(
       style: effectiveStyle,
       children: [
-        highlighter.build(text.substring(0, offset), textStyle: effectiveStyle),
+        _markdownSyntaxHighlightEnabled
+            ? highlighter.build(
+                text.substring(0, offset),
+                textStyle: effectiveStyle,
+              )
+            : TextSpan(text: text.substring(0, offset)),
         TextSpan(
           text: prediction,
           style: effectiveStyle.copyWith(color: const Color(0xFF9AA0A6)),
         ),
-        highlighter.build(text.substring(offset), textStyle: effectiveStyle),
+        _markdownSyntaxHighlightEnabled
+            ? highlighter.build(
+                text.substring(offset),
+                textStyle: effectiveStyle,
+              )
+            : TextSpan(text: text.substring(offset)),
         _bottomSpacer(effectiveStyle),
       ],
     );
