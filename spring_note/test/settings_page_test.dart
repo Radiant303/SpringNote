@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -139,16 +140,129 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
+    final temp = await tester.runAsync(
+      () => Directory.systemTemp.createTemp('spring_note_storage_preview_'),
+    );
+    expect(temp, isNotNull);
+    addTearDown(() async {
+      final directory = temp;
+      if (directory != null && await directory.exists()) {
+        await directory.delete(recursive: true);
+      }
+    });
+    final imageBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwC'
+      'AAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+    final imageDirectory = Directory(
+      '${temp!.path}${Platform.pathSeparator}notes'
+      '${Platform.pathSeparator}images',
+    );
+    await tester.runAsync(() async {
+      await imageDirectory.create(recursive: true);
+      await File(
+        '${imageDirectory.path}${Platform.pathSeparator}unused.png',
+      ).writeAsBytes(imageBytes);
+      await File(
+        '${imageDirectory.path}${Platform.pathSeparator}keep.png',
+      ).writeAsBytes(imageBytes);
+    });
     final cleanupService = _MemoryNoteImageCleanupService(
-      const NoteImageCleanupScan(
-        totalImageCount: 2,
+      NoteImageCleanupScan(
+        totalImageCount: 3,
         referencedImageCount: 1,
-        totalSizeBytes: 3072,
+        totalSizeBytes: 1024 + imageBytes.length * 2,
         unusedImages: [
-          NoteImageCleanupEntry(relativePath: 'unused.png', sizeBytes: 2048),
+          NoteImageCleanupEntry(
+            relativePath: 'unused.png',
+            sizeBytes: imageBytes.length,
+          ),
+          NoteImageCleanupEntry(
+            relativePath: 'keep.png',
+            sizeBytes: imageBytes.length,
+          ),
         ],
       ),
     );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: SettingsPage(
+          localDataState: _stateAtRoot(temp.path, AppConfig.defaults()),
+          localDataService: _MemoryLocalDataService(AppConfig.defaults()),
+          noteImageCleanupService: cleanupService,
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('存储管理'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('图片附件'), findsOneWidget);
+    expect(find.text('查看并清理'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('storage-clean-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('选择要清理的图片'), findsOneWidget);
+    expect(find.text('images/unused.png'), findsOneWidget);
+    expect(find.byKey(const ValueKey('storage-image-preview')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('storage-image-row-keep.png')));
+    await tester.pump();
+    final previewPath = tester.widget<Text>(
+      find.byKey(const ValueKey('storage-image-preview-path')),
+    );
+    expect(previewPath.data, 'images/keep.png');
+
+    await tester.tap(
+      find.byKey(const ValueKey('storage-image-select-keep.png')),
+    );
+    await tester.pump();
+    expect(find.textContaining('已选择 1 张'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const ValueKey('storage-confirm-clean-button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(cleanupService.deletedCandidatePaths, ['unused.png']);
+    expect(find.textContaining('已清理 1 张图片'), findsOneWidget);
+    expect(
+      tester
+          .widget<Text>(
+            find.byKey(const ValueKey('storage-unused-image-count')),
+          )
+          .data,
+      '1',
+    );
+  });
+
+  testWidgets('storage scan stays stable across settings sections', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final scan = const NoteImageCleanupScan(
+      totalImageCount: 4,
+      referencedImageCount: 3,
+      totalSizeBytes: 8192,
+      unusedImages: [
+        NoteImageCleanupEntry(relativePath: 'unused.png', sizeBytes: 1024),
+      ],
+    );
+    final pendingScan = Completer<NoteImageCleanupScan>();
+    addTearDown(() {
+      if (!pendingScan.isCompleted) {
+        pendingScan.complete(scan);
+      }
+    });
+    final cleanupService = _MemoryNoteImageCleanupService(
+      scan,
+      pendingScan: pendingScan.future,
+    );
+
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light(),
@@ -162,23 +276,41 @@ void main() {
 
     await tester.tap(find.text('存储管理'));
     await tester.pump();
+
+    expect(find.text('正在扫描图片附件'), findsOneWidget);
+    expect(find.text('—'), findsNothing);
+    final scanButton = find.byKey(const ValueKey('storage-rescan-button'));
+    expect(
+      find.descendant(
+        of: scanButton,
+        matching: find.byType(CircularProgressIndicator),
+      ),
+      findsNothing,
+    );
+
+    pendingScan.complete(scan);
+    await tester.pump();
+    await tester.pump();
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('storage-total-image-count')))
+          .data,
+      '4',
+    );
+
+    await tester.tap(find.text('关于').first);
+    await tester.pump();
+    await tester.tap(find.text('存储管理'));
     await tester.pump();
 
-    expect(find.text('图片附件'), findsOneWidget);
-    expect(find.text('清理未使用图片'), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('storage-clean-button')));
-    await tester.pumpAndSettle();
-
-    expect(find.text('images/unused.png'), findsOneWidget);
-    expect(find.textContaining('永久删除 1 张图片'), findsOneWidget);
-    await tester.tap(
-      find.byKey(const ValueKey('storage-confirm-clean-button')),
+    expect(find.text('正在扫描图片附件'), findsNothing);
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('storage-total-image-count')))
+          .data,
+      '4',
     );
-    await tester.pumpAndSettle();
-
-    expect(cleanupService.deletedCandidatePaths, ['unused.png']);
-    expect(find.textContaining('已清理 1 张图片'), findsOneWidget);
-    expect(find.text('无需清理'), findsOneWidget);
+    expect(cleanupService.scanCallCount, 1);
   });
 
   testWidgets('settings page persists desktop widget orb mode', (
@@ -1051,6 +1183,18 @@ LocalDataState _state(AppConfig config) {
   );
 }
 
+LocalDataState _stateAtRoot(String root, AppConfig config) {
+  final notes = '$root${Platform.pathSeparator}notes';
+  return LocalDataState(
+    dataDirectory: root,
+    configPath: '$root${Platform.pathSeparator}config.json',
+    dailyNotesDirectory: '$notes${Platform.pathSeparator}daily',
+    weeklyNotesDirectory: '$notes${Platform.pathSeparator}weekly',
+    monthlyNotesDirectory: '$notes${Platform.pathSeparator}monthly',
+    config: config,
+  );
+}
+
 Finder _cloudSyncTextFieldWithText(String text) {
   return find
       .byWidgetPredicate(
@@ -1111,13 +1255,19 @@ class _FileBackedLocalDataService extends LocalDataService {
 }
 
 class _MemoryNoteImageCleanupService extends NoteImageCleanupService {
-  _MemoryNoteImageCleanupService(this.scanResult);
+  _MemoryNoteImageCleanupService(this.scanResult, {this.pendingScan});
 
   NoteImageCleanupScan scanResult;
+  final Future<NoteImageCleanupScan>? pendingScan;
   List<String>? deletedCandidatePaths;
+  int scanCallCount = 0;
 
   @override
   Future<NoteImageCleanupScan> scan(LocalDataState localDataState) async {
+    scanCallCount++;
+    if (scanCallCount == 1 && pendingScan != null) {
+      scanResult = await pendingScan!;
+    }
     return scanResult;
   }
 
@@ -1127,12 +1277,22 @@ class _MemoryNoteImageCleanupService extends NoteImageCleanupService {
     required Iterable<String> candidateRelativePaths,
   }) async {
     deletedCandidatePaths = candidateRelativePaths.toList(growable: false);
-    final deletedImages = scanResult.unusedImages;
+    final candidates = deletedCandidatePaths!.toSet();
+    final deletedImages = scanResult.unusedImages
+        .where((image) => candidates.contains(image.relativePath))
+        .toList(growable: false);
+    final remainingImages = scanResult.unusedImages
+        .where((image) => !candidates.contains(image.relativePath))
+        .toList(growable: false);
+    final deletedSize = deletedImages.fold(
+      0,
+      (total, image) => total + image.sizeBytes,
+    );
     scanResult = NoteImageCleanupScan(
       totalImageCount: scanResult.totalImageCount - deletedImages.length,
       referencedImageCount: scanResult.referencedImageCount,
-      totalSizeBytes: scanResult.totalSizeBytes - scanResult.unusedSizeBytes,
-      unusedImages: const [],
+      totalSizeBytes: scanResult.totalSizeBytes - deletedSize,
+      unusedImages: remainingImages,
     );
     return NoteImageCleanupDeleteResult(
       deletedImages: deletedImages,

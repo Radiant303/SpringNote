@@ -4,18 +4,22 @@ class _StoragePanel extends StatefulWidget {
   const _StoragePanel({
     required this.localDataState,
     required this.cleanupService,
+    required this.initialScan,
+    required this.onScanChanged,
   });
 
   final LocalDataState localDataState;
   final NoteImageCleanupService cleanupService;
+  final NoteImageCleanupScan? initialScan;
+  final ValueChanged<NoteImageCleanupScan> onScanChanged;
 
   @override
   State<_StoragePanel> createState() => _StoragePanelState();
 }
 
 class _StoragePanelState extends State<_StoragePanel> {
-  NoteImageCleanupScan? _scan;
-  bool _scanning = true;
+  late NoteImageCleanupScan? _scan;
+  late bool _scanning;
   bool _cleaning = false;
   String? _message;
   bool _messageIsError = false;
@@ -26,7 +30,11 @@ class _StoragePanelState extends State<_StoragePanel> {
   @override
   void initState() {
     super.initState();
-    unawaited(_loadScan(updateLoadingState: false));
+    _scan = widget.initialScan;
+    _scanning = _scan == null;
+    if (_scanning) {
+      unawaited(_loadScan(updateLoadingState: false));
+    }
   }
 
   @override
@@ -34,13 +42,15 @@ class _StoragePanelState extends State<_StoragePanel> {
     super.didUpdateWidget(oldWidget);
     if (widget.localDataState.dataDirectory !=
         oldWidget.localDataState.dataDirectory) {
-      setState(() {
-        _scan = null;
-        _scanning = true;
-        _cleaning = false;
-        _message = null;
-      });
-      unawaited(_loadScan(updateLoadingState: false));
+      _operationGeneration++;
+      _scan = widget.initialScan;
+      _scanning = _scan == null;
+      _cleaning = false;
+      _message = null;
+      _messageIsError = false;
+      if (_scanning) {
+        unawaited(_loadScan(updateLoadingState: false));
+      }
     }
   }
 
@@ -59,6 +69,7 @@ class _StoragePanelState extends State<_StoragePanel> {
       setState(() {
         _scanning = true;
         _message = null;
+        _messageIsError = false;
       });
     }
 
@@ -73,6 +84,7 @@ class _StoragePanelState extends State<_StoragePanel> {
         _message = null;
         _messageIsError = false;
       });
+      widget.onScanChanged(scan);
     } catch (error) {
       if (!mounted || generation != _operationGeneration) {
         return;
@@ -91,12 +103,15 @@ class _StoragePanelState extends State<_StoragePanel> {
       return;
     }
 
-    final confirmed = await showDialog<bool>(
+    final selectedPaths = await showDialog<List<String>>(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.32),
-      builder: (context) => _UnusedImagesConfirmDialog(scan: scan),
+      barrierColor: Colors.black.withValues(alpha: 0.28),
+      builder: (context) => _UnusedImagesConfirmDialog(
+        scan: scan,
+        dataDirectory: widget.localDataState.dataDirectory,
+      ),
     );
-    if (!mounted || confirmed != true) {
+    if (!mounted || selectedPaths == null || selectedPaths.isEmpty) {
       return;
     }
 
@@ -104,13 +119,12 @@ class _StoragePanelState extends State<_StoragePanel> {
     setState(() {
       _cleaning = true;
       _message = null;
+      _messageIsError = false;
     });
     try {
       final result = await widget.cleanupService.deleteUnusedImages(
         localDataState: widget.localDataState,
-        candidateRelativePaths: scan.unusedImages.map(
-          (image) => image.relativePath,
-        ),
+        candidateRelativePaths: selectedPaths,
       );
       final refreshed = await widget.cleanupService.scan(widget.localDataState);
       if (!mounted || generation != _operationGeneration) {
@@ -122,6 +136,7 @@ class _StoragePanelState extends State<_StoragePanel> {
         _message = _cleanupMessage(result);
         _messageIsError = result.failedImages.isNotEmpty;
       });
+      widget.onScanChanged(refreshed);
     } catch (error) {
       if (!mounted || generation != _operationGeneration) {
         return;
@@ -150,32 +165,50 @@ class _StoragePanelState extends State<_StoragePanel> {
         '${_formatStorageBytes(result.deletedSizeBytes)}。';
   }
 
+  String _statusText(NoteImageCleanupScan? scan) {
+    if (_cleaning) {
+      return '正在清理所选图片，请稍候。';
+    }
+    if (_message case final message?) {
+      return message;
+    }
+    if (scan == null) {
+      return _scanning ? '正在扫描图片附件。' : '尚未获得图片统计信息。';
+    }
+    if (scan.unusedImages.isEmpty) {
+      return '目前没有未使用的图片。';
+    }
+    return '可以先预览图片，再选择需要删除的项目。';
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
     final scan = _scan;
     final canClean = !_busy && scan != null && scan.unusedImages.isNotEmpty;
     final referencedSize = scan == null
-        ? null
-        : scan.totalSizeBytes - scan.unusedSizeBytes;
+        ? 0
+        : (scan.totalSizeBytes - scan.unusedSizeBytes).clamp(
+            0,
+            scan.totalSizeBytes,
+          );
 
     return _SettingsScrollFrame(
-      maxWidth: 900,
+      maxWidth: 820,
       children: [
         _SettingsCard(
           title: '图片附件',
           trailing: _StorageActionButton(
             key: const ValueKey('storage-rescan-button'),
             label: '重新扫描',
-            width: 108,
-            loading: _scanning,
+            width: 96,
             enabled: !_busy,
             onTap: _loadScan,
           ),
           children: [
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+              padding: const EdgeInsets.fromLTRB(18, 17, 18, 17),
               decoration: BoxDecoration(
                 border: Border(top: BorderSide(color: colors.divider)),
               ),
@@ -183,84 +216,47 @@ class _StoragePanelState extends State<_StoragePanel> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '扫描日报、周报和月报中的图片引用，仅清理 notes/images 内未被引用的图片。',
+                    '检查日报、周报和月报中的图片引用，只处理 notes/images 内的图片。',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: colors.textSubtle,
                       height: 1.45,
                     ),
                   ),
+                  const SizedBox(height: 15),
+                  if (scan == null)
+                    _StorageScanState(scanning: _scanning)
+                  else
+                    _StorageOverview(
+                      totalCount: scan.totalImageCount,
+                      totalSize: scan.totalSizeBytes,
+                      referencedCount: scan.referencedImageCount,
+                      referencedSize: referencedSize,
+                      unusedCount: scan.unusedImageCount,
+                      unusedSize: scan.unusedSizeBytes,
+                    ),
                   const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
-                        child: _StorageMetricTile(
-                          label: '全部图片',
-                          value: scan?.totalImageCount.toString() ?? '—',
-                          detail: scan == null
-                              ? '正在读取'
-                              : _formatStorageBytes(scan.totalSizeBytes),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _StorageMetricTile(
-                          label: '仍在使用',
-                          value: scan?.referencedImageCount.toString() ?? '—',
-                          detail: referencedSize == null
-                              ? '正在检查'
-                              : _formatStorageBytes(referencedSize),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _StorageMetricTile(
-                          label: '可以清理',
-                          value: scan?.unusedImageCount.toString() ?? '—',
-                          detail: scan == null
-                              ? '正在检查'
-                              : _formatStorageBytes(scan.unusedSizeBytes),
-                          highlighted: (scan?.unusedImageCount ?? 0) > 0,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SizedBox(
-                          height: 38,
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: AnimatedOpacity(
-                              opacity: _message == null ? 0 : 1,
-                              duration: const Duration(milliseconds: 160),
-                              child: Text(
-                                _message ?? '',
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(
-                                      color: _messageIsError
-                                          ? const Color(0xFFEF4444)
-                                          : colors.textSubtle,
-                                      height: 1.35,
-                                    ),
+                        child: Text(
+                          _statusText(scan),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: _messageIsError
+                                    ? Theme.of(context).colorScheme.error
+                                    : colors.textSubtle,
+                                height: 1.35,
                               ),
-                            ),
-                          ),
                         ),
                       ),
                       const SizedBox(width: 18),
                       _StorageActionButton(
                         key: const ValueKey('storage-clean-button'),
-                        label: scan?.unusedImages.isEmpty ?? true
-                            ? '无需清理'
-                            : '清理未使用图片',
-                        width: 144,
+                        label: '查看并清理',
+                        width: 122,
                         filled: true,
-                        destructive: canClean,
-                        loading: _cleaning,
                         enabled: canClean,
                         onTap: _cleanUnusedImages,
                       ),
@@ -276,41 +272,143 @@ class _StoragePanelState extends State<_StoragePanel> {
   }
 }
 
-class _StorageMetricTile extends StatelessWidget {
-  const _StorageMetricTile({
+class _StorageScanState extends StatelessWidget {
+  const _StorageScanState({required this.scanning});
+
+  final bool scanning;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    return Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 98),
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      decoration: BoxDecoration(
+        color: colors.surfaceMuted,
+        border: Border.all(color: colors.border),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.image_search_outlined, size: 21, color: colors.textSubtle),
+          const SizedBox(width: 11),
+          Text(
+            scanning ? '正在扫描图片附件' : '暂无图片统计信息',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: colors.textSubtle),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StorageOverview extends StatelessWidget {
+  const _StorageOverview({
+    required this.totalCount,
+    required this.totalSize,
+    required this.referencedCount,
+    required this.referencedSize,
+    required this.unusedCount,
+    required this.unusedSize,
+  });
+
+  final int totalCount;
+  final int totalSize;
+  final int referencedCount;
+  final int referencedSize;
+  final int unusedCount;
+  final int unusedSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    final metrics = [
+      _StorageMetric(
+        label: '全部图片',
+        value: totalCount.toString(),
+        detail: _formatStorageBytes(totalSize),
+        valueKey: const ValueKey('storage-total-image-count'),
+      ),
+      _StorageMetric(
+        label: '仍在使用',
+        value: referencedCount.toString(),
+        detail: _formatStorageBytes(referencedSize),
+        valueKey: const ValueKey('storage-referenced-image-count'),
+      ),
+      _StorageMetric(
+        label: '可以清理',
+        value: unusedCount.toString(),
+        detail: _formatStorageBytes(unusedSize),
+        valueKey: const ValueKey('storage-unused-image-count'),
+      ),
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surfaceMuted,
+        border: Border.all(color: colors.border),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 520) {
+            return Column(
+              children: [
+                for (var index = 0; index < metrics.length; index++) ...[
+                  metrics[index],
+                  if (index != metrics.length - 1)
+                    Divider(height: 1, thickness: 1, color: colors.divider),
+                ],
+              ],
+            );
+          }
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var index = 0; index < metrics.length; index++) ...[
+                  Expanded(child: metrics[index]),
+                  if (index != metrics.length - 1)
+                    VerticalDivider(
+                      width: 1,
+                      thickness: 1,
+                      color: colors.divider,
+                    ),
+                ],
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _StorageMetric extends StatelessWidget {
+  const _StorageMetric({
     required this.label,
     required this.value,
     required this.detail,
-    this.highlighted = false,
+    required this.valueKey,
   });
 
   final String label;
   final String value;
   final String detail;
-  final bool highlighted;
+  final Key valueKey;
 
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
-    final highlight = Theme.of(context).brightness == Brightness.dark
-        ? const Color(0xFFE58B7E)
-        : const Color(0xFFD3604F);
-    return Container(
-      constraints: const BoxConstraints(minHeight: 102),
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      decoration: BoxDecoration(
-        color: highlighted
-            ? highlight.withValues(alpha: 0.08)
-            : colors.surfaceMuted,
-        border: Border.all(
-          color: highlighted
-              ? highlight.withValues(alpha: 0.28)
-              : colors.border,
-        ),
-        borderRadius: BorderRadius.circular(15),
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 13, 16, 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             label,
@@ -319,36 +417,27 @@ class _StorageMetricTile extends StatelessWidget {
               fontSize: 12.5,
             ),
           ),
-          const SizedBox(height: 16),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                value,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: highlighted ? highlight : colors.text,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w600,
-                  height: 1,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 1),
-                  child: Text(
-                    detail,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.right,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.textSubtle,
-                      height: 1.2,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          const SizedBox(height: 7),
+          Text(
+            value,
+            key: valueKey,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: colors.text,
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              height: 1.05,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            detail,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: colors.textSubtle,
+              fontSize: 12,
+              height: 1.2,
+            ),
           ),
         ],
       ),
@@ -364,16 +453,12 @@ class _StorageActionButton extends StatefulWidget {
     required this.enabled,
     required this.onTap,
     this.filled = false,
-    this.destructive = false,
-    this.loading = false,
   });
 
   final String label;
   final double width;
   final bool enabled;
   final bool filled;
-  final bool destructive;
-  final bool loading;
   final VoidCallback onTap;
 
   @override
@@ -399,8 +484,6 @@ class _StorageActionButtonState extends State<_StorageActionButton> {
     final active = widget.enabled && (_hovered || _pressed);
     final baseBackground = !widget.enabled
         ? colors.surfaceMuted
-        : widget.destructive
-        ? const Color(0xFFEF4444)
         : widget.filled
         ? colors.text
         : colors.surfaceMuted;
@@ -409,7 +492,7 @@ class _StorageActionButtonState extends State<_StorageActionButton> {
         : baseBackground;
     final foreground = !widget.enabled
         ? colors.textSubtle.withValues(alpha: 0.68)
-        : (widget.destructive || widget.filled)
+        : widget.filled
         ? colors.onAccent
         : colors.text;
 
@@ -446,44 +529,436 @@ class _StorageActionButtonState extends State<_StorageActionButton> {
           decoration: BoxDecoration(
             color: background,
             border: Border.all(
-              color: widget.filled || widget.destructive
-                  ? Colors.transparent
-                  : colors.border,
+              color: widget.filled ? Colors.transparent : colors.border,
             ),
             borderRadius: BorderRadius.circular(13),
           ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              AnimatedOpacity(
-                opacity: widget.loading ? 0 : 1,
-                duration: const Duration(milliseconds: 120),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    widget.label,
-                    maxLines: 1,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: foreground,
-                      fontSize: 13,
-                      height: 1.1,
-                    ),
-                  ),
+          child: Center(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                widget.label,
+                maxLines: 1,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: foreground,
+                  fontSize: 13,
+                  height: 1.1,
                 ),
               ),
-              AnimatedOpacity(
-                opacity: widget.loading ? 1 : 0,
-                duration: const Duration(milliseconds: 120),
-                child: TickerMode(
-                  enabled: widget.loading,
-                  child: SizedBox(
-                    width: 15,
-                    height: 15,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 1.8,
-                      color: foreground,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _UnusedImagesConfirmDialog extends StatefulWidget {
+  const _UnusedImagesConfirmDialog({
+    required this.scan,
+    required this.dataDirectory,
+  });
+
+  final NoteImageCleanupScan scan;
+  final String dataDirectory;
+
+  @override
+  State<_UnusedImagesConfirmDialog> createState() =>
+      _UnusedImagesConfirmDialogState();
+}
+
+class _UnusedImagesConfirmDialogState
+    extends State<_UnusedImagesConfirmDialog> {
+  late final ScrollController _scrollController = ScrollController();
+  late final Set<String> _selectedPaths = widget.scan.unusedImages
+      .map((image) => image.relativePath)
+      .toSet();
+  late String _previewPath = widget.scan.unusedImages.first.relativePath;
+  bool _submitting = false;
+
+  bool get _allSelected =>
+      _selectedPaths.length == widget.scan.unusedImages.length;
+
+  NoteImageCleanupEntry get _previewImage =>
+      widget.scan.unusedImages.firstWhere(
+        (image) => image.relativePath == _previewPath,
+        orElse: () => widget.scan.unusedImages.first,
+      );
+
+  int get _selectedSize => widget.scan.unusedImages
+      .where((image) => _selectedPaths.contains(image.relativePath))
+      .fold(0, (total, image) => total + image.sizeBytes);
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _toggleAll() {
+    setState(() {
+      if (_allSelected) {
+        _selectedPaths.clear();
+      } else {
+        _selectedPaths.addAll(
+          widget.scan.unusedImages.map((image) => image.relativePath),
+        );
+      }
+    });
+  }
+
+  void _setSelected(String path, bool selected) {
+    setState(() {
+      if (selected) {
+        _selectedPaths.add(path);
+      } else {
+        _selectedPaths.remove(path);
+      }
+    });
+  }
+
+  void _confirm() {
+    if (_submitting || _selectedPaths.isEmpty) {
+      return;
+    }
+    _submitting = true;
+    Navigator.of(context).pop([
+      for (final image in widget.scan.unusedImages)
+        if (_selectedPaths.contains(image.relativePath)) image.relativePath,
+    ]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    final previewImage = _previewImage;
+    return Dialog(
+      backgroundColor: AppTheme.dialogSurface(context),
+      clipBehavior: Clip.antiAlias,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: SizedBox(
+        width: 860,
+        height: 590,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 14, 15),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '选择要清理的图片',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(color: colors.text, fontSize: 18),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '删除前会再次检查引用，已重新使用的图片会自动保留。',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: colors.textSubtle),
+                        ),
+                      ],
                     ),
                   ),
+                  IconButton(
+                    tooltip: '关闭',
+                    onPressed: _submitting
+                        ? null
+                        : () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded, size: 19),
+                  ),
+                ],
+              ),
+            ),
+            Divider(height: 1, thickness: 1, color: colors.divider),
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    width: 370,
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 12, 9),
+                          child: Row(
+                            children: [
+                              Text(
+                                '${widget.scan.unusedImageCount} 张未使用',
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(color: colors.text),
+                              ),
+                              const Spacer(),
+                              _StorageTextButton(
+                                label: _allSelected ? '取消全选' : '全选',
+                                onTap: _toggleAll,
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: Scrollbar(
+                            controller: _scrollController,
+                            thumbVisibility:
+                                widget.scan.unusedImages.length > 6,
+                            child: ListView.separated(
+                              controller: _scrollController,
+                              padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
+                              itemCount: widget.scan.unusedImages.length,
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(height: 4),
+                              itemBuilder: (context, index) {
+                                final image = widget.scan.unusedImages[index];
+                                return _UnusedImageRow(
+                                  key: ValueKey(
+                                    'storage-image-row-${image.relativePath}',
+                                  ),
+                                  image: image,
+                                  dataDirectory: widget.dataDirectory,
+                                  selected: _selectedPaths.contains(
+                                    image.relativePath,
+                                  ),
+                                  previewed: image.relativePath == _previewPath,
+                                  onPreview: () => setState(
+                                    () => _previewPath = image.relativePath,
+                                  ),
+                                  onSelected: (selected) => _setSelected(
+                                    image.relativePath,
+                                    selected,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  VerticalDivider(
+                    width: 1,
+                    thickness: 1,
+                    color: colors.divider,
+                  ),
+                  Expanded(
+                    child: _StoragePreviewPane(
+                      image: previewImage,
+                      dataDirectory: widget.dataDirectory,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 17),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                border: Border(top: BorderSide(color: colors.divider)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '已选择 ${_selectedPaths.length} 张 · '
+                      '${_formatStorageBytes(_selectedSize)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: colors.textSubtle,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  _StorageActionButton(
+                    label: '取消',
+                    width: 82,
+                    enabled: !_submitting,
+                    onTap: () => Navigator.of(context).pop(),
+                  ),
+                  const SizedBox(width: 10),
+                  _StorageActionButton(
+                    key: const ValueKey('storage-confirm-clean-button'),
+                    label: '确认删除',
+                    width: 104,
+                    enabled: !_submitting && _selectedPaths.isNotEmpty,
+                    filled: true,
+                    onTap: _confirm,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StorageTextButton extends StatefulWidget {
+  const _StorageTextButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  State<_StorageTextButton> createState() => _StorageTextButtonState();
+}
+
+class _StorageTextButtonState extends State<_StorageTextButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 130),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: _hovered ? colors.surfaceHover : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            widget.label,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: colors.text,
+              fontSize: 12.5,
+              height: 1.1,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _UnusedImageRow extends StatefulWidget {
+  const _UnusedImageRow({
+    super.key,
+    required this.image,
+    required this.dataDirectory,
+    required this.selected,
+    required this.previewed,
+    required this.onPreview,
+    required this.onSelected,
+  });
+
+  final NoteImageCleanupEntry image;
+  final String dataDirectory;
+  final bool selected;
+  final bool previewed;
+  final VoidCallback onPreview;
+  final ValueChanged<bool> onSelected;
+
+  @override
+  State<_UnusedImageRow> createState() => _UnusedImageRowState();
+}
+
+class _UnusedImageRowState extends State<_UnusedImageRow> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    final displayPath = 'images/${widget.image.relativePath}';
+    final file = _storageImageFile(
+      widget.dataDirectory,
+      widget.image.relativePath,
+    );
+    final background = widget.previewed
+        ? colors.surfacePressed
+        : _hovered
+        ? colors.surfaceHover
+        : Colors.transparent;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onPreview,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 130),
+          height: 62,
+          padding: const EdgeInsets.fromLTRB(5, 5, 10, 5),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Checkbox(
+                key: ValueKey(
+                  'storage-image-select-${widget.image.relativePath}',
+                ),
+                value: widget.selected,
+                onChanged: (value) => widget.onSelected(value ?? false),
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                side: BorderSide(color: colors.border),
+                checkColor: colors.onAccent,
+                fillColor: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
+                    return colors.text;
+                  }
+                  return Colors.transparent;
+                }),
+                overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+              ),
+              const SizedBox(width: 3),
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: colors.surfaceMuted,
+                  border: Border.all(color: colors.border),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: _StorageLocalImage(file: file, thumbnail: true),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Tooltip(
+                      message: displayPath,
+                      child: Text(
+                        widget.image.relativePath,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: colors.text,
+                          height: 1.2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _formatStorageBytes(widget.image.sizeBytes),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colors.textSubtle,
+                        fontSize: 11.5,
+                        height: 1.1,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -494,186 +969,157 @@ class _StorageActionButtonState extends State<_StorageActionButton> {
   }
 }
 
-class _UnusedImagesConfirmDialog extends StatefulWidget {
-  const _UnusedImagesConfirmDialog({required this.scan});
-
-  final NoteImageCleanupScan scan;
-
-  @override
-  State<_UnusedImagesConfirmDialog> createState() =>
-      _UnusedImagesConfirmDialogState();
-}
-
-class _UnusedImagesConfirmDialogState
-    extends State<_UnusedImagesConfirmDialog> {
-  late final ScrollController _scrollController = ScrollController();
-  bool _submitting = false;
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _close(bool confirmed) {
-    if (_submitting) {
-      return;
-    }
-    _submitting = true;
-    Navigator.of(context).pop(confirmed);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
-    final listHeight = (widget.scan.unusedImages.length * 52.0)
-        .clamp(72.0, 286.0)
-        .toDouble();
-    return Dialog(
-      backgroundColor: AppTheme.dialogSurface(context),
-      clipBehavior: Clip.antiAlias,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: SizedBox(
-        width: 640,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(26, 22, 26, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '清理未使用图片',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: colors.text,
-                      fontSize: 18,
-                      height: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '将永久删除 ${widget.scan.unusedImageCount} 张图片，释放 '
-                    '${_formatStorageBytes(widget.scan.unusedSizeBytes)}。'
-                    '删除前会再次检查引用。',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: colors.textSubtle,
-                      fontSize: 13,
-                      height: 1.45,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 26),
-              decoration: BoxDecoration(
-                color: colors.surfaceMuted,
-                border: Border.all(color: colors.border),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: SizedBox(
-                height: listHeight,
-                child: Scrollbar(
-                  controller: _scrollController,
-                  thumbVisibility: widget.scan.unusedImages.length > 5,
-                  child: ListView.separated(
-                    controller: _scrollController,
-                    padding: EdgeInsets.zero,
-                    itemCount: widget.scan.unusedImages.length,
-                    separatorBuilder: (_, _) =>
-                        Divider(height: 1, thickness: 1, color: colors.divider),
-                    itemBuilder: (context, index) {
-                      final image = widget.scan.unusedImages[index];
-                      return _UnusedImageRow(image: image);
-                    },
-                  ),
-                ),
-              ),
-            ),
-            Container(
-              margin: const EdgeInsets.only(top: 20),
-              padding: const EdgeInsets.fromLTRB(26, 15, 26, 19),
-              decoration: BoxDecoration(
-                color: colors.surface,
-                border: Border(top: BorderSide(color: colors.divider)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  _StorageActionButton(
-                    label: '取消',
-                    width: 88,
-                    enabled: !_submitting,
-                    onTap: () => _close(false),
-                  ),
-                  const SizedBox(width: 10),
-                  _StorageActionButton(
-                    key: const ValueKey('storage-confirm-clean-button'),
-                    label: '确认清理',
-                    width: 108,
-                    enabled: !_submitting,
-                    filled: true,
-                    destructive: true,
-                    onTap: () => _close(true),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _UnusedImageRow extends StatelessWidget {
-  const _UnusedImageRow({required this.image});
+class _StoragePreviewPane extends StatelessWidget {
+  const _StoragePreviewPane({required this.image, required this.dataDirectory});
 
   final NoteImageCleanupEntry image;
+  final String dataDirectory;
 
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
     final displayPath = 'images/${image.relativePath}';
-    return SizedBox(
-      height: 51,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        child: Row(
-          children: [
-            Icon(Icons.image_outlined, size: 18, color: colors.textSubtle),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Tooltip(
-                message: displayPath,
-                child: Text(
-                  displayPath,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colors.text,
-                    fontSize: 13,
-                  ),
-                ),
+    final file = _storageImageFile(dataDirectory, image.relativePath);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 13, 18, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '预览',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: colors.text),
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: Container(
+              key: const ValueKey('storage-image-preview'),
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: colors.surfaceMuted,
+                border: Border.all(color: colors.border),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: _StorageLocalImage(file: file, thumbnail: false),
               ),
             ),
-            const SizedBox(width: 16),
-            Text(
-              _formatStorageBytes(image.sizeBytes),
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colors.textSubtle,
-                fontSize: 12,
-              ),
+          ),
+          const SizedBox(height: 11),
+          Tooltip(
+            message: displayPath,
+            child: Text(
+              displayPath,
+              key: const ValueKey('storage-image-preview-path'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: colors.text, height: 1.2),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            _formatStorageBytes(image.sizeBytes),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: colors.textSubtle,
+              fontSize: 12,
+            ),
+          ),
+        ],
       ),
     );
   }
+}
+
+class _StorageLocalImage extends StatelessWidget {
+  const _StorageLocalImage({required this.file, required this.thumbnail});
+
+  final File? file;
+  final bool thumbnail;
+
+  @override
+  Widget build(BuildContext context) {
+    final file = this.file;
+    if (file == null) {
+      return _StorageImageFallback(thumbnail: thumbnail);
+    }
+    if (file.path.toLowerCase().endsWith('.svg')) {
+      return SvgPicture.file(
+        file,
+        fit: BoxFit.contain,
+        placeholderBuilder: (_) => _StorageImageFallback(thumbnail: thumbnail),
+        errorBuilder: (_, _, _) => _StorageImageFallback(thumbnail: thumbnail),
+      );
+    }
+    return Image.file(
+      file,
+      fit: BoxFit.contain,
+      cacheWidth: thumbnail ? 96 : 1400,
+      filterQuality: thumbnail ? FilterQuality.low : FilterQuality.medium,
+      gaplessPlayback: true,
+      errorBuilder: (_, _, _) => _StorageImageFallback(thumbnail: thumbnail),
+    );
+  }
+}
+
+class _StorageImageFallback extends StatelessWidget {
+  const _StorageImageFallback({required this.thumbnail});
+
+  final bool thumbnail;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    if (thumbnail) {
+      return Center(
+        child: Icon(Icons.image_outlined, size: 18, color: colors.textSubtle),
+      );
+    }
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.broken_image_outlined, size: 30, color: colors.textSubtle),
+          const SizedBox(height: 8),
+          Text(
+            '无法预览这张图片',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: colors.textSubtle),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+File? _storageImageFile(String dataDirectory, String relativePath) {
+  final root = dataDirectory.trim();
+  final normalized = relativePath.trim().replaceAll('\\', '/');
+  if (root.isEmpty || normalized.isEmpty || normalized.startsWith('/')) {
+    return null;
+  }
+  final parts = normalized.split('/');
+  if (parts.any((part) => part.isEmpty || part == '.' || part == '..')) {
+    return null;
+  }
+
+  var path = root;
+  for (final part in ['notes', 'images', ...parts]) {
+    path = _joinStoragePath(path, part);
+  }
+  return File(path);
+}
+
+String _joinStoragePath(String left, String right) {
+  if (left.endsWith('/') || left.endsWith('\\')) {
+    return '$left$right';
+  }
+  return '$left${Platform.pathSeparator}$right';
 }
 
 String _formatStorageBytes(int bytes) {

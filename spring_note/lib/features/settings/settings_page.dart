@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/models/app_config.dart';
@@ -98,6 +99,23 @@ class _SettingsPageState extends State<SettingsPage> {
   String? _selectedProviderId;
   bool _saving = false;
   String? _settingsError;
+  NoteImageCleanupScan? _storageScan;
+  String? _storageScanDataDirectory;
+
+  @override
+  void didUpdateWidget(covariant SettingsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.localDataState.dataDirectory !=
+        oldWidget.localDataState.dataDirectory) {
+      _storageScan = null;
+      _storageScanDataDirectory = null;
+    }
+  }
+
+  void _rememberStorageScan(NoteImageCleanupScan scan) {
+    _storageScan = scan;
+    _storageScanDataDirectory = widget.localDataState.dataDirectory;
+  }
 
   ProviderConfig? get _selectedProvider {
     if (_config.providers.isEmpty) {
@@ -394,6 +412,11 @@ class _SettingsPageState extends State<SettingsPage> {
       _SettingsSection.storage => _StoragePanel(
         localDataState: widget.localDataState.copyWith(config: _config),
         cleanupService: widget.noteImageCleanupService,
+        initialScan:
+            _storageScanDataDirectory == widget.localDataState.dataDirectory
+            ? _storageScan
+            : null,
+        onScanChanged: _rememberStorageScan,
       ),
       _SettingsSection.stats => SettingsStatsPanel(
         localDataState: widget.localDataState.copyWith(config: _config),
