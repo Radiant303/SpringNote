@@ -41,24 +41,6 @@ class AiChatMessage {
           toolCalls == other.toolCalls;
 }
 
-class AiModel {
-  final String modelId;
-  final String displayName;
-
-  const AiModel({required this.modelId, required this.displayName});
-
-  @override
-  int get hashCode => modelId.hashCode ^ displayName.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is AiModel &&
-          runtimeType == other.runtimeType &&
-          modelId == other.modelId &&
-          displayName == other.displayName;
-}
-
 class AiImageAttachment {
   final String name;
   final String mimeType;
@@ -81,6 +63,24 @@ class AiImageAttachment {
           name == other.name &&
           mimeType == other.mimeType &&
           dataBase64 == other.dataBase64;
+}
+
+class AiModel {
+  final String modelId;
+  final String displayName;
+
+  const AiModel({required this.modelId, required this.displayName});
+
+  @override
+  int get hashCode => modelId.hashCode ^ displayName.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AiModel &&
+          runtimeType == other.runtimeType &&
+          modelId == other.modelId &&
+          displayName == other.displayName;
 }
 
 class AiProvider {

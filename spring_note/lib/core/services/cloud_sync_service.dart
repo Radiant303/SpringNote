@@ -1,9 +1,8 @@
-import 'dart:async';
-
 import '../../src/rust/api/cloud_sync_api.dart' as rust_api;
 import '../../src/rust/cloud_sync.dart' as rust_model;
 import '../models/cloud_sync_config.dart';
 import '../models/local_data_state.dart';
+import 'note_storage_coordinator.dart';
 
 enum CloudSyncTrigger { manual, startup }
 
@@ -86,8 +85,6 @@ class CloudSyncResult {
 class CloudSyncService {
   const CloudSyncService({this.api = const CloudSyncRustApi()});
 
-  static final Map<String, Future<void>> _syncQueues = <String, Future<void>>{};
-
   final CloudSyncRustApi api;
 
   Future<CloudSyncResult> testConnection(CloudSyncConfig config) async {
@@ -148,30 +145,8 @@ class CloudSyncService {
   static Future<T> _runExclusive<T>(
     String dataDirectory,
     Future<T> Function() action,
-  ) async {
-    final key = _queueKey(dataDirectory);
-    final previous = _syncQueues[key] ?? Future<void>.value();
-    final gate = Completer<void>();
-    _syncQueues[key] = gate.future;
-
-    try {
-      await previous.catchError((_) {});
-      return await action();
-    } finally {
-      gate.complete();
-      if (identical(_syncQueues[key], gate.future)) {
-        _syncQueues.remove(key);
-      }
-    }
-  }
-
-  static String _queueKey(String dataDirectory) {
-    final normalized = dataDirectory.trim().replaceAll(r'\', '/');
-    final withoutTrailingSlashes = normalized.replaceFirst(RegExp(r'/+$'), '');
-    if (RegExp(r'^[A-Za-z]:/').hasMatch(withoutTrailingSlashes)) {
-      return withoutTrailingSlashes.toLowerCase();
-    }
-    return withoutTrailingSlashes;
+  ) {
+    return NoteStorageCoordinator.runForDataDirectory(dataDirectory, action);
   }
 
   rust_model.CloudSyncConfig _rustConfig(CloudSyncConfig config) {

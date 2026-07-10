@@ -13,6 +13,7 @@ import 'package:spring_note/core/models/provider_config.dart';
 import 'package:spring_note/core/services/ai_client_service.dart';
 import 'package:spring_note/core/services/cloud_sync_service.dart';
 import 'package:spring_note/core/services/local_data_service.dart';
+import 'package:spring_note/core/services/note_image_cleanup_service.dart';
 import 'package:spring_note/core/services/platform_feature_support.dart';
 import 'package:spring_note/core/theme/app_theme.dart';
 import 'package:spring_note/features/settings/settings_page.dart';
@@ -128,6 +129,56 @@ void main() {
     await tester.tap(find.text('深色'));
     await tester.pump();
     expect(service.savedConfig.themeMode, AppThemePreference.dark);
+  });
+
+  testWidgets('storage management previews and cleans unused images', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final cleanupService = _MemoryNoteImageCleanupService(
+      const NoteImageCleanupScan(
+        totalImageCount: 2,
+        referencedImageCount: 1,
+        totalSizeBytes: 3072,
+        unusedImages: [
+          NoteImageCleanupEntry(relativePath: 'unused.png', sizeBytes: 2048),
+        ],
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: SettingsPage(
+          localDataState: _state(AppConfig.defaults()),
+          localDataService: _MemoryLocalDataService(AppConfig.defaults()),
+          noteImageCleanupService: cleanupService,
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('存储管理'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('图片附件'), findsOneWidget);
+    expect(find.text('清理未使用图片'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('storage-clean-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('images/unused.png'), findsOneWidget);
+    expect(find.textContaining('永久删除 1 张图片'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const ValueKey('storage-confirm-clean-button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(cleanupService.deletedCandidatePaths, ['unused.png']);
+    expect(find.textContaining('已清理 1 张图片'), findsOneWidget);
+    expect(find.text('无需清理'), findsOneWidget);
   });
 
   testWidgets('settings page persists desktop widget orb mode', (
@@ -1056,6 +1107,38 @@ class _FileBackedLocalDataService extends LocalDataService {
     configFile.parent.createSync(recursive: true);
     const encoder = JsonEncoder.withIndent('  ');
     configFile.writeAsStringSync('${encoder.convert(config.toJson())}\n');
+  }
+}
+
+class _MemoryNoteImageCleanupService extends NoteImageCleanupService {
+  _MemoryNoteImageCleanupService(this.scanResult);
+
+  NoteImageCleanupScan scanResult;
+  List<String>? deletedCandidatePaths;
+
+  @override
+  Future<NoteImageCleanupScan> scan(LocalDataState localDataState) async {
+    return scanResult;
+  }
+
+  @override
+  Future<NoteImageCleanupDeleteResult> deleteUnusedImages({
+    required LocalDataState localDataState,
+    required Iterable<String> candidateRelativePaths,
+  }) async {
+    deletedCandidatePaths = candidateRelativePaths.toList(growable: false);
+    final deletedImages = scanResult.unusedImages;
+    scanResult = NoteImageCleanupScan(
+      totalImageCount: scanResult.totalImageCount - deletedImages.length,
+      referencedImageCount: scanResult.referencedImageCount,
+      totalSizeBytes: scanResult.totalSizeBytes - scanResult.unusedSizeBytes,
+      unusedImages: const [],
+    );
+    return NoteImageCleanupDeleteResult(
+      deletedImages: deletedImages,
+      failedImages: const [],
+      skippedCount: 0,
+    );
   }
 }
 

@@ -18,6 +18,7 @@ import '../../core/services/ai_client_service.dart';
 import '../../core/services/cloud_sync_service.dart';
 import '../../core/services/external_link_service.dart';
 import '../../core/services/local_data_service.dart';
+import '../../core/services/note_image_cleanup_service.dart';
 import '../../core/services/platform_feature_support.dart';
 import '../../core/services/system_font_service.dart';
 import '../../core/services/update_check_service.dart';
@@ -32,6 +33,7 @@ part 'settings_providers_panel.dart';
 part 'settings_default_models_panel.dart';
 part 'settings_hotkeys_panel.dart';
 part 'settings_cloud_sync_panel.dart';
+part 'settings_storage_panel.dart';
 part 'settings_about_panel.dart';
 part 'settings_shared_widgets.dart';
 
@@ -41,6 +43,7 @@ enum _SettingsSection {
   models('默认模型', _SettingsNavIconType.heart),
   hotkeys('快捷键', _SettingsNavIconType.keyboard),
   cloudSync('云同步', _SettingsNavIconType.cloud),
+  storage('存储管理', _SettingsNavIconType.storage),
   stats('统计', _SettingsNavIconType.chart),
   about('关于', _SettingsNavIconType.info);
 
@@ -56,6 +59,7 @@ enum _SettingsNavIconType {
   heart,
   keyboard,
   cloud,
+  storage,
   chart,
   info,
 }
@@ -67,6 +71,7 @@ class SettingsPage extends StatefulWidget {
     this.localDataService = const LocalDataService(),
     this.aiClientService = const AiClientService(),
     this.cloudSyncService = const CloudSyncService(),
+    this.noteImageCleanupService = const NoteImageCleanupService(),
     UpdateCheckService? updateCheckService,
     this.onConfigChanged,
     this.onLocalDataStateChanged,
@@ -77,6 +82,7 @@ class SettingsPage extends StatefulWidget {
   final LocalDataService localDataService;
   final AiClientService aiClientService;
   final CloudSyncService cloudSyncService;
+  final NoteImageCleanupService noteImageCleanupService;
   final UpdateCheckService updateCheckService;
   final ValueChanged<AppConfig>? onConfigChanged;
   final ValueChanged<LocalDataState>? onLocalDataStateChanged;
@@ -384,6 +390,10 @@ class _SettingsPageState extends State<SettingsPage> {
         cloudSyncService: widget.cloudSyncService,
         onChanged: _updateConfig,
         onCloudSyncCompleted: widget.onCloudSyncCompleted,
+      ),
+      _SettingsSection.storage => _StoragePanel(
+        localDataState: widget.localDataState.copyWith(config: _config),
+        cleanupService: widget.noteImageCleanupService,
       ),
       _SettingsSection.stats => SettingsStatsPanel(
         localDataState: widget.localDataState.copyWith(config: _config),
@@ -709,6 +719,12 @@ class _SettingsNavLucidePainter extends CustomPainter {
         canvas.drawLine(point(12, 11.6), point(12, 15.7), paint);
         canvas.drawLine(point(9.9, 13.7), point(12, 11.6), paint);
         canvas.drawLine(point(14.1, 13.7), point(12, 11.6), paint);
+        break;
+      case _SettingsNavIconType.storage:
+        canvas.drawRRect(roundedRect(3.5, 5, 17, 14), paint);
+        canvas.drawLine(point(3.5, 14), point(20.5, 14), paint);
+        canvas.drawCircle(point(16.8, 17), 0.55 * strokeScale, paint);
+        canvas.drawCircle(point(13.8, 17), 0.55 * strokeScale, paint);
         break;
       case _SettingsNavIconType.chart:
         canvas.drawLine(point(4, 20), point(20, 20), paint);

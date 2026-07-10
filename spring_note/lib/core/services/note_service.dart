@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import '../models/note_file.dart';
+import 'note_storage_coordinator.dart';
 
 class NoteService {
   const NoteService();
@@ -84,12 +85,14 @@ class NoteService {
   }
 
   Future<void> writeMarkdown(String path, String content) async {
-    final file = File(path);
-    final parent = file.parent;
-    if (!await parent.exists()) {
-      await parent.create(recursive: true);
-    }
-    await file.writeAsString(content);
+    await NoteStorageCoordinator.runForManagedNotePath(path, () async {
+      final file = File(path);
+      final parent = file.parent;
+      if (!await parent.exists()) {
+        await parent.create(recursive: true);
+      }
+      await file.writeAsString(content);
+    });
   }
 
   Future<File> ensureMarkdownFile(

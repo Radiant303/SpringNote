@@ -6,6 +6,7 @@
 import 'ai.dart';
 import 'api/ai_api.dart';
 import 'api/cloud_sync_api.dart';
+import 'api/note_image_cleanup_api.dart';
 import 'api/stats_api.dart';
 import 'cloud_sync.dart';
 import 'dart:async';
@@ -13,6 +14,7 @@ import 'dart:convert';
 import 'frb_generated.dart';
 import 'frb_generated.io.dart'
     if (dart.library.js_interop) 'frb_generated.web.dart';
+import 'note_image_cleanup.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'stats.dart';
 
@@ -71,7 +73,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.12.0';
 
   @override
-  int get rustContentHash => -954322426;
+  int get rustContentHash => 2089791714;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -83,6 +85,12 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
+  Future<NoteImageCleanupDeleteResult>
+  crateApiNoteImageCleanupApiDeleteUnusedNoteImages({
+    required String dataDirectory,
+    required List<String> candidateRelativePaths,
+  });
+
   Future<ModelListResult> crateApiAiApiFetchProviderModels({
     required String appDataDir,
     required AiProvider provider,
@@ -144,6 +152,10 @@ abstract class RustLibApi extends BaseApi {
     required double coins,
   });
 
+  Future<NoteImageCleanupScanResult> crateApiNoteImageCleanupApiScanNoteImages({
+    required String dataDirectory,
+  });
+
   Future<CloudSyncResult> crateApiCloudSyncApiSyncWebDavNotes({
     required CloudSyncRequest request,
   });
@@ -173,6 +185,43 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
+  Future<NoteImageCleanupDeleteResult>
+  crateApiNoteImageCleanupApiDeleteUnusedNoteImages({
+    required String dataDirectory,
+    required List<String> candidateRelativePaths,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(dataDirectory, serializer);
+          sse_encode_list_String(candidateRelativePaths, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 1,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_note_image_cleanup_delete_result,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiNoteImageCleanupApiDeleteUnusedNoteImagesConstMeta,
+        argValues: [dataDirectory, candidateRelativePaths],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiNoteImageCleanupApiDeleteUnusedNoteImagesConstMeta =>
+      const TaskConstMeta(
+        debugName: "delete_unused_note_images",
+        argNames: ["dataDirectory", "candidateRelativePaths"],
+      );
+
+  @override
   Future<ModelListResult> crateApiAiApiFetchProviderModels({
     required String appDataDir,
     required AiProvider provider,
@@ -188,7 +237,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 1,
+            funcId: 2,
             port: port_,
           );
         },
@@ -221,7 +270,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 3,
             port: port_,
           );
         },
@@ -251,7 +300,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 4,
             port: port_,
           );
         },
@@ -284,7 +333,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 5,
             port: port_,
           );
         },
@@ -317,7 +366,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 6,
             port: port_,
           );
         },
@@ -360,7 +409,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 7,
             port: port_,
           );
         },
@@ -404,7 +453,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 8,
             port: port_,
           );
         },
@@ -434,7 +483,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 9,
             port: port_,
           );
         },
@@ -464,7 +513,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 10,
             port: port_,
           );
         },
@@ -503,7 +552,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 10,
+              funcId: 11,
               port: port_,
             );
           },
@@ -538,7 +587,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 12,
             port: port_,
           );
         },
@@ -566,7 +615,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 13,
             port: port_,
           );
         },
@@ -599,7 +648,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 14,
             port: port_,
           );
         },
@@ -636,7 +685,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 15,
             port: port_,
           );
         },
@@ -658,6 +707,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<NoteImageCleanupScanResult> crateApiNoteImageCleanupApiScanNoteImages({
+    required String dataDirectory,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(dataDirectory, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 16,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_note_image_cleanup_scan_result,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiNoteImageCleanupApiScanNoteImagesConstMeta,
+        argValues: [dataDirectory],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiNoteImageCleanupApiScanNoteImagesConstMeta =>
+      const TaskConstMeta(
+        debugName: "scan_note_images",
+        argNames: ["dataDirectory"],
+      );
+
+  @override
   Future<CloudSyncResult> crateApiCloudSyncApiSyncWebDavNotes({
     required CloudSyncRequest request,
   }) {
@@ -669,7 +751,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 17,
             port: port_,
           );
         },
@@ -708,7 +790,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 18,
             port: port_,
           );
         },
@@ -741,7 +823,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 19,
             port: port_,
           );
         },
@@ -777,7 +859,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 20,
             port: port_,
           );
         },
@@ -833,18 +915,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  AiModel dco_decode_ai_model(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
-    return AiModel(
-      modelId: dco_decode_String(arr[0]),
-      displayName: dco_decode_String(arr[1]),
-    );
-  }
-
-  @protected
   AiImageAttachment dco_decode_ai_image_attachment(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -854,6 +924,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       name: dco_decode_String(arr[0]),
       mimeType: dco_decode_String(arr[1]),
       dataBase64: dco_decode_String(arr[2]),
+    );
+  }
+
+  @protected
+  AiModel dco_decode_ai_model(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return AiModel(
+      modelId: dco_decode_String(arr[0]),
+      displayName: dco_decode_String(arr[1]),
     );
   }
 
@@ -1060,18 +1142,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  DeleteModifyConflict dco_decode_delete_modify_conflict(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
-    return DeleteModifyConflict(
-      relativePath: dco_decode_String(arr[0]),
-      direction: dco_decode_String(arr[1]),
-    );
-  }
-
-  @protected
   DailyActivity dco_decode_daily_activity(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -1121,6 +1191,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  DeleteModifyConflict dco_decode_delete_modify_conflict(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return DeleteModifyConflict(
+      relativePath: dco_decode_String(arr[0]),
+      direction: dco_decode_String(arr[1]),
+    );
+  }
+
+  @protected
   double dco_decode_f_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as double;
@@ -1149,6 +1231,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  PlatformInt64 dco_decode_i_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeI64(raw);
+  }
+
+  @protected
   List<String> dco_decode_list_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_String).toList();
@@ -1161,15 +1249,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<AiModel> dco_decode_list_ai_model(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_ai_model).toList();
-  }
-
-  @protected
   List<AiImageAttachment> dco_decode_list_ai_image_attachment(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_ai_image_attachment).toList();
+  }
+
+  @protected
+  List<AiModel> dco_decode_list_ai_model(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_ai_model).toList();
   }
 
   @protected
@@ -1197,6 +1285,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>)
         .map(dco_decode_delete_modify_conflict)
+        .toList();
+  }
+
+  @protected
+  List<NoteImageCleanupEntry> dco_decode_list_note_image_cleanup_entry(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_note_image_cleanup_entry)
         .toList();
   }
 
@@ -1300,6 +1398,53 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       models: dco_decode_list_ai_model(arr[1]),
       errorCode: dco_decode_String(arr[2]),
       errorMessage: dco_decode_String(arr[3]),
+    );
+  }
+
+  @protected
+  NoteImageCleanupDeleteResult dco_decode_note_image_cleanup_delete_result(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return NoteImageCleanupDeleteResult(
+      ok: dco_decode_bool(arr[0]),
+      errorMessage: dco_decode_String(arr[1]),
+      deletedImages: dco_decode_list_note_image_cleanup_entry(arr[2]),
+      failedImages: dco_decode_list_note_image_cleanup_entry(arr[3]),
+      skippedCount: dco_decode_i_32(arr[4]),
+    );
+  }
+
+  @protected
+  NoteImageCleanupEntry dco_decode_note_image_cleanup_entry(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return NoteImageCleanupEntry(
+      relativePath: dco_decode_String(arr[0]),
+      sizeBytes: dco_decode_i_64(arr[1]),
+    );
+  }
+
+  @protected
+  NoteImageCleanupScanResult dco_decode_note_image_cleanup_scan_result(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    return NoteImageCleanupScanResult(
+      ok: dco_decode_bool(arr[0]),
+      errorMessage: dco_decode_String(arr[1]),
+      totalImageCount: dco_decode_i_32(arr[2]),
+      referencedImageCount: dco_decode_i_32(arr[3]),
+      totalSizeBytes: dco_decode_i_64(arr[4]),
+      unusedImages: dco_decode_list_note_image_cleanup_entry(arr[5]),
     );
   }
 
@@ -1473,14 +1618,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  AiModel sse_decode_ai_model(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_modelId = sse_decode_String(deserializer);
-    var var_displayName = sse_decode_String(deserializer);
-    return AiModel(modelId: var_modelId, displayName: var_displayName);
-  }
-
-  @protected
   AiImageAttachment sse_decode_ai_image_attachment(
     SseDeserializer deserializer,
   ) {
@@ -1493,6 +1630,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       mimeType: var_mimeType,
       dataBase64: var_dataBase64,
     );
+  }
+
+  @protected
+  AiModel sse_decode_ai_model(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_modelId = sse_decode_String(deserializer);
+    var var_displayName = sse_decode_String(deserializer);
+    return AiModel(modelId: var_modelId, displayName: var_displayName);
   }
 
   @protected
@@ -1737,19 +1882,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  DeleteModifyConflict sse_decode_delete_modify_conflict(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_relativePath = sse_decode_String(deserializer);
-    var var_direction = sse_decode_String(deserializer);
-    return DeleteModifyConflict(
-      relativePath: var_relativePath,
-      direction: var_direction,
-    );
-  }
-
-  @protected
   DailyActivity sse_decode_daily_activity(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_date = sse_decode_String(deserializer);
@@ -1808,6 +1940,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  DeleteModifyConflict sse_decode_delete_modify_conflict(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_relativePath = sse_decode_String(deserializer);
+    var var_direction = sse_decode_String(deserializer);
+    return DeleteModifyConflict(
+      relativePath: var_relativePath,
+      direction: var_direction,
+    );
+  }
+
+  @protected
   double sse_decode_f_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getFloat64();
@@ -1841,6 +1986,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  PlatformInt64 sse_decode_i_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getPlatformInt64();
+  }
+
+  @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -1867,18 +2018,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<AiModel> sse_decode_list_ai_model(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <AiModel>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_ai_model(deserializer));
-    }
-    return ans_;
-  }
-
-  @protected
   List<AiImageAttachment> sse_decode_list_ai_image_attachment(
     SseDeserializer deserializer,
   ) {
@@ -1888,6 +2027,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <AiImageAttachment>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_ai_image_attachment(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<AiModel> sse_decode_list_ai_model(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <AiModel>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_ai_model(deserializer));
     }
     return ans_;
   }
@@ -1942,6 +2093,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <DeleteModifyConflict>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_delete_modify_conflict(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<NoteImageCleanupEntry> sse_decode_list_note_image_cleanup_entry(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <NoteImageCleanupEntry>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_note_image_cleanup_entry(deserializer));
     }
     return ans_;
   }
@@ -2085,6 +2250,65 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       models: var_models,
       errorCode: var_errorCode,
       errorMessage: var_errorMessage,
+    );
+  }
+
+  @protected
+  NoteImageCleanupDeleteResult sse_decode_note_image_cleanup_delete_result(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_ok = sse_decode_bool(deserializer);
+    var var_errorMessage = sse_decode_String(deserializer);
+    var var_deletedImages = sse_decode_list_note_image_cleanup_entry(
+      deserializer,
+    );
+    var var_failedImages = sse_decode_list_note_image_cleanup_entry(
+      deserializer,
+    );
+    var var_skippedCount = sse_decode_i_32(deserializer);
+    return NoteImageCleanupDeleteResult(
+      ok: var_ok,
+      errorMessage: var_errorMessage,
+      deletedImages: var_deletedImages,
+      failedImages: var_failedImages,
+      skippedCount: var_skippedCount,
+    );
+  }
+
+  @protected
+  NoteImageCleanupEntry sse_decode_note_image_cleanup_entry(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_relativePath = sse_decode_String(deserializer);
+    var var_sizeBytes = sse_decode_i_64(deserializer);
+    return NoteImageCleanupEntry(
+      relativePath: var_relativePath,
+      sizeBytes: var_sizeBytes,
+    );
+  }
+
+  @protected
+  NoteImageCleanupScanResult sse_decode_note_image_cleanup_scan_result(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_ok = sse_decode_bool(deserializer);
+    var var_errorMessage = sse_decode_String(deserializer);
+    var var_totalImageCount = sse_decode_i_32(deserializer);
+    var var_referencedImageCount = sse_decode_i_32(deserializer);
+    var var_totalSizeBytes = sse_decode_i_64(deserializer);
+    var var_unusedImages = sse_decode_list_note_image_cleanup_entry(
+      deserializer,
+    );
+    return NoteImageCleanupScanResult(
+      ok: var_ok,
+      errorMessage: var_errorMessage,
+      totalImageCount: var_totalImageCount,
+      referencedImageCount: var_referencedImageCount,
+      totalSizeBytes: var_totalSizeBytes,
+      unusedImages: var_unusedImages,
     );
   }
 
@@ -2296,13 +2520,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_ai_model(AiModel self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_String(self.modelId, serializer);
-    sse_encode_String(self.displayName, serializer);
-  }
-
-  @protected
   void sse_encode_ai_image_attachment(
     AiImageAttachment self,
     SseSerializer serializer,
@@ -2311,6 +2528,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.name, serializer);
     sse_encode_String(self.mimeType, serializer);
     sse_encode_String(self.dataBase64, serializer);
+  }
+
+  @protected
+  void sse_encode_ai_model(AiModel self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.modelId, serializer);
+    sse_encode_String(self.displayName, serializer);
   }
 
   @protected
@@ -2517,16 +2741,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_delete_modify_conflict(
-    DeleteModifyConflict self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_String(self.relativePath, serializer);
-    sse_encode_String(self.direction, serializer);
-  }
-
-  @protected
   void sse_encode_daily_activity(DailyActivity self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.date, serializer);
@@ -2567,6 +2781,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_delete_modify_conflict(
+    DeleteModifyConflict self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.relativePath, serializer);
+    sse_encode_String(self.direction, serializer);
+  }
+
+  @protected
   void sse_encode_f_64(double self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putFloat64(self);
@@ -2593,23 +2817,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putPlatformInt64(self);
+  }
+
+  @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_String(item, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_list_delete_modify_conflict(
-    List<DeleteModifyConflict> self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_delete_modify_conflict(item, serializer);
     }
   }
 
@@ -2626,15 +2844,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_list_ai_model(List<AiModel> self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_ai_model(item, serializer);
-    }
-  }
-
-  @protected
   void sse_encode_list_ai_image_attachment(
     List<AiImageAttachment> self,
     SseSerializer serializer,
@@ -2643,6 +2852,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_ai_image_attachment(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_ai_model(List<AiModel> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_ai_model(item, serializer);
     }
   }
 
@@ -2679,6 +2897,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_daily_token_usage(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_delete_modify_conflict(
+    List<DeleteModifyConflict> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_delete_modify_conflict(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_note_image_cleanup_entry(
+    List<NoteImageCleanupEntry> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_note_image_cleanup_entry(item, serializer);
     }
   }
 
@@ -2781,6 +3023,43 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_list_ai_model(self.models, serializer);
     sse_encode_String(self.errorCode, serializer);
     sse_encode_String(self.errorMessage, serializer);
+  }
+
+  @protected
+  void sse_encode_note_image_cleanup_delete_result(
+    NoteImageCleanupDeleteResult self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_bool(self.ok, serializer);
+    sse_encode_String(self.errorMessage, serializer);
+    sse_encode_list_note_image_cleanup_entry(self.deletedImages, serializer);
+    sse_encode_list_note_image_cleanup_entry(self.failedImages, serializer);
+    sse_encode_i_32(self.skippedCount, serializer);
+  }
+
+  @protected
+  void sse_encode_note_image_cleanup_entry(
+    NoteImageCleanupEntry self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.relativePath, serializer);
+    sse_encode_i_64(self.sizeBytes, serializer);
+  }
+
+  @protected
+  void sse_encode_note_image_cleanup_scan_result(
+    NoteImageCleanupScanResult self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_bool(self.ok, serializer);
+    sse_encode_String(self.errorMessage, serializer);
+    sse_encode_i_32(self.totalImageCount, serializer);
+    sse_encode_i_32(self.referencedImageCount, serializer);
+    sse_encode_i_64(self.totalSizeBytes, serializer);
+    sse_encode_list_note_image_cleanup_entry(self.unusedImages, serializer);
   }
 
   @protected

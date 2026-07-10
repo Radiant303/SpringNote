@@ -1,3 +1,4 @@
+use crate::markdown_links::{markdown_link_targets, shared_image_name_from_markdown_target};
 use chrono::{DateTime, Local};
 use reqwest::{Client, Method, StatusCode, Url};
 use serde::{Deserialize, Serialize};
@@ -1188,102 +1189,6 @@ fn local_path_from_relative_name(root: &Path, name: &str) -> PathBuf {
         path.push(segment);
     }
     path
-}
-
-fn markdown_link_targets(markdown: &str) -> Vec<String> {
-    let bytes = markdown.as_bytes();
-    let mut targets = Vec::new();
-    let mut offset = 0;
-    while let Some(open) = markdown[offset..].find("](") {
-        let start = offset + open + 2;
-        let mut end = start;
-        let mut escaped = false;
-        while end < bytes.len() {
-            let byte = bytes[end];
-            if escaped {
-                escaped = false;
-                end += 1;
-                continue;
-            }
-            if byte == b'\\' {
-                escaped = true;
-                end += 1;
-                continue;
-            }
-            if byte == b')' {
-                break;
-            }
-            end += 1;
-        }
-        if end >= bytes.len() {
-            break;
-        }
-        targets.push(markdown[start..end].trim().to_string());
-        offset = end + 1;
-    }
-    targets
-}
-
-fn shared_image_name_from_markdown_target(target: &str) -> Option<String> {
-    let target = markdown_target_path_part(target)?;
-    let target = strip_query_and_fragment(target);
-    if target.is_empty()
-        || target.starts_with('/')
-        || target.contains("://")
-        || target.to_lowercase().starts_with("file:")
-        || target.contains(':')
-    {
-        return None;
-    }
-
-    let decoded = percent_encoding::percent_decode_str(target)
-        .decode_utf8_lossy()
-        .replace('\\', "/");
-    let mut segments = Vec::new();
-    for segment in decoded.split('/') {
-        if segment.is_empty() || segment == "." {
-            return None;
-        }
-        segments.push(segment);
-    }
-
-    if segments.len() >= 3
-        && segments[0] == ".."
-        && segments[1].eq_ignore_ascii_case(IMAGES_DIRECTORY_NAME)
-        && !segments[2..].iter().any(|segment| *segment == "..")
-    {
-        return Some(segments[2..].join("/"));
-    }
-
-    None
-}
-
-fn markdown_target_path_part(target: &str) -> Option<&str> {
-    let value = target.trim();
-    if value.is_empty() {
-        return None;
-    }
-    if let Some(rest) = value.strip_prefix('<') {
-        return rest.find('>').map(|end| &rest[..end]);
-    }
-    if let Some(index) = value.find(char::is_whitespace) {
-        let rest = value[index..].trim_start();
-        if rest.starts_with('"') || rest.starts_with('\'') || rest.starts_with('(') {
-            return Some(&value[..index]);
-        }
-    }
-    Some(value)
-}
-
-fn strip_query_and_fragment(value: &str) -> &str {
-    let query = value.find('?');
-    let fragment = value.find('#');
-    let cutoff = match (query, fragment) {
-        (Some(left), Some(right)) => left.min(right),
-        (Some(value), None) | (None, Some(value)) => value,
-        (None, None) => value.len(),
-    };
-    &value[..cutoff]
 }
 
 fn relative_note_path(kind: NoteKind, name: &str) -> String {

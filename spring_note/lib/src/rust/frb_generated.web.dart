@@ -9,11 +9,13 @@
 import 'ai.dart';
 import 'api/ai_api.dart';
 import 'api/cloud_sync_api.dart';
+import 'api/note_image_cleanup_api.dart';
 import 'api/stats_api.dart';
 import 'cloud_sync.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
+import 'note_image_cleanup.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_web.dart';
 import 'stats.dart';
 
@@ -39,10 +41,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   AiChatMessage dco_decode_ai_chat_message(dynamic raw);
 
   @protected
-  AiModel dco_decode_ai_model(dynamic raw);
+  AiImageAttachment dco_decode_ai_image_attachment(dynamic raw);
 
   @protected
-  AiImageAttachment dco_decode_ai_image_attachment(dynamic raw);
+  AiModel dco_decode_ai_model(dynamic raw);
 
   @protected
   AiProvider dco_decode_ai_provider(dynamic raw);
@@ -109,9 +111,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   CloudSyncResult dco_decode_cloud_sync_result(dynamic raw);
 
   @protected
-  DeleteModifyConflict dco_decode_delete_modify_conflict(dynamic raw);
-
-  @protected
   DailyActivity dco_decode_daily_activity(dynamic raw);
 
   @protected
@@ -119,6 +118,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   DailyTokenUsage dco_decode_daily_token_usage(dynamic raw);
+
+  @protected
+  DeleteModifyConflict dco_decode_delete_modify_conflict(dynamic raw);
 
   @protected
   double dco_decode_f_64(dynamic raw);
@@ -130,16 +132,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int dco_decode_i_32(dynamic raw);
 
   @protected
+  PlatformInt64 dco_decode_i_64(dynamic raw);
+
+  @protected
   List<String> dco_decode_list_String(dynamic raw);
 
   @protected
   List<AiChatMessage> dco_decode_list_ai_chat_message(dynamic raw);
 
   @protected
-  List<AiModel> dco_decode_list_ai_model(dynamic raw);
+  List<AiImageAttachment> dco_decode_list_ai_image_attachment(dynamic raw);
 
   @protected
-  List<AiImageAttachment> dco_decode_list_ai_image_attachment(dynamic raw);
+  List<AiModel> dco_decode_list_ai_model(dynamic raw);
 
   @protected
   List<AiToolCall> dco_decode_list_ai_tool_call(dynamic raw);
@@ -152,6 +157,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<DeleteModifyConflict> dco_decode_list_delete_modify_conflict(
+    dynamic raw,
+  );
+
+  @protected
+  List<NoteImageCleanupEntry> dco_decode_list_note_image_cleanup_entry(
     dynamic raw,
   );
 
@@ -177,6 +187,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ModelListResult dco_decode_model_list_result(dynamic raw);
+
+  @protected
+  NoteImageCleanupDeleteResult dco_decode_note_image_cleanup_delete_result(
+    dynamic raw,
+  );
+
+  @protected
+  NoteImageCleanupEntry dco_decode_note_image_cleanup_entry(dynamic raw);
+
+  @protected
+  NoteImageCleanupScanResult dco_decode_note_image_cleanup_scan_result(
+    dynamic raw,
+  );
 
   @protected
   ProviderTestResult dco_decode_provider_test_result(dynamic raw);
@@ -221,12 +244,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   AiChatMessage sse_decode_ai_chat_message(SseDeserializer deserializer);
 
   @protected
-  AiModel sse_decode_ai_model(SseDeserializer deserializer);
-
-  @protected
   AiImageAttachment sse_decode_ai_image_attachment(
     SseDeserializer deserializer,
   );
+
+  @protected
+  AiModel sse_decode_ai_model(SseDeserializer deserializer);
 
   @protected
   AiProvider sse_decode_ai_provider(SseDeserializer deserializer);
@@ -307,11 +330,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   CloudSyncResult sse_decode_cloud_sync_result(SseDeserializer deserializer);
 
   @protected
-  DeleteModifyConflict sse_decode_delete_modify_conflict(
-    SseDeserializer deserializer,
-  );
-
-  @protected
   DailyActivity sse_decode_daily_activity(SseDeserializer deserializer);
 
   @protected
@@ -321,6 +339,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   DailyTokenUsage sse_decode_daily_token_usage(SseDeserializer deserializer);
+
+  @protected
+  DeleteModifyConflict sse_decode_delete_modify_conflict(
+    SseDeserializer deserializer,
+  );
 
   @protected
   double sse_decode_f_64(SseDeserializer deserializer);
@@ -334,6 +357,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
+  PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
+
+  @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer);
 
   @protected
@@ -342,12 +368,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  List<AiModel> sse_decode_list_ai_model(SseDeserializer deserializer);
-
-  @protected
   List<AiImageAttachment> sse_decode_list_ai_image_attachment(
     SseDeserializer deserializer,
   );
+
+  @protected
+  List<AiModel> sse_decode_list_ai_model(SseDeserializer deserializer);
 
   @protected
   List<AiToolCall> sse_decode_list_ai_tool_call(SseDeserializer deserializer);
@@ -364,6 +390,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<DeleteModifyConflict> sse_decode_list_delete_modify_conflict(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<NoteImageCleanupEntry> sse_decode_list_note_image_cleanup_entry(
     SseDeserializer deserializer,
   );
 
@@ -397,6 +428,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ModelListResult sse_decode_model_list_result(SseDeserializer deserializer);
+
+  @protected
+  NoteImageCleanupDeleteResult sse_decode_note_image_cleanup_delete_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  NoteImageCleanupEntry sse_decode_note_image_cleanup_entry(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  NoteImageCleanupScanResult sse_decode_note_image_cleanup_scan_result(
+    SseDeserializer deserializer,
+  );
 
   @protected
   ProviderTestResult sse_decode_provider_test_result(
@@ -452,13 +498,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_ai_chat_message(AiChatMessage self, SseSerializer serializer);
 
   @protected
-  void sse_encode_ai_model(AiModel self, SseSerializer serializer);
-
-  @protected
   void sse_encode_ai_image_attachment(
     AiImageAttachment self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_ai_model(AiModel self, SseSerializer serializer);
 
   @protected
   void sse_encode_ai_provider(AiProvider self, SseSerializer serializer);
@@ -560,12 +606,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void sse_encode_delete_modify_conflict(
-    DeleteModifyConflict self,
-    SseSerializer serializer,
-  );
-
-  @protected
   void sse_encode_daily_activity(DailyActivity self, SseSerializer serializer);
 
   @protected
@@ -577,6 +617,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_daily_token_usage(
     DailyTokenUsage self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_delete_modify_conflict(
+    DeleteModifyConflict self,
     SseSerializer serializer,
   );
 
@@ -593,13 +639,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
-  void sse_encode_list_String(List<String> self, SseSerializer serializer);
+  void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
 
   @protected
-  void sse_encode_list_delete_modify_conflict(
-    List<DeleteModifyConflict> self,
-    SseSerializer serializer,
-  );
+  void sse_encode_list_String(List<String> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_ai_chat_message(
@@ -608,13 +651,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void sse_encode_list_ai_model(List<AiModel> self, SseSerializer serializer);
-
-  @protected
   void sse_encode_list_ai_image_attachment(
     List<AiImageAttachment> self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_list_ai_model(List<AiModel> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_ai_tool_call(
@@ -631,6 +674,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_daily_token_usage(
     List<DailyTokenUsage> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_delete_modify_conflict(
+    List<DeleteModifyConflict> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_note_image_cleanup_entry(
+    List<NoteImageCleanupEntry> self,
     SseSerializer serializer,
   );
 
@@ -673,6 +728,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_model_list_result(
     ModelListResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_note_image_cleanup_delete_result(
+    NoteImageCleanupDeleteResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_note_image_cleanup_entry(
+    NoteImageCleanupEntry self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_note_image_cleanup_scan_result(
+    NoteImageCleanupScanResult self,
     SseSerializer serializer,
   );
 

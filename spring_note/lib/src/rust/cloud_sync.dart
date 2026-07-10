@@ -37,27 +37,6 @@ class CloudSyncConfig {
           password == other.password;
 }
 
-class DeleteModifyConflict {
-  final String relativePath;
-  final String direction;
-
-  const DeleteModifyConflict({
-    required this.relativePath,
-    required this.direction,
-  });
-
-  @override
-  int get hashCode => relativePath.hashCode ^ direction.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is DeleteModifyConflict &&
-          runtimeType == other.runtimeType &&
-          relativePath == other.relativePath &&
-          direction == other.direction;
-}
-
 class CloudSyncNoteUploadRequest {
   final CloudSyncConfig config;
   final String dataDirectory;
@@ -218,4 +197,25 @@ class CloudSyncResult {
           needsDeleteModifyConfirmation ==
               other.needsDeleteModifyConfirmation &&
           pendingDeleteModifyConflicts == other.pendingDeleteModifyConflicts;
+}
+
+class DeleteModifyConflict {
+  final String relativePath;
+  final String direction;
+
+  const DeleteModifyConflict({
+    required this.relativePath,
+    required this.direction,
+  });
+
+  @override
+  int get hashCode => relativePath.hashCode ^ direction.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DeleteModifyConflict &&
+          runtimeType == other.runtimeType &&
+          relativePath == other.relativePath &&
+          direction == other.direction;
 }
