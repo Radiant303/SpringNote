@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'cloud_sync_config.dart';
 import 'desktop_widget_position.dart';
 import 'desktop_widget_wallpaper_settings.dart';
@@ -95,8 +97,13 @@ class AppConfig {
   final Map<String, String?> defaultModels;
   final Map<String, String?> hotkeys;
 
+  static String get defaultToggleWindowHotkey =>
+      defaultTargetPlatform == TargetPlatform.macOS
+      ? 'Cmd+Shift+S'
+      : 'Ctrl+Shift+S';
+
   factory AppConfig.defaults() {
-    return const AppConfig(
+    return AppConfig(
       wallpaperSettings: WallpaperSettings.defaults,
       dailyWorkHours: 8,
       dailySalary: 200,
@@ -130,7 +137,7 @@ class AppConfig {
         'editCompletionModel': null,
         'memoryBookModel': null,
       },
-      hotkeys: {'toggleWindow': 'Ctrl+Shift+S'},
+      hotkeys: {'toggleWindow': defaultToggleWindowHotkey},
     );
   }
 

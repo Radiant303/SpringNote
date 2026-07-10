@@ -191,8 +191,6 @@ class _TextSettingRow extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.enabled = true,
-    this.description,
-    this.trailing,
     this.validator,
   });
 
@@ -200,8 +198,6 @@ class _TextSettingRow extends StatelessWidget {
   final String value;
   final ValueChanged<String>? onChanged;
   final bool enabled;
-  final String? description;
-  final Widget? trailing;
   final String? Function(String value)? validator;
 
   @override
@@ -209,21 +205,14 @@ class _TextSettingRow extends StatelessWidget {
     return _SettingRowShell(
       label: label,
       enabled: enabled,
-      description: description,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 220,
-            child: _CommittedTextField(
-              value: value,
-              enabled: enabled,
-              onChanged: onChanged,
-              validator: validator,
-            ),
-          ),
-          ?trailing,
-        ],
+      child: SizedBox(
+        width: 220,
+        child: _CommittedTextField(
+          value: value,
+          enabled: enabled,
+          onChanged: onChanged,
+          validator: validator,
+        ),
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spring_note/core/models/app_config.dart';
 import 'package:spring_note/core/models/cloud_sync_config.dart';
@@ -204,7 +205,7 @@ void main() {
     );
   });
 
-  testWidgets('hotkeys page rejects invalid global hotkey input', (
+  testWidgets('hotkeys page records a global keyboard shortcut', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(1440, 900);
@@ -226,28 +227,54 @@ void main() {
     await tester.tap(find.text('快捷键').first);
     await tester.pump();
 
-    final hotkeyField = find.byType(TextField);
-    expect(hotkeyField, findsOneWidget);
+    final hotkeyRecorder = find.byKey(
+      const ValueKey('toggle-window-hotkey-recorder'),
+    );
+    expect(hotkeyRecorder, findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
 
     if (!PlatformFeatureSupport.supportsGlobalHotkeys) {
-      final textField = tester.widget<TextField>(hotkeyField);
-      expect(textField.enabled, isFalse);
       expect(find.text('当前平台暂不支持'), findsOneWidget);
-      expect(service.savedConfig.hotkeys['toggleWindow'], 'Ctrl+Shift+S');
+      await tester.tap(hotkeyRecorder);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyH);
+      expect(
+        service.savedConfig.hotkeys['toggleWindow'],
+        AppConfig.defaultToggleWindowHotkey,
+      );
       return;
     }
 
-    await tester.enterText(hotkeyField, 'hello');
+    await tester.tap(hotkeyRecorder);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyH);
     await tester.pump();
 
-    expect(service.savedConfig.hotkeys['toggleWindow'], 'Ctrl+Shift+S');
-    expect(find.text('请输入类似 Ctrl+Shift+S 的组合键'), findsOneWidget);
+    expect(
+      service.savedConfig.hotkeys['toggleWindow'],
+      AppConfig.defaultToggleWindowHotkey,
+    );
+    expect(
+      find.text(
+        Platform.isMacOS
+            ? '需包含 Cmd、Ctrl、Option 或 Shift'
+            : '需包含 Ctrl、Alt、Shift 或 Win',
+      ),
+      findsOneWidget,
+    );
 
-    await tester.enterText(hotkeyField, 'Ctrl+Alt+H');
+    final primaryModifier = Platform.isMacOS
+        ? LogicalKeyboardKey.metaLeft
+        : LogicalKeyboardKey.controlLeft;
+    await tester.sendKeyDownEvent(primaryModifier);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyH);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
+    await tester.sendKeyUpEvent(primaryModifier);
     await tester.pump();
 
-    expect(service.savedConfig.hotkeys['toggleWindow'], 'Ctrl+Alt+H');
-    expect(find.text('请输入类似 Ctrl+Shift+S 的组合键'), findsNothing);
+    expect(
+      service.savedConfig.hotkeys['toggleWindow'],
+      Platform.isMacOS ? 'Cmd+Option+H' : 'Ctrl+Alt+H',
+    );
   });
 
   testWidgets('settings page persists WebDAV cloud sync config', (
