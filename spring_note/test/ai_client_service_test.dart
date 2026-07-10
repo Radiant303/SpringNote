@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spring_note/core/models/app_config.dart';
+import 'package:spring_note/core/models/memory_message.dart';
 import 'package:spring_note/core/models/model_config.dart';
 import 'package:spring_note/core/models/model_reference.dart';
 import 'package:spring_note/core/models/provider_config.dart';
@@ -87,6 +88,129 @@ void main() {
 
     final deepSeek = ProviderConfig.template('DeepSeek');
     expect(deepSeek.models.first.inputModes, isNot(contains('image')));
+  });
+
+  test('memory sanitizer preserves complete tool call chains', () {
+    final messages = [
+      MemoryMessage(
+        role: 'user',
+        content: '查找日报',
+        createdAt: DateTime(2026, 7, 10),
+      ),
+      MemoryMessage(
+        role: 'assistant',
+        content: '',
+        createdAt: DateTime(2026, 7, 10, 0, 1),
+        toolCalls: const [
+          MemoryToolCallMessage(
+            id: 'call-1',
+            name: 'keyword_search',
+            arguments: '{"keywords":["日报"]}',
+          ),
+        ],
+      ),
+      MemoryMessage(
+        role: 'tool',
+        content: '{"results":[]}',
+        createdAt: DateTime(2026, 7, 10, 0, 2),
+        toolName: 'keyword_search',
+        toolCallId: 'call-1',
+      ),
+    ];
+
+    final sanitized = sanitizeMemoryMessagesForModel(messages);
+
+    expect(sanitized.map((message) => message.role), [
+      'user',
+      'assistant',
+      'tool',
+    ]);
+    expect(sanitized[1].toolCalls.single.id, 'call-1');
+    expect(sanitized[2].toolCallId, 'call-1');
+  });
+
+  test('memory sanitizer converts local and orphan tools to context', () {
+    final messages = [
+      MemoryMessage(
+        role: 'user',
+        content: '昨天做了什么？',
+        createdAt: DateTime(2026, 7, 10),
+      ),
+      MemoryMessage(
+        role: 'local_tool',
+        content: 'Observation：找到日报',
+        createdAt: DateTime(2026, 7, 10, 0, 1),
+        toolName: 'keyword_search',
+      ),
+      MemoryMessage(
+        role: 'tool',
+        content: '{"legacy":true}',
+        createdAt: DateTime(2026, 7, 10, 0, 2),
+      ),
+      MemoryMessage(
+        role: 'ai',
+        content: '你完成了日报整理。',
+        createdAt: DateTime(2026, 7, 10, 0, 3),
+      ),
+    ];
+
+    final sanitized = sanitizeMemoryMessagesForModel(messages);
+
+    expect(sanitized, hasLength(2));
+    expect(sanitized.first.role, 'user');
+    expect(sanitized.first.content, contains('[应用提供的本地检索上下文'));
+    expect(sanitized.first.content, contains('keyword_search'));
+    expect(sanitized.first.content, contains('历史孤立工具结果'));
+    expect(
+      sanitized.any(
+        (message) => message.role == 'tool' || message.role == 'local_tool',
+      ),
+      isFalse,
+    );
+  });
+
+  test('memory sanitizer converts incomplete tool exchanges to context', () {
+    final messages = [
+      MemoryMessage(
+        role: 'assistant',
+        content: '准备查询',
+        createdAt: DateTime(2026, 7, 10),
+        toolCalls: const [
+          MemoryToolCallMessage(
+            id: 'call-1',
+            name: 'keyword_search',
+            arguments: '{}',
+          ),
+          MemoryToolCallMessage(
+            id: 'call-2',
+            name: 'read_daily_note',
+            arguments: '{}',
+          ),
+        ],
+      ),
+      MemoryMessage(
+        role: 'tool',
+        content: '{"results":[]}',
+        createdAt: DateTime(2026, 7, 10, 0, 1),
+        toolCallId: 'call-1',
+      ),
+      MemoryMessage(
+        role: 'user',
+        content: '继续',
+        createdAt: DateTime(2026, 7, 10, 0, 2),
+      ),
+    ];
+
+    final sanitized = sanitizeMemoryMessagesForModel(messages);
+
+    expect(
+      sanitized.any(
+        (message) => message.role == 'tool' || message.toolCalls.isNotEmpty,
+      ),
+      isFalse,
+    );
+    expect(sanitized.first.content, contains('历史工具调用链不完整，已转换为普通上下文'));
+    expect(sanitized.first.content, contains('call-2'));
   });
 
   test('multimodal image support follows selected model input modes', () {

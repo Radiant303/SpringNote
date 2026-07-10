@@ -177,6 +177,25 @@ void main() {
     expect(monthlyRecall.sources.single.snippet, contains('六月复盘'));
   });
 
+  test('local recall steps use a UI-only message role', () {
+    final message = MemoryReActStep(
+      thought: '先查关键词',
+      tool: const MemoryToolCall(
+        name: 'keyword_search',
+        label: '关键词搜索',
+        arguments: {
+          'keywords': ['回忆书'],
+        },
+        sources: [],
+      ),
+      observation: '找到一条日报',
+    ).toMessage();
+
+    expect(message.role, 'local_tool');
+    expect(message.toolCallId, isNull);
+    expect(message.content, contains('Observation'));
+  });
+
   test(
     'memory recall follows ReAct loop from keyword hit to full daily note',
     () async {

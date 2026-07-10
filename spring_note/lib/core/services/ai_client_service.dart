@@ -29,6 +29,188 @@ const Set<String> supportedAiImageMimeTypes = {
   'image/gif',
 };
 
+const _localMemoryContextHeader = '[应用提供的本地检索上下文，不是用户输入]';
+
+List<MemoryMessage> sanitizeMemoryMessagesForModel(
+  Iterable<MemoryMessage> messages,
+) {
+  final input = messages.toList(growable: false);
+  final output = <MemoryMessage>[];
+  final contextParts = <String>[];
+  DateTime? contextCreatedAt;
+
+  void appendContext(MemoryMessage message, String content) {
+    contextCreatedAt ??= message.createdAt;
+    final trimmed = content.trim();
+    if (trimmed.isNotEmpty) {
+      contextParts.add(trimmed);
+    }
+  }
+
+  void flushContext() {
+    if (contextParts.isEmpty) {
+      contextCreatedAt = null;
+      return;
+    }
+    final context = '$_localMemoryContextHeader\n${contextParts.join('\n\n')}';
+    contextParts.clear();
+
+    if (output.isNotEmpty && output.last.role == 'user') {
+      final previous = output.removeLast();
+      output.add(
+        _copyMemoryMessage(
+          previous,
+          content: '${previous.content.trimRight()}\n\n$context',
+        ),
+      );
+    } else {
+      output.add(
+        MemoryMessage(
+          role: 'user',
+          content: context,
+          createdAt: contextCreatedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+        ),
+      );
+    }
+    contextCreatedAt = null;
+  }
+
+  var index = 0;
+  while (index < input.length) {
+    final message = input[index];
+    final assistantToolRequest =
+        (message.role == 'assistant' || message.role == 'ai') &&
+        message.toolCalls.isNotEmpty;
+    if (assistantToolRequest) {
+      var resultEnd = index + 1;
+      final toolResults = <MemoryMessage>[];
+      while (resultEnd < input.length && input[resultEnd].role == 'tool') {
+        toolResults.add(input[resultEnd]);
+        resultEnd += 1;
+      }
+
+      if (_isCompleteToolExchange(message, toolResults)) {
+        flushContext();
+        output
+          ..add(message)
+          ..addAll(toolResults);
+      } else {
+        appendContext(
+          message,
+          _brokenToolExchangeContext(message, toolResults),
+        );
+      }
+      index = resultEnd;
+      continue;
+    }
+
+    if (message.role == 'local_tool' || message.role == 'tool') {
+      appendContext(message, _standaloneToolContext(message));
+      index += 1;
+      continue;
+    }
+
+    flushContext();
+    if (message.role == 'user' ||
+        message.role == 'assistant' ||
+        message.role == 'ai') {
+      output.add(message);
+    } else {
+      appendContext(message, '历史消息（原角色 ${message.role}）：\n${message.content}');
+    }
+    index += 1;
+  }
+  flushContext();
+  return output;
+}
+
+bool _isCompleteToolExchange(
+  MemoryMessage assistant,
+  List<MemoryMessage> toolResults,
+) {
+  final expectedIds = assistant.toolCalls
+      .map((toolCall) => toolCall.id.trim())
+      .toList(growable: false);
+  if (expectedIds.isEmpty ||
+      expectedIds.any((id) => id.isEmpty) ||
+      expectedIds.toSet().length != expectedIds.length ||
+      toolResults.length != expectedIds.length) {
+    return false;
+  }
+
+  final resultIds = toolResults
+      .map((message) => message.toolCallId?.trim() ?? '')
+      .toList(growable: false);
+  return resultIds.every((id) => id.isNotEmpty) &&
+      resultIds.toSet().length == resultIds.length &&
+      resultIds.toSet().containsAll(expectedIds);
+}
+
+String _brokenToolExchangeContext(
+  MemoryMessage assistant,
+  List<MemoryMessage> toolResults,
+) {
+  final buffer = StringBuffer('历史工具调用链不完整，已转换为普通上下文。');
+  if (assistant.content.trim().isNotEmpty) {
+    buffer
+      ..write('\n模型内容：\n')
+      ..write(assistant.content.trim());
+  }
+  if (assistant.toolCalls.isNotEmpty) {
+    buffer.write('\n工具请求：');
+    for (final toolCall in assistant.toolCalls) {
+      buffer
+        ..write('\n- ${toolCall.name}')
+        ..write('，调用 ID：${toolCall.id}')
+        ..write('，参数：${toolCall.arguments}');
+    }
+  }
+  if (toolResults.isNotEmpty) {
+    buffer.write('\n已有工具结果：');
+    for (final result in toolResults) {
+      buffer
+        ..write('\n- ${result.toolName ?? '未知工具'}')
+        ..write('，调用 ID：${result.toolCallId ?? '缺失'}')
+        ..write('\n  ${result.content}');
+    }
+  }
+  return buffer.toString();
+}
+
+String _standaloneToolContext(MemoryMessage message) {
+  final local = message.role == 'local_tool';
+  final buffer = StringBuffer(local ? '本地检索步骤' : '历史孤立工具结果');
+  if (message.toolName?.trim().isNotEmpty ?? false) {
+    buffer.write('\n工具：${message.toolName!.trim()}');
+  }
+  if (!local && (message.toolCallId?.trim().isNotEmpty ?? false)) {
+    buffer.write('\n调用 ID：${message.toolCallId!.trim()}');
+  }
+  if (message.content.trim().isNotEmpty) {
+    buffer
+      ..write('\n结果：\n')
+      ..write(message.content.trim());
+  }
+  return buffer.toString();
+}
+
+MemoryMessage _copyMemoryMessage(
+  MemoryMessage message, {
+  required String content,
+}) {
+  return MemoryMessage(
+    role: message.role,
+    content: content,
+    createdAt: message.createdAt,
+    reasoningContent: message.reasoningContent,
+    reasoningDurationMs: message.reasoningDurationMs,
+    toolName: message.toolName,
+    toolCallId: message.toolCallId,
+    toolCalls: message.toolCalls,
+    sources: message.sources,
+  );
+}
+
 class AiClientService {
   const AiClientService();
 
@@ -461,7 +643,9 @@ class AiClientService {
         appDataDir: appDataDir,
         provider: _toRustProvider(selection.provider),
         model: _toRustModel(selection.model),
-        messages: messages.map(_toRustChatMessage).toList(),
+        messages: sanitizeMemoryMessagesForModel(
+          messages,
+        ).map(_toRustChatMessage).toList(),
         thinkingEnabled: thinkingEnabled,
         reasoningEffort: reasoningEffort,
         apiLogEnabled: config.apiLogEnabled,
@@ -488,7 +672,9 @@ class AiClientService {
         appDataDir: appDataDir,
         provider: _toRustProvider(selection.provider),
         model: _toRustModel(selection.model),
-        messages: messages.map(_toRustChatMessage).toList(),
+        messages: sanitizeMemoryMessagesForModel(
+          messages,
+        ).map(_toRustChatMessage).toList(),
         thinkingEnabled: thinkingEnabled,
         reasoningEffort: reasoningEffort,
         apiLogEnabled: config.apiLogEnabled,

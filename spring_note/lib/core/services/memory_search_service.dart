@@ -730,7 +730,7 @@ class MemoryReActStep {
 
   MemoryMessage toMessage() {
     return MemoryMessage(
-      role: 'tool',
+      role: 'local_tool',
       content:
           'Thought：$thought\nAct：${tool.name}(${tool.argumentText})\nObservation：$observation',
       createdAt: DateTime.now(),
