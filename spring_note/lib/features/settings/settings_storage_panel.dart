@@ -165,20 +165,14 @@ class _StoragePanelState extends State<_StoragePanel> {
         '${_formatStorageBytes(result.deletedSizeBytes)}。';
   }
 
-  String _statusText(NoteImageCleanupScan? scan) {
+  String _statusText() {
     if (_cleaning) {
-      return '正在清理所选图片，请稍候。';
+      return '正在清理';
     }
     if (_message case final message?) {
       return message;
     }
-    if (scan == null) {
-      return _scanning ? '正在扫描图片附件。' : '尚未获得图片统计信息。';
-    }
-    if (scan.unusedImages.isEmpty) {
-      return '目前没有未使用的图片。';
-    }
-    return '可以先预览图片，再选择需要删除的项目。';
+    return _scanning ? '正在扫描' : '';
   }
 
   @override
@@ -186,6 +180,7 @@ class _StoragePanelState extends State<_StoragePanel> {
     final colors = AppTheme.colors(context);
     final scan = _scan;
     final canClean = !_busy && scan != null && scan.unusedImages.isNotEmpty;
+    final statusText = _statusText();
     final referencedSize = scan == null
         ? 0
         : (scan.totalSizeBytes - scan.unusedSizeBytes).clamp(
@@ -215,14 +210,6 @@ class _StoragePanelState extends State<_StoragePanel> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '检查日报、周报和月报中的图片引用，只处理 notes/images 内的图片。',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: colors.textSubtle,
-                      height: 1.45,
-                    ),
-                  ),
-                  const SizedBox(height: 15),
                   if (scan == null)
                     _StorageScanState(scanning: _scanning)
                   else
@@ -237,25 +224,28 @@ class _StoragePanelState extends State<_StoragePanel> {
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      Expanded(
-                        child: Text(
-                          _statusText(scan),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: _messageIsError
-                                    ? Theme.of(context).colorScheme.error
-                                    : colors.textSubtle,
-                                height: 1.35,
-                              ),
+                      if (statusText.isEmpty)
+                        const Spacer()
+                      else
+                        Expanded(
+                          child: Text(
+                            statusText,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: _messageIsError
+                                      ? Theme.of(context).colorScheme.error
+                                      : colors.textSubtle,
+                                  height: 1.35,
+                                ),
+                          ),
                         ),
-                      ),
                       const SizedBox(width: 18),
                       _StorageActionButton(
                         key: const ValueKey('storage-clean-button'),
-                        label: '查看并清理',
-                        width: 122,
+                        label: '清理图片',
+                        width: 108,
                         filled: true,
                         enabled: canClean,
                         onTap: _cleanUnusedImages,
@@ -294,7 +284,7 @@ class _StorageScanState extends StatelessWidget {
           Icon(Icons.image_search_outlined, size: 21, color: colors.textSubtle),
           const SizedBox(width: 11),
           Text(
-            scanning ? '正在扫描图片附件' : '暂无图片统计信息',
+            scanning ? '正在扫描' : '暂无统计信息',
             style: Theme.of(
               context,
             ).textTheme.bodyMedium?.copyWith(color: colors.textSubtle),
@@ -574,6 +564,7 @@ class _UnusedImagesConfirmDialogState
       .map((image) => image.relativePath)
       .toSet();
   late String _previewPath = widget.scan.unusedImages.first.relativePath;
+  String? _hoveredImagePath;
   bool _submitting = false;
 
   bool get _allSelected =>
@@ -617,6 +608,16 @@ class _UnusedImagesConfirmDialogState
     });
   }
 
+  void _setHoveredImage(String path, bool hovered) {
+    setState(() {
+      if (hovered) {
+        _hoveredImagePath = path;
+      } else if (_hoveredImagePath == path) {
+        _hoveredImagePath = null;
+      }
+    });
+  }
+
   void _confirm() {
     if (_submitting || _selectedPaths.isEmpty) {
       return;
@@ -644,25 +645,16 @@ class _UnusedImagesConfirmDialogState
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 14, 15),
+              padding: const EdgeInsets.fromLTRB(24, 17, 14, 14),
               child: Row(
                 children: [
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '选择要清理的图片',
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(color: colors.text, fontSize: 18),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '删除前会再次检查引用，已重新使用的图片会自动保留。',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: colors.textSubtle),
-                        ),
-                      ],
+                    child: Text(
+                      '清理图片',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: colors.text,
+                        fontSize: 18,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -689,7 +681,7 @@ class _UnusedImagesConfirmDialogState
                           child: Row(
                             children: [
                               Text(
-                                '${widget.scan.unusedImageCount} 张未使用',
+                                '未使用 ${widget.scan.unusedImageCount}',
                                 style: Theme.of(context).textTheme.bodyMedium
                                     ?.copyWith(color: colors.text),
                               ),
@@ -724,6 +716,12 @@ class _UnusedImagesConfirmDialogState
                                     image.relativePath,
                                   ),
                                   previewed: image.relativePath == _previewPath,
+                                  hovered:
+                                      image.relativePath == _hoveredImagePath,
+                                  onHoverChanged: (hovered) => _setHoveredImage(
+                                    image.relativePath,
+                                    hovered,
+                                  ),
                                   onPreview: () => setState(
                                     () => _previewPath = image.relativePath,
                                   ),
@@ -763,7 +761,7 @@ class _UnusedImagesConfirmDialogState
                 children: [
                   Expanded(
                     child: Text(
-                      '已选择 ${_selectedPaths.length} 张 · '
+                      '已选 ${_selectedPaths.length} · '
                       '${_formatStorageBytes(_selectedSize)}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -842,13 +840,15 @@ class _StorageTextButtonState extends State<_StorageTextButton> {
   }
 }
 
-class _UnusedImageRow extends StatefulWidget {
+class _UnusedImageRow extends StatelessWidget {
   const _UnusedImageRow({
     super.key,
     required this.image,
     required this.dataDirectory,
     required this.selected,
     required this.previewed,
+    required this.hovered,
+    required this.onHoverChanged,
     required this.onPreview,
     required this.onSelected,
   });
@@ -857,108 +857,115 @@ class _UnusedImageRow extends StatefulWidget {
   final String dataDirectory;
   final bool selected;
   final bool previewed;
+  final bool hovered;
+  final ValueChanged<bool> onHoverChanged;
   final VoidCallback onPreview;
   final ValueChanged<bool> onSelected;
 
   @override
-  State<_UnusedImageRow> createState() => _UnusedImageRowState();
-}
-
-class _UnusedImageRowState extends State<_UnusedImageRow> {
-  bool _hovered = false;
-
-  @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
-    final displayPath = 'images/${widget.image.relativePath}';
-    final file = _storageImageFile(
-      widget.dataDirectory,
-      widget.image.relativePath,
-    );
-    final background = widget.previewed
-        ? colors.surfacePressed
-        : _hovered
-        ? colors.surfaceHover
-        : Colors.transparent;
+    final active = previewed || hovered;
+    final background = previewed ? colors.surfacePressed : colors.surfaceHover;
+    final file = _storageImageFile(dataDirectory, image.relativePath);
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
+      onEnter: (_) => onHoverChanged(true),
+      onExit: (_) => onHoverChanged(false),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: widget.onPreview,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 130),
+        onTap: onPreview,
+        child: SizedBox(
           height: 62,
-          padding: const EdgeInsets.fromLTRB(5, 5, 10, 5),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
+          child: Stack(
             children: [
-              Checkbox(
-                key: ValueKey(
-                  'storage-image-select-${widget.image.relativePath}',
+              Positioned.fill(
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 120),
+                  curve: Curves.easeOutCubic,
+                  opacity: active ? 1 : 0,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: background,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                 ),
-                value: widget.selected,
-                onChanged: (value) => widget.onSelected(value ?? false),
-                visualDensity: VisualDensity.compact,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                side: BorderSide(color: colors.border),
-                checkColor: colors.onAccent,
-                fillColor: WidgetStateProperty.resolveWith((states) {
-                  if (states.contains(WidgetState.selected)) {
-                    return colors.text;
-                  }
-                  return Colors.transparent;
-                }),
-                overlayColor: const WidgetStatePropertyAll(Colors.transparent),
               ),
-              const SizedBox(width: 3),
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: colors.surfaceMuted,
-                  border: Border.all(color: colors.border),
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: _StorageLocalImage(file: file, thumbnail: true),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Tooltip(
-                      message: displayPath,
-                      child: Text(
-                        widget.image.relativePath,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: colors.text,
-                          height: 1.2,
+              Positioned.fill(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(5, 5, 10, 5),
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        key: ValueKey(
+                          'storage-image-select-${image.relativePath}',
+                        ),
+                        value: selected,
+                        onChanged: (value) => onSelected(value ?? false),
+                        visualDensity: VisualDensity.compact,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        side: BorderSide(color: colors.border),
+                        checkColor: colors.onAccent,
+                        fillColor: WidgetStateProperty.resolveWith((states) {
+                          if (states.contains(WidgetState.selected)) {
+                            return colors.text;
+                          }
+                          return Colors.transparent;
+                        }),
+                        overlayColor: const WidgetStatePropertyAll(
+                          Colors.transparent,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _formatStorageBytes(widget.image.sizeBytes),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colors.textSubtle,
-                        fontSize: 11.5,
-                        height: 1.1,
+                      const SizedBox(width: 3),
+                      RepaintBoundary(
+                        child: Container(
+                          width: 46,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            color: colors.surfaceMuted,
+                            border: Border.all(color: colors.border),
+                            borderRadius: BorderRadius.circular(9),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: _StorageLocalImage(
+                            file: file,
+                            thumbnail: true,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              image.relativePath,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(color: colors.text, height: 1.2),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _formatStorageBytes(image.sizeBytes),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: colors.textSubtle,
+                                    fontSize: 11.5,
+                                    height: 1.1,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -1009,17 +1016,14 @@ class _StoragePreviewPane extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 11),
-          Tooltip(
-            message: displayPath,
-            child: Text(
-              displayPath,
-              key: const ValueKey('storage-image-preview-path'),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: colors.text, height: 1.2),
-            ),
+          Text(
+            displayPath,
+            key: const ValueKey('storage-image-preview-path'),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: colors.text, height: 1.2),
           ),
           const SizedBox(height: 5),
           Text(

@@ -200,11 +200,11 @@ void main() {
     await tester.pump();
 
     expect(find.text('图片附件'), findsOneWidget);
-    expect(find.text('查看并清理'), findsOneWidget);
+    expect(find.text('清理图片'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('storage-clean-button')));
     await tester.pumpAndSettle();
 
-    expect(find.text('选择要清理的图片'), findsOneWidget);
+    expect(find.text('清理图片'), findsWidgets);
     expect(find.text('images/unused.png'), findsOneWidget);
     expect(find.byKey(const ValueKey('storage-image-preview')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('storage-image-row-keep.png')));
@@ -213,12 +213,13 @@ void main() {
       find.byKey(const ValueKey('storage-image-preview-path')),
     );
     expect(previewPath.data, 'images/keep.png');
+    expect(find.byTooltip('images/keep.png'), findsNothing);
 
     await tester.tap(
       find.byKey(const ValueKey('storage-image-select-keep.png')),
     );
     await tester.pump();
-    expect(find.textContaining('已选择 1 张'), findsOneWidget);
+    expect(find.textContaining('已选 1'), findsOneWidget);
     await tester.tap(
       find.byKey(const ValueKey('storage-confirm-clean-button')),
     );
@@ -277,7 +278,7 @@ void main() {
     await tester.tap(find.text('存储管理'));
     await tester.pump();
 
-    expect(find.text('正在扫描图片附件'), findsOneWidget);
+    expect(find.text('正在扫描'), findsWidgets);
     expect(find.text('—'), findsNothing);
     final scanButton = find.byKey(const ValueKey('storage-rescan-button'));
     expect(
@@ -303,7 +304,7 @@ void main() {
     await tester.tap(find.text('存储管理'));
     await tester.pump();
 
-    expect(find.text('正在扫描图片附件'), findsNothing);
+    expect(find.text('正在扫描'), findsNothing);
     expect(
       tester
           .widget<Text>(find.byKey(const ValueKey('storage-total-image-count')))
