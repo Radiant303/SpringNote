@@ -56,15 +56,15 @@ void main() {
       _styleOfText(span, ' 🚀 1级标题: 欢迎测试高亮器')?.color,
       const Color(0xFFD3604F),
     );
-    expect(_styleOfText(span, '加粗文本')?.color, const Color(0xFFAD6E25));
-    expect(_styleOfText(span, '加粗文本')?.fontWeight, FontWeight.w700);
-    expect(_styleOfText(span, '粗斜体')?.color, const Color(0xFFAD6E25));
-    expect(_styleOfText(span, '粗斜体')?.fontWeight, FontWeight.w700);
+    expect(_styleOfText(span, '加粗文本')?.color, const Color(0xFFB45309));
+    expect(_styleOfText(span, '加粗文本')?.fontWeight, isNull);
+    expect(_styleOfText(span, '粗斜体')?.color, const Color(0xFFB45309));
+    expect(_styleOfText(span, '粗斜体')?.fontWeight, isNull);
     expect(_styleOfText(span, '斜体文本')?.color, const Color(0xFF5B79E3));
     expect(_styleOfText(span, '斜体文本')?.fontStyle, isNull);
     expect(
       _styleOfText(span, 'inline code test()')?.color,
-      const Color(0xFF3E8B45),
+      const Color(0xFF4B8043),
     );
     expect(_styleOfText(span, 'inline code test()')?.fontFamily, isNull);
     expect(_styleOfText(span, 'https://example.com')?.fontFamily, isNull);
@@ -108,7 +108,7 @@ void main() {
       const Color(0xFF3882B7),
     );
     expect(_stylesOfText(span, '**').map((style) => style.color), {
-      const Color(0xFFAD6E25),
+      const Color(0xFFB45309),
     });
     expect(
       _stylesOfText(span, '**').every((style) => style.fontWeight == null),
@@ -145,7 +145,7 @@ void main() {
     );
     expect(
       _styleOfText(span, 'memory_page.dart')?.color,
-      const Color(0xFF3E8B45),
+      const Color(0xFF4B8043),
     );
   });
 }
