@@ -314,66 +314,54 @@ class _StorageOverview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     final metrics = [
       _StorageMetric(
         label: '全部图片',
         value: totalCount.toString(),
         detail: _formatStorageBytes(totalSize),
+        icon: _SettingsNavIconType.image,
+        iconKey: const ValueKey('storage-total-image-icon'),
         valueKey: const ValueKey('storage-total-image-count'),
       ),
       _StorageMetric(
         label: '仍在使用',
         value: referencedCount.toString(),
         detail: _formatStorageBytes(referencedSize),
+        icon: _SettingsNavIconType.layers,
+        iconKey: const ValueKey('storage-referenced-image-icon'),
         valueKey: const ValueKey('storage-referenced-image-count'),
       ),
       _StorageMetric(
         label: '可以清理',
         value: unusedCount.toString(),
         detail: _formatStorageBytes(unusedSize),
+        icon: _SettingsNavIconType.trash,
+        iconKey: const ValueKey('storage-unused-image-icon'),
         valueKey: const ValueKey('storage-unused-image-count'),
       ),
     ];
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surfaceMuted,
-        border: Border.all(color: colors.border),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.maxWidth < 520) {
-            return Column(
-              children: [
-                for (var index = 0; index < metrics.length; index++) ...[
-                  metrics[index],
-                  if (index != metrics.length - 1)
-                    Divider(height: 1, thickness: 1, color: colors.divider),
-                ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 520) {
+          return Column(
+            children: [
+              for (var index = 0; index < metrics.length; index++) ...[
+                metrics[index],
+                if (index != metrics.length - 1) const SizedBox(height: 10),
               ],
-            );
-          }
-          return IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (var index = 0; index < metrics.length; index++) ...[
-                  Expanded(child: metrics[index]),
-                  if (index != metrics.length - 1)
-                    VerticalDivider(
-                      width: 1,
-                      thickness: 1,
-                      color: colors.divider,
-                    ),
-                ],
-              ],
-            ),
+            ],
           );
-        },
-      ),
+        }
+        return Row(
+          children: [
+            for (var index = 0; index < metrics.length; index++) ...[
+              Expanded(child: metrics[index]),
+              if (index != metrics.length - 1) const SizedBox(width: 12),
+            ],
+          ],
+        );
+      },
     );
   }
 }
@@ -383,50 +371,89 @@ class _StorageMetric extends StatelessWidget {
     required this.label,
     required this.value,
     required this.detail,
+    required this.icon,
+    required this.iconKey,
     required this.valueKey,
   });
 
   final String label;
   final String value;
   final String detail;
+  final _SettingsNavIconType icon;
+  final Key iconKey;
   final Key valueKey;
 
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 13, 16, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+    return Container(
+      height: 72,
+      padding: const EdgeInsets.fromLTRB(14, 13, 14, 12),
+      decoration: BoxDecoration(
+        color: colors.surfaceHover,
+        borderRadius: BorderRadius.circular(13),
+      ),
+      child: Row(
         children: [
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: colors.textSubtle,
-              fontSize: 12.5,
-            ),
+          _SettingsNavLucideIcon(
+            key: iconKey,
+            type: icon,
+            size: 20,
+            color: colors.textSubtle,
           ),
-          const SizedBox(height: 7),
-          Text(
-            value,
-            key: valueKey,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: colors.text,
-              fontSize: 22,
-              fontWeight: FontWeight.w600,
-              height: 1.05,
-            ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            detail,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: colors.textSubtle,
-              fontSize: 12,
-              height: 1.2,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      value,
+                      key: valueKey,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(
+                            color: colors.text,
+                            fontSize: 21,
+                            fontWeight: FontWeight.w700,
+                            height: 1,
+                          ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 1),
+                        child: Text(
+                          detail,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: colors.textSubtle,
+                                fontSize: 11,
+                                height: 1,
+                              ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: colors.textSubtle,
+                    fontSize: 11,
+                    height: 1,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -695,9 +722,11 @@ class _UnusedImagesConfirmDialogState
                         ),
                         Expanded(
                           child: Scrollbar(
+                            key: const ValueKey(
+                              'storage-unused-images-scrollbar',
+                            ),
                             controller: _scrollController,
-                            thumbVisibility:
-                                widget.scan.unusedImages.length > 6,
+                            interactive: true,
                             child: ListView.separated(
                               controller: _scrollController,
                               padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
@@ -909,13 +938,16 @@ class _UnusedImageRow extends StatelessWidget {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(5),
                         ),
-                        side: BorderSide(color: colors.border),
+                        side: BorderSide(
+                          color: colors.textSubtle.withValues(alpha: 0.72),
+                          width: 1.4,
+                        ),
                         checkColor: colors.onAccent,
                         fillColor: WidgetStateProperty.resolveWith((states) {
                           if (states.contains(WidgetState.selected)) {
                             return colors.text;
                           }
-                          return Colors.transparent;
+                          return colors.surface;
                         }),
                         overlayColor: const WidgetStatePropertyAll(
                           Colors.transparent,

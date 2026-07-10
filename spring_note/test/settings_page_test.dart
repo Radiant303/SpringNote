@@ -201,12 +201,29 @@ void main() {
 
     expect(find.text('图片附件'), findsOneWidget);
     expect(find.text('清理图片'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('storage-total-image-icon')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('storage-referenced-image-icon')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('storage-unused-image-icon')),
+      findsOneWidget,
+    );
     await tester.tap(find.byKey(const ValueKey('storage-clean-button')));
     await tester.pumpAndSettle();
 
     expect(find.text('清理图片'), findsWidgets);
     expect(find.text('images/unused.png'), findsOneWidget);
     expect(find.byKey(const ValueKey('storage-image-preview')), findsOneWidget);
+    final scrollbar = tester.widget<Scrollbar>(
+      find.byKey(const ValueKey('storage-unused-images-scrollbar')),
+    );
+    expect(scrollbar.thumbVisibility, isNot(true));
+    expect(scrollbar.interactive, isTrue);
     await tester.tap(find.byKey(const ValueKey('storage-image-row-keep.png')));
     await tester.pump();
     final previewPath = tester.widget<Text>(
@@ -219,6 +236,14 @@ void main() {
       find.byKey(const ValueKey('storage-image-select-keep.png')),
     );
     await tester.pump();
+    final checkbox = tester.widget<Checkbox>(
+      find.byKey(const ValueKey('storage-image-select-keep.png')),
+    );
+    expect(checkbox.side?.width, 1.4);
+    expect(
+      checkbox.fillColor?.resolve(<WidgetState>{}),
+      SpringThemeColors.light.surface,
+    );
     expect(find.textContaining('已选 1'), findsOneWidget);
     await tester.tap(
       find.byKey(const ValueKey('storage-confirm-clean-button')),

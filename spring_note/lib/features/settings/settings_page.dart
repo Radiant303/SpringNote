@@ -63,6 +63,9 @@ enum _SettingsNavIconType {
   storage,
   chart,
   info,
+  image,
+  layers,
+  trash,
 }
 
 class SettingsPage extends StatefulWidget {
@@ -528,6 +531,7 @@ class _SettingsNavItemState extends State<_SettingsNavItem> {
 
 class _SettingsNavLucideIcon extends StatelessWidget {
   const _SettingsNavLucideIcon({
+    super.key,
     required this.type,
     required this.size,
     required this.color,
@@ -761,6 +765,56 @@ class _SettingsNavLucidePainter extends CustomPainter {
         canvas.drawCircle(point(12, 7.8), 0.42 * strokeScale, paint);
         canvas.drawLine(point(12, 11), point(12, 16.5), paint);
         canvas.drawLine(point(10.9, 11), point(12, 11), paint);
+        break;
+      case _SettingsNavIconType.image:
+        canvas.drawRRect(roundedRect(3, 3, 18, 18), paint);
+        canvas.drawCircle(point(9, 9), 2 * strokeScale, paint);
+        canvas.drawPath(
+          path([
+            point(6, 20.5),
+            point(15.1, 11.9),
+            point(17.9, 11.9),
+            point(21, 15),
+          ]),
+          paint,
+        );
+        break;
+      case _SettingsNavIconType.layers:
+        canvas.drawPath(
+          path([
+            point(12, 3.2),
+            point(20.5, 7.5),
+            point(12, 11.8),
+            point(3.5, 7.5),
+          ], close: true),
+          paint,
+        );
+        canvas.drawPath(
+          path([point(3.5, 12.4), point(12, 16.7), point(20.5, 12.4)]),
+          paint,
+        );
+        canvas.drawPath(
+          path([point(3.5, 17), point(12, 21.2), point(20.5, 17)]),
+          paint,
+        );
+        break;
+      case _SettingsNavIconType.trash:
+        canvas.drawLine(point(3.8, 6.5), point(20.2, 6.5), paint);
+        canvas.drawPath(
+          path([point(6, 6.5), point(7, 20), point(17, 20), point(18, 6.5)]),
+          paint,
+        );
+        canvas.drawPath(
+          path([
+            point(9, 6.5),
+            point(9.6, 3.8),
+            point(14.4, 3.8),
+            point(15, 6.5),
+          ]),
+          paint,
+        );
+        canvas.drawLine(point(10, 10.5), point(10.5, 16.5), paint);
+        canvas.drawLine(point(14, 10.5), point(13.5, 16.5), paint);
         break;
     }
   }
