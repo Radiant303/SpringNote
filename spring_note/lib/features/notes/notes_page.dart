@@ -1599,12 +1599,8 @@ class _NotesKindMenuItem extends StatelessWidget {
         ? colors.surfacePressed
         : colors.surfaceHover;
     final contentColor = active ? colors.text : colors.textMuted;
+    final iconColor = active ? colors.text : colors.textSubtle;
     final subtleColor = colors.textSubtle;
-    final titleStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
-      color: contentColor,
-      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-      height: 1.1,
-    );
     final subtitleStyle = Theme.of(
       context,
     ).textTheme.labelSmall?.copyWith(color: subtleColor, height: 1.1);
@@ -1625,14 +1621,21 @@ class _NotesKindMenuItem extends StatelessWidget {
                 right: 0,
                 bottom: 4,
                 child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 120),
+                  duration: const Duration(milliseconds: 240),
                   curve: Curves.easeOutCubic,
                   opacity: active ? 1 : 0,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: backgroundColor,
-                      borderRadius: BorderRadius.circular(13),
-                    ),
+                  child: TweenAnimationBuilder<Color?>(
+                    tween: ColorTween(end: backgroundColor),
+                    duration: const Duration(milliseconds: 280),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, color, _) {
+                      return DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: color ?? backgroundColor,
+                          borderRadius: BorderRadius.circular(13),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
@@ -1641,34 +1644,62 @@ class _NotesKindMenuItem extends StatelessWidget {
                 top: 0,
                 right: 0,
                 bottom: 4,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _iconForKind(kind),
-                        size: 17,
-                        color: active ? colors.text : colors.textSubtle,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(kind.label, style: titleStyle),
-                            const SizedBox(height: 3),
-                            Text(
-                              _descriptionForKind(kind),
-                              style: subtitleStyle,
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (selected)
-                        Icon(Icons.check_rounded, size: 16, color: colors.text),
-                    ],
-                  ),
+                child: TweenAnimationBuilder<Color?>(
+                  tween: ColorTween(end: contentColor),
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, animatedContentColor, _) {
+                    return TweenAnimationBuilder<Color?>(
+                      tween: ColorTween(end: iconColor),
+                      duration: const Duration(milliseconds: 280),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, animatedIconColor, _) {
+                        final titleStyle = Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(
+                              color: animatedContentColor ?? contentColor,
+                              fontWeight: selected
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                              height: 1.1,
+                            );
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _iconForKind(kind),
+                                size: 17,
+                                color: animatedIconColor ?? iconColor,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(kind.label, style: titleStyle),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      _descriptionForKind(kind),
+                                      style: subtitleStyle,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (selected)
+                                Icon(
+                                  Icons.check_rounded,
+                                  size: 16,
+                                  color: colors.text,
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
                 ),
               ),
             ],

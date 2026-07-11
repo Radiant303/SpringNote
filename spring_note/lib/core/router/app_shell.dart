@@ -867,21 +867,35 @@ class _SidebarButtonState extends State<_SidebarButton> {
               children: [
                 Positioned.fill(
                   child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 120),
+                    duration: const Duration(milliseconds: 240),
                     curve: Curves.easeOutCubic,
                     opacity: active ? 1 : 0,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: backgroundColor,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                    child: TweenAnimationBuilder<Color?>(
+                      tween: ColorTween(end: backgroundColor),
+                      duration: const Duration(milliseconds: 280),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, color, _) {
+                        return DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: color ?? backgroundColor,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ),
-                _SidebarLucideIcon(
-                  type: widget.icon,
-                  size: 16,
-                  color: iconColor,
+                TweenAnimationBuilder<Color?>(
+                  tween: ColorTween(end: iconColor),
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, color, _) {
+                    return _SidebarLucideIcon(
+                      type: widget.icon,
+                      size: 16,
+                      color: color ?? iconColor,
+                    );
+                  },
                 ),
                 Opacity(
                   opacity: 0,
