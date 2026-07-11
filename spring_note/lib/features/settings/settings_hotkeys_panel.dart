@@ -49,19 +49,6 @@ class _HotkeysPanel extends StatelessWidget {
                           }
                         : null,
                   ),
-                  _HotkeyActionButton(
-                    tooltip: '清除',
-                    icon: Icons.close_rounded,
-                    onPressed: hotkeysSupported
-                        ? () {
-                            final hotkeys = Map<String, String?>.from(
-                              config.hotkeys,
-                            );
-                            hotkeys['toggleWindow'] = '';
-                            onChanged(config.copyWith(hotkeys: hotkeys));
-                          }
-                        : null,
-                  ),
                   Switch(
                     value: toggleWindowEnabled,
                     onChanged: hotkeysSupported

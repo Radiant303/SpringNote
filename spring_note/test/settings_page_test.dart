@@ -441,6 +441,7 @@ void main() {
     );
     expect(hotkeyRecorder, findsOneWidget);
     expect(find.byType(TextField), findsNothing);
+    expect(find.byTooltip('清除'), findsNothing);
 
     if (!PlatformFeatureSupport.supportsGlobalHotkeys) {
       expect(find.text('当前平台暂不支持'), findsOneWidget);
