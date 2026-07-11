@@ -459,30 +459,20 @@ class _ProviderDetailsHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 6),
-              Tooltip(
-                message: '删除供应商',
-                waitDuration: const Duration(milliseconds: 450),
-                child: IconButton(
-                  constraints: const BoxConstraints.tightFor(
-                    width: 34,
-                    height: 34,
-                  ),
-                  padding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
-                  iconSize: 20,
-                  onPressed: () async {
-                    final confirmed = await showDialog<bool>(
-                      context: context,
-                      builder: (_) => _DeleteProviderConfirmDialog(
-                        providerName: provider.name,
-                      ),
-                    );
-                    if (confirmed == true) {
-                      await onProviderDeleted(provider.id);
-                    }
-                  },
-                  icon: const Icon(Icons.delete_outline_rounded),
-                ),
+              _ProviderActionIconButton(
+                tooltip: '删除供应商',
+                onPressed: () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (_) => _DeleteProviderConfirmDialog(
+                      providerName: provider.name,
+                    ),
+                  );
+                  if (confirmed == true) {
+                    await onProviderDeleted(provider.id);
+                  }
+                },
+                icon: const Icon(Icons.delete_outline_rounded, size: 18),
               ),
             ],
           ),
@@ -2098,7 +2088,7 @@ class _ModelsList extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _ModelHeaderIconButton(
+          _ProviderActionIconButton(
             key: const ValueKey('test-provider-connection-button'),
             tooltip: testingConnection ? '测试中' : '测试连接',
             onPressed: testingConnection ? null : onTestConnection,
@@ -2111,7 +2101,7 @@ class _ModelsList extends StatelessWidget {
                 : const Icon(Icons.cable_rounded, size: 16),
           ),
           const SizedBox(width: 4),
-          _ModelHeaderIconButton(
+          _ProviderActionIconButton(
             key: const ValueKey('fetch-provider-models-button'),
             tooltip: fetchingModels ? '获取中' : '获取模型',
             onPressed: fetchingModels ? null : onFetchModels,
@@ -2124,7 +2114,7 @@ class _ModelsList extends StatelessWidget {
                 : const Icon(Icons.cloud_download_outlined, size: 16),
           ),
           const SizedBox(width: 4),
-          _ModelHeaderIconButton(
+          _ProviderActionIconButton(
             key: const ValueKey('add-model-button'),
             tooltip: '添加模型',
             onPressed: () async {
@@ -2237,8 +2227,8 @@ class _ModelCountPill extends StatelessWidget {
   }
 }
 
-class _ModelHeaderIconButton extends StatefulWidget {
-  const _ModelHeaderIconButton({
+class _ProviderActionIconButton extends StatefulWidget {
+  const _ProviderActionIconButton({
     super.key,
     required this.tooltip,
     required this.icon,
@@ -2250,10 +2240,11 @@ class _ModelHeaderIconButton extends StatefulWidget {
   final VoidCallback? onPressed;
 
   @override
-  State<_ModelHeaderIconButton> createState() => _ModelHeaderIconButtonState();
+  State<_ProviderActionIconButton> createState() =>
+      _ProviderActionIconButtonState();
 }
 
-class _ModelHeaderIconButtonState extends State<_ModelHeaderIconButton> {
+class _ProviderActionIconButtonState extends State<_ProviderActionIconButton> {
   bool _hovered = false;
 
   @override
