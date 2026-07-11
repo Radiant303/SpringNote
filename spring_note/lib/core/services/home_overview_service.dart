@@ -25,11 +25,12 @@ class HomeOverviewService {
       return _empty;
     }
 
+    final sections = decoded['schemaVersion'] == 2
+        ? _readSections(decoded['sections'])
+        : _readLegacySections(decoded);
     return StructuredWorkNote(
       rawInput: decoded['rawInput'] as String? ?? '',
-      completed: _readStringList(decoded['completed']),
-      issues: _readStringList(decoded['issues']),
-      plans: _readStringList(decoded['plans']),
+      sections: sections,
     );
   }
 
@@ -39,12 +40,7 @@ class HomeOverviewService {
     required StructuredWorkNote current,
     required StructuredWorkNote incoming,
   }) async {
-    final merged = StructuredWorkNote(
-      rawInput: incoming.rawInput,
-      completed: [...incoming.completed, ...current.completed],
-      issues: [...incoming.issues, ...current.issues],
-      plans: [...incoming.plans, ...current.plans],
-    );
+    final merged = incoming.mergeWithOlder(current);
     await writeOverview(appDataDir: appDataDir, date: date, overview: merged);
     return merged;
   }
@@ -58,7 +54,15 @@ class HomeOverviewService {
     await file.parent.create(recursive: true);
     const encoder = JsonEncoder.withIndent('  ');
     await file.writeAsString(
-      '${encoder.convert({'date': _formatDate(date), 'updatedAt': DateTime.now().toIso8601String(), 'rawInput': overview.rawInput, 'completed': overview.completed, 'issues': overview.issues, 'plans': overview.plans})}\n',
+      '${encoder.convert({
+        'date': _formatDate(date),
+        'updatedAt': DateTime.now().toIso8601String(),
+        'schemaVersion': 2,
+        'rawInput': overview.rawInput,
+        'sections': [
+          for (final id in StructuredNoteSectionIds.values) {'id': id, 'items': overview.itemsFor(id)},
+        ],
+      })}\n',
     );
   }
 
@@ -86,6 +90,39 @@ class HomeOverviewService {
         .toList();
   }
 
+  List<StructuredWorkNoteSection> _readSections(Object? value) {
+    final itemsById = <String, List<String>>{};
+    if (value is List) {
+      for (final section in value.whereType<Map>()) {
+        final id = section['id'];
+        if (id is String && StructuredNoteSectionIds.values.contains(id)) {
+          itemsById[id] = _readStringList(section['items']);
+        }
+      }
+    }
+    return [
+      for (final id in StructuredNoteSectionIds.values)
+        StructuredWorkNoteSection(id: id, items: itemsById[id] ?? const []),
+    ];
+  }
+
+  List<StructuredWorkNoteSection> _readLegacySections(Map decoded) {
+    return [
+      StructuredWorkNoteSection(
+        id: StructuredNoteSectionIds.a,
+        items: _readStringList(decoded['completed']),
+      ),
+      StructuredWorkNoteSection(
+        id: StructuredNoteSectionIds.b,
+        items: _readStringList(decoded['issues']),
+      ),
+      StructuredWorkNoteSection(
+        id: StructuredNoteSectionIds.c,
+        items: _readStringList(decoded['plans']),
+      ),
+    ];
+  }
+
   String _formatDate(DateTime date) {
     final year = date.year.toString().padLeft(4, '0');
     final month = date.month.toString().padLeft(2, '0');
@@ -93,10 +130,5 @@ class HomeOverviewService {
     return '$year-$month-$day';
   }
 
-  static const _empty = StructuredWorkNote(
-    rawInput: '',
-    completed: [],
-    issues: [],
-    plans: [],
-  );
+  static const _empty = StructuredWorkNote.empty;
 }

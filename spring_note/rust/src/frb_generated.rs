@@ -1087,9 +1087,6 @@ impl SseDecode for crate::ai::DailyMergeRequest {
         let mut var_model = <crate::ai::AiModel>::sse_decode(deserializer);
         let mut var_existingMarkdown = <String>::sse_decode(deserializer);
         let mut var_rawInput = <String>::sse_decode(deserializer);
-        let mut var_completed = <Vec<String>>::sse_decode(deserializer);
-        let mut var_issues = <Vec<String>>::sse_decode(deserializer);
-        let mut var_plans = <Vec<String>>::sse_decode(deserializer);
         let mut var_date = <String>::sse_decode(deserializer);
         let mut var_industry = <String>::sse_decode(deserializer);
         let mut var_mergePrompt = <String>::sse_decode(deserializer);
@@ -1100,9 +1097,6 @@ impl SseDecode for crate::ai::DailyMergeRequest {
             model: var_model,
             existing_markdown: var_existingMarkdown,
             raw_input: var_rawInput,
-            completed: var_completed,
-            issues: var_issues,
-            plans: var_plans,
             date: var_date,
             industry: var_industry,
             merge_prompt: var_mergePrompt,
@@ -1311,6 +1305,32 @@ impl SseDecode for Vec<crate::stats::ProviderTokenUsage> {
         let mut ans_ = Vec::with_capacity(len_ as usize);
         for idx_ in 0..len_ {
             ans_.push(<crate::stats::ProviderTokenUsage>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::ai::StructuredNoteSection> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::ai::StructuredNoteSection>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::ai::StructuredNoteSectionDefinition> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::ai::StructuredNoteSectionDefinition>::sse_decode(
+                deserializer,
+            ));
         }
         return ans_;
     }
@@ -1596,6 +1616,8 @@ impl SseDecode for crate::ai::StructuredNoteRequest {
         let mut var_model = <crate::ai::AiModel>::sse_decode(deserializer);
         let mut var_input = <String>::sse_decode(deserializer);
         let mut var_images = <Vec<crate::ai::AiImageAttachment>>::sse_decode(deserializer);
+        let mut var_sections =
+            <Vec<crate::ai::StructuredNoteSectionDefinition>>::sse_decode(deserializer);
         let mut var_industry = <String>::sse_decode(deserializer);
         let mut var_apiLogEnabled = <bool>::sse_decode(deserializer);
         return crate::ai::StructuredNoteRequest {
@@ -1604,6 +1626,7 @@ impl SseDecode for crate::ai::StructuredNoteRequest {
             model: var_model,
             input: var_input,
             images: var_images,
+            sections: var_sections,
             industry: var_industry,
             api_log_enabled: var_apiLogEnabled,
         };
@@ -1614,9 +1637,7 @@ impl SseDecode for crate::ai::StructuredNoteResult {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_ok = <bool>::sse_decode(deserializer);
-        let mut var_completed = <Vec<String>>::sse_decode(deserializer);
-        let mut var_issues = <Vec<String>>::sse_decode(deserializer);
-        let mut var_plans = <Vec<String>>::sse_decode(deserializer);
+        let mut var_sections = <Vec<crate::ai::StructuredNoteSection>>::sse_decode(deserializer);
         let mut var_rawContent = <String>::sse_decode(deserializer);
         let mut var_errorCode = <String>::sse_decode(deserializer);
         let mut var_errorMessage = <String>::sse_decode(deserializer);
@@ -1625,15 +1646,39 @@ impl SseDecode for crate::ai::StructuredNoteResult {
         let mut var_cachedTokens = <i32>::sse_decode(deserializer);
         return crate::ai::StructuredNoteResult {
             ok: var_ok,
-            completed: var_completed,
-            issues: var_issues,
-            plans: var_plans,
+            sections: var_sections,
             raw_content: var_rawContent,
             error_code: var_errorCode,
             error_message: var_errorMessage,
             input_tokens: var_inputTokens,
             output_tokens: var_outputTokens,
             cached_tokens: var_cachedTokens,
+        };
+    }
+}
+
+impl SseDecode for crate::ai::StructuredNoteSection {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_items = <Vec<String>>::sse_decode(deserializer);
+        return crate::ai::StructuredNoteSection {
+            id: var_id,
+            items: var_items,
+        };
+    }
+}
+
+impl SseDecode for crate::ai::StructuredNoteSectionDefinition {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_title = <String>::sse_decode(deserializer);
+        let mut var_aiInstruction = <String>::sse_decode(deserializer);
+        return crate::ai::StructuredNoteSectionDefinition {
+            id: var_id,
+            title: var_title,
+            ai_instruction: var_aiInstruction,
         };
     }
 }
@@ -2011,9 +2056,6 @@ impl flutter_rust_bridge::IntoDart for crate::ai::DailyMergeRequest {
             self.model.into_into_dart().into_dart(),
             self.existing_markdown.into_into_dart().into_dart(),
             self.raw_input.into_into_dart().into_dart(),
-            self.completed.into_into_dart().into_dart(),
-            self.issues.into_into_dart().into_dart(),
-            self.plans.into_into_dart().into_dart(),
             self.date.into_into_dart().into_dart(),
             self.industry.into_into_dart().into_dart(),
             self.merge_prompt.into_into_dart().into_dart(),
@@ -2408,6 +2450,7 @@ impl flutter_rust_bridge::IntoDart for crate::ai::StructuredNoteRequest {
             self.model.into_into_dart().into_dart(),
             self.input.into_into_dart().into_dart(),
             self.images.into_into_dart().into_dart(),
+            self.sections.into_into_dart().into_dart(),
             self.industry.into_into_dart().into_dart(),
             self.api_log_enabled.into_into_dart().into_dart(),
         ]
@@ -2430,9 +2473,7 @@ impl flutter_rust_bridge::IntoDart for crate::ai::StructuredNoteResult {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.ok.into_into_dart().into_dart(),
-            self.completed.into_into_dart().into_dart(),
-            self.issues.into_into_dart().into_dart(),
-            self.plans.into_into_dart().into_dart(),
+            self.sections.into_into_dart().into_dart(),
             self.raw_content.into_into_dart().into_dart(),
             self.error_code.into_into_dart().into_dart(),
             self.error_message.into_into_dart().into_dart(),
@@ -2451,6 +2492,49 @@ impl flutter_rust_bridge::IntoIntoDart<crate::ai::StructuredNoteResult>
     for crate::ai::StructuredNoteResult
 {
     fn into_into_dart(self) -> crate::ai::StructuredNoteResult {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::ai::StructuredNoteSection {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.items.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::ai::StructuredNoteSection
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::ai::StructuredNoteSection>
+    for crate::ai::StructuredNoteSection
+{
+    fn into_into_dart(self) -> crate::ai::StructuredNoteSection {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::ai::StructuredNoteSectionDefinition {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.title.into_into_dart().into_dart(),
+            self.ai_instruction.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::ai::StructuredNoteSectionDefinition
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::ai::StructuredNoteSectionDefinition>
+    for crate::ai::StructuredNoteSectionDefinition
+{
+    fn into_into_dart(self) -> crate::ai::StructuredNoteSectionDefinition {
         self
     }
 }
@@ -2628,9 +2712,6 @@ impl SseEncode for crate::ai::DailyMergeRequest {
         <crate::ai::AiModel>::sse_encode(self.model, serializer);
         <String>::sse_encode(self.existing_markdown, serializer);
         <String>::sse_encode(self.raw_input, serializer);
-        <Vec<String>>::sse_encode(self.completed, serializer);
-        <Vec<String>>::sse_encode(self.issues, serializer);
-        <Vec<String>>::sse_encode(self.plans, serializer);
         <String>::sse_encode(self.date, serializer);
         <String>::sse_encode(self.industry, serializer);
         <String>::sse_encode(self.merge_prompt, serializer);
@@ -2796,6 +2877,26 @@ impl SseEncode for Vec<crate::stats::ProviderTokenUsage> {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
             <crate::stats::ProviderTokenUsage>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::ai::StructuredNoteSection> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::ai::StructuredNoteSection>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::ai::StructuredNoteSectionDefinition> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::ai::StructuredNoteSectionDefinition>::sse_encode(item, serializer);
         }
     }
 }
@@ -2977,6 +3078,7 @@ impl SseEncode for crate::ai::StructuredNoteRequest {
         <crate::ai::AiModel>::sse_encode(self.model, serializer);
         <String>::sse_encode(self.input, serializer);
         <Vec<crate::ai::AiImageAttachment>>::sse_encode(self.images, serializer);
+        <Vec<crate::ai::StructuredNoteSectionDefinition>>::sse_encode(self.sections, serializer);
         <String>::sse_encode(self.industry, serializer);
         <bool>::sse_encode(self.api_log_enabled, serializer);
     }
@@ -2986,15 +3088,30 @@ impl SseEncode for crate::ai::StructuredNoteResult {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <bool>::sse_encode(self.ok, serializer);
-        <Vec<String>>::sse_encode(self.completed, serializer);
-        <Vec<String>>::sse_encode(self.issues, serializer);
-        <Vec<String>>::sse_encode(self.plans, serializer);
+        <Vec<crate::ai::StructuredNoteSection>>::sse_encode(self.sections, serializer);
         <String>::sse_encode(self.raw_content, serializer);
         <String>::sse_encode(self.error_code, serializer);
         <String>::sse_encode(self.error_message, serializer);
         <i32>::sse_encode(self.input_tokens, serializer);
         <i32>::sse_encode(self.output_tokens, serializer);
         <i32>::sse_encode(self.cached_tokens, serializer);
+    }
+}
+
+impl SseEncode for crate::ai::StructuredNoteSection {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <Vec<String>>::sse_encode(self.items, serializer);
+    }
+}
+
+impl SseEncode for crate::ai::StructuredNoteSectionDefinition {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.title, serializer);
+        <String>::sse_encode(self.ai_instruction, serializer);
     }
 }
 

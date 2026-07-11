@@ -10,6 +10,7 @@ import 'package:spring_note/core/models/local_data_state.dart';
 import 'package:spring_note/core/models/model_config.dart';
 import 'package:spring_note/core/models/model_reference.dart';
 import 'package:spring_note/core/models/provider_config.dart';
+import 'package:spring_note/core/models/structured_note_section_config.dart';
 import 'package:spring_note/core/models/structured_work_note.dart';
 import 'package:spring_note/core/models/wallpaper_settings.dart';
 import 'package:spring_note/app.dart';
@@ -375,9 +376,83 @@ void main() {
     expect(fakeHomeOverviewService.savedOverview, isNotNull);
     expect(fakeDailyNoteService.savedNote?.rawInput, contains('完成首页输入流程'));
     expect(
-      fakeHomeOverviewService.savedOverview?.completed,
+      fakeHomeOverviewService.savedOverview?.itemsFor(
+        StructuredNoteSectionIds.a,
+      ),
       contains('完成首页输入流程'),
     );
+  });
+
+  testWidgets('home overview reads section titles from config', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final defaults = StructuredNoteSectionConfig.defaults;
+    final config = AppConfig.defaults().copyWith(
+      structuredNoteSections: [
+        defaults[0].copyWith(title: '今日进展'),
+        defaults[1].copyWith(title: '当前阻塞'),
+        defaults[2].copyWith(title: '后续安排'),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: HomePage(
+          localDataState: _testLocalDataState(config: config),
+          homeOverviewService: _FakeHomeOverviewService(),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Overview · 今日进展'), findsOneWidget);
+    expect(find.text('Featured · 当前阻塞'), findsOneWidget);
+    expect(find.text('Overview · 后续安排'), findsOneWidget);
+  });
+
+  testWidgets('home reports local fallback when structured AI returns null', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final dailyNoteService = _FakeDailyNoteService();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: HomePage(
+          localDataState: _testLocalDataState(
+            config: _textOnlyGenerationConfig(),
+          ),
+          dailyNoteService: dailyNoteService,
+          homeOverviewService: _FakeHomeOverviewService(),
+          aiClientService: const _StructuredFailureAiClientService(),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField), '完成结构化降级测试');
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('home-smart-generate-button')));
+    await _pumpUntil(
+      tester,
+      () => dailyNoteService.savedNote != null,
+      'local structured fallback',
+    );
+
+    expect(
+      dailyNoteService.savedNote?.itemsFor(StructuredNoteSectionIds.a),
+      contains('完成结构化降级测试'),
+    );
+    expect(find.textContaining('本地 mock / 简单合并'), findsOneWidget);
   });
 
   for (final shortcut in const [
@@ -421,7 +496,9 @@ void main() {
       expect(fakeHomeOverviewService.savedOverview, isNotNull);
       expect(fakeDailyNoteService.savedNote?.rawInput, contains('用快捷键整理首页内容'));
       expect(
-        fakeHomeOverviewService.savedOverview?.completed,
+        fakeHomeOverviewService.savedOverview?.itemsFor(
+          StructuredNoteSectionIds.a,
+        ),
         contains('用快捷键整理首页内容'),
       );
     });
@@ -554,7 +631,10 @@ void main() {
     expect(image.name, 'screen.jpg');
     expect(image.mimeType, 'image/jpeg');
     expect(image.bytes, imageBytes);
-    expect(fakeDailyNoteService.savedNote?.completed, contains('AI 识别了 1 张图片'));
+    expect(
+      fakeDailyNoteService.savedNote?.itemsFor(StructuredNoteSectionIds.a),
+      contains('AI 识别了 1 张图片'),
+    );
   });
 
   testWidgets('home image attachments enforce count and size limits', (
@@ -1006,6 +1086,8 @@ class _FakeDailyNoteService extends DailyNoteService {
     required String dailyNotesDirectory,
     required DateTime date,
     required StructuredWorkNote note,
+    List<StructuredNoteSectionConfig> sectionConfigs =
+        StructuredNoteSectionConfig.defaults,
     String? mergedMarkdown,
   }) async {
     savedNote = note;
@@ -1021,12 +1103,7 @@ class _FakeHomeOverviewService extends HomeOverviewService {
     required String appDataDir,
     required DateTime date,
   }) async {
-    return const StructuredWorkNote(
-      rawInput: '',
-      completed: [],
-      issues: [],
-      plans: [],
-    );
+    return StructuredWorkNote.empty;
   }
 
   @override
@@ -1036,12 +1113,7 @@ class _FakeHomeOverviewService extends HomeOverviewService {
     required StructuredWorkNote current,
     required StructuredWorkNote incoming,
   }) async {
-    savedOverview = StructuredWorkNote(
-      rawInput: incoming.rawInput,
-      completed: [...incoming.completed, ...current.completed],
-      issues: [...incoming.issues, ...current.issues],
-      plans: [...incoming.plans, ...current.plans],
-    );
+    savedOverview = incoming.mergeWithOlder(current);
     return savedOverview!;
   }
 }
@@ -1106,10 +1178,46 @@ class _RecordingAiClientService extends AiClientService {
     generatedImages = List.of(images);
     return StructuredWorkNote(
       rawInput: input,
-      completed: ['AI 识别了 ${images.length} 张图片'],
-      issues: const [],
-      plans: const [],
+      sections: [
+        StructuredWorkNoteSection(
+          id: StructuredNoteSectionIds.a,
+          items: ['AI 识别了 ${images.length} 张图片'],
+        ),
+        const StructuredWorkNoteSection(
+          id: StructuredNoteSectionIds.b,
+          items: [],
+        ),
+        const StructuredWorkNoteSection(
+          id: StructuredNoteSectionIds.c,
+          items: [],
+        ),
+      ],
     );
+  }
+
+  @override
+  Future<String?> mergeDailyMarkdown({
+    required String appDataDir,
+    required AppConfig config,
+    required String existingMarkdown,
+    required StructuredWorkNote note,
+    required DateTime date,
+  }) async {
+    return note.rawInput;
+  }
+}
+
+class _StructuredFailureAiClientService extends AiClientService {
+  const _StructuredFailureAiClientService();
+
+  @override
+  Future<StructuredWorkNote?> generateStructuredNote({
+    required String appDataDir,
+    required AppConfig config,
+    required String input,
+    List<AiImageInput> images = const [],
+  }) async {
+    return null;
   }
 
   @override

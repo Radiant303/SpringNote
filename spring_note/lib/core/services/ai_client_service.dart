@@ -235,6 +235,14 @@ class AiClientService {
         model: _toRustModel(selection.model),
         input: input,
         images: safeImages.map(_toRustImageAttachment).toList(),
+        sections: [
+          for (final section in config.structuredNoteSections)
+            rust_ai.StructuredNoteSectionDefinition(
+              id: section.id,
+              title: section.title,
+              aiInstruction: section.aiInstruction,
+            ),
+        ],
         industry: config.industry,
         apiLogEnabled: config.apiLogEnabled,
       ),
@@ -244,11 +252,18 @@ class AiClientService {
       return null;
     }
 
+    final itemsById = {
+      for (final section in response.sections) section.id: section.items,
+    };
     return StructuredWorkNote(
       rawInput: input,
-      completed: response.completed,
-      issues: response.issues,
-      plans: response.plans,
+      sections: [
+        for (final section in config.structuredNoteSections)
+          StructuredWorkNoteSection(
+            id: section.id,
+            items: itemsById[section.id] ?? const [],
+          ),
+      ],
     );
   }
 
@@ -271,9 +286,6 @@ class AiClientService {
         model: _toRustModel(selection.model),
         existingMarkdown: existingMarkdown,
         rawInput: note.rawInput,
-        completed: note.completed,
-        issues: note.issues,
-        plans: note.plans,
         date: _formatDate(date),
         industry: config.industry,
         mergePrompt: _renderDailyMergePrompt(
@@ -539,9 +551,11 @@ class AiClientService {
           ? '（空）'
           : existingMarkdown.trim(),
       '{raw_input}': note.rawInput.trim(),
-      '{completed}': _formatPromptItems(note.completed),
-      '{issues}': _formatPromptItems(note.issues),
-      '{plans}': _formatPromptItems(note.plans),
+      '{completed}': _formatPromptItems(
+        note.itemsFor(StructuredNoteSectionIds.a),
+      ),
+      '{issues}': _formatPromptItems(note.itemsFor(StructuredNoteSectionIds.b)),
+      '{plans}': _formatPromptItems(note.itemsFor(StructuredNoteSectionIds.c)),
       '{industry}': industry.trim().isEmpty ? '未设置' : industry.trim(),
     };
     var rendered = template.trim().isEmpty ? defaultDailyMergePrompt : template;

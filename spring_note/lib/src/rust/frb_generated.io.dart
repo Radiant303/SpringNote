@@ -170,6 +170,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<ProviderTokenUsage> dco_decode_list_provider_token_usage(dynamic raw);
 
   @protected
+  List<StructuredNoteSection> dco_decode_list_structured_note_section(
+    dynamic raw,
+  );
+
+  @protected
+  List<StructuredNoteSectionDefinition>
+  dco_decode_list_structured_note_section_definition(dynamic raw);
+
+  @protected
   MemoryChatRequest dco_decode_memory_chat_request(dynamic raw);
 
   @protected
@@ -219,6 +228,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   StructuredNoteResult dco_decode_structured_note_result(dynamic raw);
+
+  @protected
+  StructuredNoteSection dco_decode_structured_note_section(dynamic raw);
+
+  @protected
+  StructuredNoteSectionDefinition dco_decode_structured_note_section_definition(
+    dynamic raw,
+  );
 
   @protected
   int dco_decode_u_8(dynamic raw);
@@ -405,6 +422,17 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  List<StructuredNoteSection> sse_decode_list_structured_note_section(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<StructuredNoteSectionDefinition>
+  sse_decode_list_structured_note_section_definition(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   MemoryChatRequest sse_decode_memory_chat_request(
     SseDeserializer deserializer,
   );
@@ -468,6 +496,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   StructuredNoteResult sse_decode_structured_note_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  StructuredNoteSection sse_decode_structured_note_section(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  StructuredNoteSectionDefinition sse_decode_structured_note_section_definition(
     SseDeserializer deserializer,
   );
 
@@ -700,6 +738,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_structured_note_section(
+    List<StructuredNoteSection> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_structured_note_section_definition(
+    List<StructuredNoteSectionDefinition> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_memory_chat_request(
     MemoryChatRequest self,
     SseSerializer serializer,
@@ -777,6 +827,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_structured_note_result(
     StructuredNoteResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_structured_note_section(
+    StructuredNoteSection self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_structured_note_section_definition(
+    StructuredNoteSectionDefinition self,
     SseSerializer serializer,
   );
 

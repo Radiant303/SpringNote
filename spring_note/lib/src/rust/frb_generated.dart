@@ -1157,21 +1157,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   DailyMergeRequest dco_decode_daily_merge_request(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 12)
-      throw Exception('unexpected arr length: expect 12 but see ${arr.length}');
+    if (arr.length != 9)
+      throw Exception('unexpected arr length: expect 9 but see ${arr.length}');
     return DailyMergeRequest(
       appDataDir: dco_decode_String(arr[0]),
       provider: dco_decode_ai_provider(arr[1]),
       model: dco_decode_ai_model(arr[2]),
       existingMarkdown: dco_decode_String(arr[3]),
       rawInput: dco_decode_String(arr[4]),
-      completed: dco_decode_list_String(arr[5]),
-      issues: dco_decode_list_String(arr[6]),
-      plans: dco_decode_list_String(arr[7]),
-      date: dco_decode_String(arr[8]),
-      industry: dco_decode_String(arr[9]),
-      mergePrompt: dco_decode_String(arr[10]),
-      apiLogEnabled: dco_decode_bool(arr[11]),
+      date: dco_decode_String(arr[5]),
+      industry: dco_decode_String(arr[6]),
+      mergePrompt: dco_decode_String(arr[7]),
+      apiLogEnabled: dco_decode_bool(arr[8]),
     );
   }
 
@@ -1308,6 +1305,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   List<ProviderTokenUsage> dco_decode_list_provider_token_usage(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_provider_token_usage).toList();
+  }
+
+  @protected
+  List<StructuredNoteSection> dco_decode_list_structured_note_section(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_structured_note_section)
+        .toList();
+  }
+
+  @protected
+  List<StructuredNoteSectionDefinition>
+  dco_decode_list_structured_note_section_definition(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_structured_note_section_definition)
+        .toList();
   }
 
   @protected
@@ -1532,16 +1548,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   StructuredNoteRequest dco_decode_structured_note_request(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 7)
-      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
+    if (arr.length != 8)
+      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
     return StructuredNoteRequest(
       appDataDir: dco_decode_String(arr[0]),
       provider: dco_decode_ai_provider(arr[1]),
       model: dco_decode_ai_model(arr[2]),
       input: dco_decode_String(arr[3]),
       images: dco_decode_list_ai_image_attachment(arr[4]),
-      industry: dco_decode_String(arr[5]),
-      apiLogEnabled: dco_decode_bool(arr[6]),
+      sections: dco_decode_list_structured_note_section_definition(arr[5]),
+      industry: dco_decode_String(arr[6]),
+      apiLogEnabled: dco_decode_bool(arr[7]),
     );
   }
 
@@ -1549,19 +1566,44 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   StructuredNoteResult dco_decode_structured_note_result(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 10)
-      throw Exception('unexpected arr length: expect 10 but see ${arr.length}');
+    if (arr.length != 8)
+      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
     return StructuredNoteResult(
       ok: dco_decode_bool(arr[0]),
-      completed: dco_decode_list_String(arr[1]),
-      issues: dco_decode_list_String(arr[2]),
-      plans: dco_decode_list_String(arr[3]),
-      rawContent: dco_decode_String(arr[4]),
-      errorCode: dco_decode_String(arr[5]),
-      errorMessage: dco_decode_String(arr[6]),
-      inputTokens: dco_decode_i_32(arr[7]),
-      outputTokens: dco_decode_i_32(arr[8]),
-      cachedTokens: dco_decode_i_32(arr[9]),
+      sections: dco_decode_list_structured_note_section(arr[1]),
+      rawContent: dco_decode_String(arr[2]),
+      errorCode: dco_decode_String(arr[3]),
+      errorMessage: dco_decode_String(arr[4]),
+      inputTokens: dco_decode_i_32(arr[5]),
+      outputTokens: dco_decode_i_32(arr[6]),
+      cachedTokens: dco_decode_i_32(arr[7]),
+    );
+  }
+
+  @protected
+  StructuredNoteSection dco_decode_structured_note_section(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return StructuredNoteSection(
+      id: dco_decode_String(arr[0]),
+      items: dco_decode_list_String(arr[1]),
+    );
+  }
+
+  @protected
+  StructuredNoteSectionDefinition dco_decode_structured_note_section_definition(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return StructuredNoteSectionDefinition(
+      id: dco_decode_String(arr[0]),
+      title: dco_decode_String(arr[1]),
+      aiInstruction: dco_decode_String(arr[2]),
     );
   }
 
@@ -1899,9 +1941,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_model = sse_decode_ai_model(deserializer);
     var var_existingMarkdown = sse_decode_String(deserializer);
     var var_rawInput = sse_decode_String(deserializer);
-    var var_completed = sse_decode_list_String(deserializer);
-    var var_issues = sse_decode_list_String(deserializer);
-    var var_plans = sse_decode_list_String(deserializer);
     var var_date = sse_decode_String(deserializer);
     var var_industry = sse_decode_String(deserializer);
     var var_mergePrompt = sse_decode_String(deserializer);
@@ -1912,9 +1951,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       model: var_model,
       existingMarkdown: var_existingMarkdown,
       rawInput: var_rawInput,
-      completed: var_completed,
-      issues: var_issues,
-      plans: var_plans,
       date: var_date,
       industry: var_industry,
       mergePrompt: var_mergePrompt,
@@ -2128,6 +2164,35 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <ProviderTokenUsage>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_provider_token_usage(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<StructuredNoteSection> sse_decode_list_structured_note_section(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <StructuredNoteSection>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_structured_note_section(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<StructuredNoteSectionDefinition>
+  sse_decode_list_structured_note_section_definition(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <StructuredNoteSectionDefinition>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_structured_note_section_definition(deserializer));
     }
     return ans_;
   }
@@ -2421,6 +2486,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_model = sse_decode_ai_model(deserializer);
     var var_input = sse_decode_String(deserializer);
     var var_images = sse_decode_list_ai_image_attachment(deserializer);
+    var var_sections = sse_decode_list_structured_note_section_definition(
+      deserializer,
+    );
     var var_industry = sse_decode_String(deserializer);
     var var_apiLogEnabled = sse_decode_bool(deserializer);
     return StructuredNoteRequest(
@@ -2429,6 +2497,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       model: var_model,
       input: var_input,
       images: var_images,
+      sections: var_sections,
       industry: var_industry,
       apiLogEnabled: var_apiLogEnabled,
     );
@@ -2440,9 +2509,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_ok = sse_decode_bool(deserializer);
-    var var_completed = sse_decode_list_String(deserializer);
-    var var_issues = sse_decode_list_String(deserializer);
-    var var_plans = sse_decode_list_String(deserializer);
+    var var_sections = sse_decode_list_structured_note_section(deserializer);
     var var_rawContent = sse_decode_String(deserializer);
     var var_errorCode = sse_decode_String(deserializer);
     var var_errorMessage = sse_decode_String(deserializer);
@@ -2451,15 +2518,38 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_cachedTokens = sse_decode_i_32(deserializer);
     return StructuredNoteResult(
       ok: var_ok,
-      completed: var_completed,
-      issues: var_issues,
-      plans: var_plans,
+      sections: var_sections,
       rawContent: var_rawContent,
       errorCode: var_errorCode,
       errorMessage: var_errorMessage,
       inputTokens: var_inputTokens,
       outputTokens: var_outputTokens,
       cachedTokens: var_cachedTokens,
+    );
+  }
+
+  @protected
+  StructuredNoteSection sse_decode_structured_note_section(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_items = sse_decode_list_String(deserializer);
+    return StructuredNoteSection(id: var_id, items: var_items);
+  }
+
+  @protected
+  StructuredNoteSectionDefinition sse_decode_structured_note_section_definition(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_title = sse_decode_String(deserializer);
+    var var_aiInstruction = sse_decode_String(deserializer);
+    return StructuredNoteSectionDefinition(
+      id: var_id,
+      title: var_title,
+      aiInstruction: var_aiInstruction,
     );
   }
 
@@ -2758,9 +2848,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_ai_model(self.model, serializer);
     sse_encode_String(self.existingMarkdown, serializer);
     sse_encode_String(self.rawInput, serializer);
-    sse_encode_list_String(self.completed, serializer);
-    sse_encode_list_String(self.issues, serializer);
-    sse_encode_list_String(self.plans, serializer);
     sse_encode_String(self.date, serializer);
     sse_encode_String(self.industry, serializer);
     sse_encode_String(self.mergePrompt, serializer);
@@ -2943,6 +3030,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_provider_token_usage(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_structured_note_section(
+    List<StructuredNoteSection> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_structured_note_section(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_structured_note_section_definition(
+    List<StructuredNoteSectionDefinition> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_structured_note_section_definition(item, serializer);
     }
   }
 
@@ -3134,6 +3245,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_ai_model(self.model, serializer);
     sse_encode_String(self.input, serializer);
     sse_encode_list_ai_image_attachment(self.images, serializer);
+    sse_encode_list_structured_note_section_definition(
+      self.sections,
+      serializer,
+    );
     sse_encode_String(self.industry, serializer);
     sse_encode_bool(self.apiLogEnabled, serializer);
   }
@@ -3145,15 +3260,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_bool(self.ok, serializer);
-    sse_encode_list_String(self.completed, serializer);
-    sse_encode_list_String(self.issues, serializer);
-    sse_encode_list_String(self.plans, serializer);
+    sse_encode_list_structured_note_section(self.sections, serializer);
     sse_encode_String(self.rawContent, serializer);
     sse_encode_String(self.errorCode, serializer);
     sse_encode_String(self.errorMessage, serializer);
     sse_encode_i_32(self.inputTokens, serializer);
     sse_encode_i_32(self.outputTokens, serializer);
     sse_encode_i_32(self.cachedTokens, serializer);
+  }
+
+  @protected
+  void sse_encode_structured_note_section(
+    StructuredNoteSection self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_list_String(self.items, serializer);
+  }
+
+  @protected
+  void sse_encode_structured_note_section_definition(
+    StructuredNoteSectionDefinition self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.title, serializer);
+    sse_encode_String(self.aiInstruction, serializer);
   }
 
   @protected

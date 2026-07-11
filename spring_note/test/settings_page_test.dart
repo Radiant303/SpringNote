@@ -746,6 +746,53 @@ void main() {
     expect(service.savedConfig.fontScale, 120);
   });
 
+  testWidgets('settings page persists structured note section settings', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final service = _MemoryLocalDataService(AppConfig.defaults());
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: SettingsPage(
+          localDataState: _state(service.savedConfig),
+          localDataService: service,
+        ),
+      ),
+    );
+
+    await tester.ensureVisible(find.text('首页栏目'));
+    await tester.pump();
+    await tester.tap(find.text('首页栏目'));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('structured-note-sections-dialog')),
+      findsOneWidget,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('structured-section-title-oa')),
+      '今日进展',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('structured-section-instruction-oa')),
+      '提取今天取得的工作进展。',
+    );
+    await tester.tap(find.text('保存').last);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(service.savedConfig.structuredNoteSections[0].id, 'oa');
+    expect(service.savedConfig.structuredNoteSections[0].title, '今日进展');
+    expect(
+      service.savedConfig.structuredNoteSections[0].aiInstruction,
+      '提取今天取得的工作进展。',
+    );
+  });
+
   testWidgets('settings page adds provider edits model and selects default', (
     WidgetTester tester,
   ) async {

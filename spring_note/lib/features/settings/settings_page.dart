@@ -14,6 +14,7 @@ import '../../core/models/local_data_state.dart';
 import '../../core/models/model_config.dart';
 import '../../core/models/model_reference.dart';
 import '../../core/models/provider_config.dart';
+import '../../core/models/structured_note_section_config.dart';
 import '../../core/models/wallpaper_settings.dart';
 import '../../core/services/ai_client_service.dart';
 import '../../core/services/cloud_sync_service.dart';

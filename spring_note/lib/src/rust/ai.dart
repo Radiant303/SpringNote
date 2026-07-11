@@ -203,9 +203,6 @@ class DailyMergeRequest {
   final AiModel model;
   final String existingMarkdown;
   final String rawInput;
-  final List<String> completed;
-  final List<String> issues;
-  final List<String> plans;
   final String date;
   final String industry;
   final String mergePrompt;
@@ -217,9 +214,6 @@ class DailyMergeRequest {
     required this.model,
     required this.existingMarkdown,
     required this.rawInput,
-    required this.completed,
-    required this.issues,
-    required this.plans,
     required this.date,
     required this.industry,
     required this.mergePrompt,
@@ -233,9 +227,6 @@ class DailyMergeRequest {
       model.hashCode ^
       existingMarkdown.hashCode ^
       rawInput.hashCode ^
-      completed.hashCode ^
-      issues.hashCode ^
-      plans.hashCode ^
       date.hashCode ^
       industry.hashCode ^
       mergePrompt.hashCode ^
@@ -251,9 +242,6 @@ class DailyMergeRequest {
           model == other.model &&
           existingMarkdown == other.existingMarkdown &&
           rawInput == other.rawInput &&
-          completed == other.completed &&
-          issues == other.issues &&
-          plans == other.plans &&
           date == other.date &&
           industry == other.industry &&
           mergePrompt == other.mergePrompt &&
@@ -603,6 +591,7 @@ class StructuredNoteRequest {
   final AiModel model;
   final String input;
   final List<AiImageAttachment> images;
+  final List<StructuredNoteSectionDefinition> sections;
   final String industry;
   final bool apiLogEnabled;
 
@@ -612,6 +601,7 @@ class StructuredNoteRequest {
     required this.model,
     required this.input,
     required this.images,
+    required this.sections,
     required this.industry,
     required this.apiLogEnabled,
   });
@@ -623,6 +613,7 @@ class StructuredNoteRequest {
       model.hashCode ^
       input.hashCode ^
       images.hashCode ^
+      sections.hashCode ^
       industry.hashCode ^
       apiLogEnabled.hashCode;
 
@@ -636,15 +627,14 @@ class StructuredNoteRequest {
           model == other.model &&
           input == other.input &&
           images == other.images &&
+          sections == other.sections &&
           industry == other.industry &&
           apiLogEnabled == other.apiLogEnabled;
 }
 
 class StructuredNoteResult {
   final bool ok;
-  final List<String> completed;
-  final List<String> issues;
-  final List<String> plans;
+  final List<StructuredNoteSection> sections;
   final String rawContent;
   final String errorCode;
   final String errorMessage;
@@ -654,9 +644,7 @@ class StructuredNoteResult {
 
   const StructuredNoteResult({
     required this.ok,
-    required this.completed,
-    required this.issues,
-    required this.plans,
+    required this.sections,
     required this.rawContent,
     required this.errorCode,
     required this.errorMessage,
@@ -668,9 +656,7 @@ class StructuredNoteResult {
   @override
   int get hashCode =>
       ok.hashCode ^
-      completed.hashCode ^
-      issues.hashCode ^
-      plans.hashCode ^
+      sections.hashCode ^
       rawContent.hashCode ^
       errorCode.hashCode ^
       errorMessage.hashCode ^
@@ -684,13 +670,53 @@ class StructuredNoteResult {
       other is StructuredNoteResult &&
           runtimeType == other.runtimeType &&
           ok == other.ok &&
-          completed == other.completed &&
-          issues == other.issues &&
-          plans == other.plans &&
+          sections == other.sections &&
           rawContent == other.rawContent &&
           errorCode == other.errorCode &&
           errorMessage == other.errorMessage &&
           inputTokens == other.inputTokens &&
           outputTokens == other.outputTokens &&
           cachedTokens == other.cachedTokens;
+}
+
+class StructuredNoteSection {
+  final String id;
+  final List<String> items;
+
+  const StructuredNoteSection({required this.id, required this.items});
+
+  @override
+  int get hashCode => id.hashCode ^ items.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is StructuredNoteSection &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          items == other.items;
+}
+
+class StructuredNoteSectionDefinition {
+  final String id;
+  final String title;
+  final String aiInstruction;
+
+  const StructuredNoteSectionDefinition({
+    required this.id,
+    required this.title,
+    required this.aiInstruction,
+  });
+
+  @override
+  int get hashCode => id.hashCode ^ title.hashCode ^ aiInstruction.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is StructuredNoteSectionDefinition &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          title == other.title &&
+          aiInstruction == other.aiInstruction;
 }

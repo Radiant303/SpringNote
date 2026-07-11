@@ -4,6 +4,7 @@ import 'cloud_sync_config.dart';
 import 'desktop_widget_position.dart';
 import 'desktop_widget_wallpaper_settings.dart';
 import 'provider_config.dart';
+import 'structured_note_section_config.dart';
 import 'wallpaper_settings.dart';
 
 enum AppThemePreference { system, light, dark }
@@ -57,6 +58,7 @@ class AppConfig {
     required this.memoryKeywordSearchResultLimit,
     required this.memoryKeywordContextBefore,
     required this.memoryKeywordContextAfter,
+    required this.structuredNoteSections,
     required this.dailyMergePrompt,
     required this.apiLogEnabled,
     required this.cloudSync,
@@ -90,6 +92,7 @@ class AppConfig {
   final double memoryKeywordSearchResultLimit;
   final double memoryKeywordContextBefore;
   final double memoryKeywordContextAfter;
+  final List<StructuredNoteSectionConfig> structuredNoteSections;
   final String dailyMergePrompt;
   final bool apiLogEnabled;
   final CloudSyncConfig cloudSync;
@@ -128,6 +131,7 @@ class AppConfig {
       memoryKeywordSearchResultLimit: 12,
       memoryKeywordContextBefore: 1400,
       memoryKeywordContextAfter: 2600,
+      structuredNoteSections: StructuredNoteSectionConfig.defaults,
       dailyMergePrompt: defaultDailyMergePrompt,
       apiLogEnabled: false,
       cloudSync: CloudSyncConfig.defaultsValue,
@@ -199,6 +203,9 @@ class AppConfig {
         json['memoryKeywordContextAfter'],
         2600,
       ),
+      structuredNoteSections: StructuredNoteSectionConfig.fromJson(
+        json['structuredNoteSections'],
+      ),
       dailyMergePrompt: _readString(
         json['dailyMergePrompt'],
         defaultDailyMergePrompt,
@@ -240,6 +247,9 @@ class AppConfig {
       'memoryKeywordSearchResultLimit': memoryKeywordSearchResultLimit,
       'memoryKeywordContextBefore': memoryKeywordContextBefore,
       'memoryKeywordContextAfter': memoryKeywordContextAfter,
+      'structuredNoteSections': structuredNoteSections
+          .map((section) => section.toJson())
+          .toList(),
       'dailyMergePrompt': dailyMergePrompt,
       'apiLogEnabled': apiLogEnabled,
       'cloudSync': cloudSync.toJson(),
@@ -274,6 +284,7 @@ class AppConfig {
     double? memoryKeywordSearchResultLimit,
     double? memoryKeywordContextBefore,
     double? memoryKeywordContextAfter,
+    List<StructuredNoteSectionConfig>? structuredNoteSections,
     String? dailyMergePrompt,
     bool? apiLogEnabled,
     CloudSyncConfig? cloudSync,
@@ -321,6 +332,9 @@ class AppConfig {
           memoryKeywordContextBefore ?? this.memoryKeywordContextBefore,
       memoryKeywordContextAfter:
           memoryKeywordContextAfter ?? this.memoryKeywordContextAfter,
+      structuredNoteSections: structuredNoteSections == null
+          ? this.structuredNoteSections
+          : StructuredNoteSectionConfig.normalize(structuredNoteSections),
       dailyMergePrompt: dailyMergePrompt ?? this.dailyMergePrompt,
       apiLogEnabled: apiLogEnabled ?? this.apiLogEnabled,
       cloudSync: cloudSync ?? this.cloudSync,

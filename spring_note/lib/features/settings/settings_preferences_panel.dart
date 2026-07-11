@@ -536,6 +536,22 @@ class _PreferencesPanel extends StatelessWidget {
           title: '提示词',
           children: [
             _ActionSettingRow(
+              label: '首页栏目',
+              value: '',
+              onTap: () async {
+                final sections =
+                    await showDialog<List<StructuredNoteSectionConfig>>(
+                      context: context,
+                      builder: (_) => _StructuredNoteSectionsDialog(
+                        sections: config.structuredNoteSections,
+                      ),
+                    );
+                if (sections != null) {
+                  onChanged(config.copyWith(structuredNoteSections: sections));
+                }
+              },
+            ),
+            _ActionSettingRow(
               label: '日报整理提示词',
               value: '',
               onTap: () async {
@@ -804,6 +820,208 @@ class _DataMigrationDialogButtonState
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _StructuredNoteSectionsDialog extends StatefulWidget {
+  const _StructuredNoteSectionsDialog({required this.sections});
+
+  final List<StructuredNoteSectionConfig> sections;
+
+  @override
+  State<_StructuredNoteSectionsDialog> createState() =>
+      _StructuredNoteSectionsDialogState();
+}
+
+class _StructuredNoteSectionsDialogState
+    extends State<_StructuredNoteSectionsDialog> {
+  late final List<TextEditingController> _titleControllers = [
+    for (final section in widget.sections)
+      TextEditingController(text: section.title),
+  ];
+  late final List<TextEditingController> _instructionControllers = [
+    for (final section in widget.sections)
+      TextEditingController(text: section.aiInstruction),
+  ];
+
+  @override
+  void dispose() {
+    for (final controller in _titleControllers) {
+      controller.dispose();
+    }
+    for (final controller in _instructionControllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    final textTheme = Theme.of(context).textTheme;
+    return Dialog(
+      key: const ValueKey('structured-note-sections-dialog'),
+      backgroundColor: AppTheme.dialogSurface(context),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: SizedBox(
+        width: 680,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 20, 14),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '编辑首页栏目',
+                      style: textTheme.titleMedium?.copyWith(
+                        color: colors.text,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: '关闭',
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+            ),
+            Divider(height: 1, color: colors.divider),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 18, 24, 20),
+                child: Column(
+                  children: [
+                    for (var index = 0; index < widget.sections.length; index++)
+                      Padding(
+                        padding: EdgeInsets.only(
+                          bottom: index == widget.sections.length - 1 ? 0 : 14,
+                        ),
+                        child: _StructuredNoteSectionEditor(
+                          index: index,
+                          sectionId: widget.sections[index].id,
+                          titleController: _titleControllers[index],
+                          instructionController: _instructionControllers[index],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            Divider(height: 1, color: colors.divider),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 14, 24, 18),
+              child: Row(
+                children: [
+                  _ProviderTestDialogButton(
+                    label: '恢复默认',
+                    filled: false,
+                    onTap: _restoreDefault,
+                  ),
+                  const Spacer(),
+                  _ProviderTestDialogButton(
+                    label: '取消',
+                    filled: false,
+                    onTap: () => Navigator.of(context).pop(),
+                  ),
+                  const SizedBox(width: 10),
+                  _ProviderTestDialogButton(
+                    label: '保存',
+                    filled: true,
+                    onTap: _save,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _restoreDefault() {
+    for (
+      var index = 0;
+      index < StructuredNoteSectionConfig.defaults.length;
+      index++
+    ) {
+      final section = StructuredNoteSectionConfig.defaults[index];
+      _titleControllers[index].text = section.title;
+      _instructionControllers[index].text = section.aiInstruction;
+    }
+  }
+
+  void _save() {
+    Navigator.of(context).pop([
+      for (var index = 0; index < widget.sections.length; index++)
+        widget.sections[index].copyWith(
+          title: _titleControllers[index].text,
+          aiInstruction: _instructionControllers[index].text,
+        ),
+    ]);
+  }
+}
+
+class _StructuredNoteSectionEditor extends StatelessWidget {
+  const _StructuredNoteSectionEditor({
+    required this.index,
+    required this.sectionId,
+    required this.titleController,
+    required this.instructionController,
+  });
+
+  final int index;
+  final String sectionId;
+  final TextEditingController titleController;
+  final TextEditingController instructionController;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    final textTheme = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        border: Border.all(color: colors.border),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '栏目 ${index + 1}',
+            style: textTheme.labelLarge?.copyWith(
+              color: colors.text,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text('标题', style: textTheme.labelSmall),
+          const SizedBox(height: 5),
+          TextField(
+            key: ValueKey('structured-section-title-$sectionId'),
+            controller: titleController,
+            maxLines: 1,
+            decoration: const InputDecoration(isDense: true),
+          ),
+          const SizedBox(height: 12),
+          Text('AI 说明', style: textTheme.labelSmall),
+          const SizedBox(height: 5),
+          TextField(
+            key: ValueKey('structured-section-instruction-$sectionId'),
+            controller: instructionController,
+            minLines: 2,
+            maxLines: 3,
+            decoration: const InputDecoration(isDense: true),
+          ),
+        ],
       ),
     );
   }

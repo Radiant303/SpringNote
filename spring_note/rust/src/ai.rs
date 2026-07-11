@@ -1,7 +1,8 @@
 use crate::frb_generated::StreamSink;
 use crate::{ai_claude, ai_gemini, ai_openai, stats};
 use reqwest::Client;
-use serde_json::Value;
+use serde_json::{Value, json};
+use std::collections::HashMap;
 use std::time::Duration;
 
 /// TCP 连接超时（秒），适用于所有 AI HTTP 请求。
@@ -98,12 +99,26 @@ pub struct AiToolCall {
 }
 
 #[derive(Clone, Debug)]
+pub struct StructuredNoteSectionDefinition {
+    pub id: String,
+    pub title: String,
+    pub ai_instruction: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct StructuredNoteSection {
+    pub id: String,
+    pub items: Vec<String>,
+}
+
+#[derive(Clone, Debug)]
 pub struct StructuredNoteRequest {
     pub app_data_dir: String,
     pub provider: AiProvider,
     pub model: AiModel,
     pub input: String,
     pub images: Vec<AiImageAttachment>,
+    pub sections: Vec<StructuredNoteSectionDefinition>,
     pub industry: String,
     pub api_log_enabled: bool,
 }
@@ -115,9 +130,6 @@ pub struct DailyMergeRequest {
     pub model: AiModel,
     pub existing_markdown: String,
     pub raw_input: String,
-    pub completed: Vec<String>,
-    pub issues: Vec<String>,
-    pub plans: Vec<String>,
     pub date: String,
     pub industry: String,
     pub merge_prompt: String,
@@ -212,9 +224,7 @@ pub struct MemoryToolChatStreamEvent {
 #[derive(Clone, Debug)]
 pub struct StructuredNoteResult {
     pub ok: bool,
-    pub completed: Vec<String>,
-    pub issues: Vec<String>,
-    pub plans: Vec<String>,
+    pub sections: Vec<StructuredNoteSection>,
     pub raw_content: String,
     pub error_code: String,
     pub error_message: String,
@@ -356,7 +366,8 @@ pub async fn fetch_provider_models(
 }
 
 pub async fn generate_structured_note(request: StructuredNoteRequest) -> StructuredNoteResult {
-    let system_prompt = structured_system_prompt(&request.industry);
+    let sections = request.sections.clone();
+    let system_prompt = structured_system_prompt(&request.industry, &sections);
     let result = chat(AiChatRequest {
         app_data_dir: request.app_data_dir,
         provider: request.provider,
@@ -371,9 +382,7 @@ pub async fn generate_structured_note(request: StructuredNoteRequest) -> Structu
     if !result.ok {
         return StructuredNoteResult {
             ok: false,
-            completed: vec![],
-            issues: vec![],
-            plans: vec![],
+            sections: vec![],
             raw_content: result.content,
             error_code: result.error_code,
             error_message: result.error_message,
@@ -383,7 +392,7 @@ pub async fn generate_structured_note(request: StructuredNoteRequest) -> Structu
         };
     }
 
-    parse_structured_note(&result)
+    parse_structured_note(&result, &sections)
 }
 
 pub async fn merge_daily_note(request: DailyMergeRequest) -> AiTextResult {
@@ -718,28 +727,32 @@ fn memory_chat_user_prompt(_question: &str, context_markdown: &str) -> String {
     )
 }
 
-fn parse_structured_note(result: &AiTextResult) -> StructuredNoteResult {
+fn parse_structured_note(
+    result: &AiTextResult,
+    definitions: &[StructuredNoteSectionDefinition],
+) -> StructuredNoteResult {
     let parsed = serde_json::from_str::<Value>(&strip_markdown_fence(&result.content));
     let Ok(value) = parsed else {
-        return StructuredNoteResult {
-            ok: false,
-            completed: vec![],
-            issues: vec![],
-            plans: vec![],
-            raw_content: result.content.clone(),
-            error_code: "invalid_structured_output".to_string(),
-            error_message: "AI 返回内容不是可解析的结构化 JSON。".to_string(),
-            input_tokens: result.input_tokens,
-            output_tokens: result.output_tokens,
-            cached_tokens: result.cached_tokens,
-        };
+        return invalid_structured_note_result(result, "AI 返回内容不是可解析的结构化 JSON。");
+    };
+
+    let parsed_sections = match value.get("sections") {
+        Some(sections) => parse_section_array(sections, definitions),
+        None => parse_legacy_sections(&value, definitions),
+    };
+    let sections = match parsed_sections {
+        Ok(sections) => sections,
+        Err(error) => {
+            return invalid_structured_note_result(
+                result,
+                &format!("AI 返回的结构化 JSON 不符合要求：{error}"),
+            );
+        }
     };
 
     StructuredNoteResult {
         ok: true,
-        completed: read_string_array(&value, "completed"),
-        issues: read_string_array(&value, "issues"),
-        plans: read_string_array(&value, "plans"),
+        sections,
         raw_content: result.content.clone(),
         error_code: String::new(),
         error_message: String::new(),
@@ -749,20 +762,101 @@ fn parse_structured_note(result: &AiTextResult) -> StructuredNoteResult {
     }
 }
 
-fn read_string_array(value: &Value, key: &str) -> Vec<String> {
-    value
-        .get(key)
-        .and_then(Value::as_array)
-        .map(|items| {
-            items
-                .iter()
-                .filter_map(Value::as_str)
-                .map(str::trim)
-                .filter(|item| !item.is_empty())
-                .map(ToString::to_string)
-                .collect()
+fn invalid_structured_note_result(
+    result: &AiTextResult,
+    error_message: &str,
+) -> StructuredNoteResult {
+    StructuredNoteResult {
+        ok: false,
+        sections: vec![],
+        raw_content: result.content.clone(),
+        error_code: "invalid_structured_output".to_string(),
+        error_message: error_message.to_string(),
+        input_tokens: result.input_tokens,
+        output_tokens: result.output_tokens,
+        cached_tokens: result.cached_tokens,
+    }
+}
+
+fn parse_section_array(
+    value: &Value,
+    definitions: &[StructuredNoteSectionDefinition],
+) -> Result<Vec<StructuredNoteSection>, String> {
+    let sections = value
+        .as_array()
+        .ok_or_else(|| "sections 必须是数组。".to_string())?;
+    let mut items_by_id = HashMap::new();
+
+    for section in sections {
+        let id = section
+            .get("id")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "每个栏目都必须包含字符串 id。".to_string())?;
+        if !definitions.iter().any(|definition| definition.id == id) {
+            return Err(format!("包含未知栏目 ID：{id}。"));
+        }
+        if items_by_id.contains_key(id) {
+            return Err(format!("栏目 ID 重复：{id}。"));
+        }
+        let items = section
+            .get("items")
+            .ok_or_else(|| format!("栏目 {id} 缺少 items。"))?;
+        items_by_id.insert(id.to_string(), read_string_list(items, id)?);
+    }
+
+    definitions
+        .iter()
+        .map(|definition| {
+            let items = items_by_id
+                .remove(&definition.id)
+                .ok_or_else(|| format!("缺少栏目 ID：{}。", definition.id))?;
+            Ok(StructuredNoteSection {
+                id: definition.id.clone(),
+                items,
+            })
         })
-        .unwrap_or_default()
+        .collect()
+}
+
+fn parse_legacy_sections(
+    value: &Value,
+    definitions: &[StructuredNoteSectionDefinition],
+) -> Result<Vec<StructuredNoteSection>, String> {
+    definitions
+        .iter()
+        .map(|definition| {
+            let key = match definition.id.as_str() {
+                "oa" => "completed",
+                "ob" => "issues",
+                "oc" => "plans",
+                _ => return Err(format!("无法映射旧格式栏目 ID：{}。", definition.id)),
+            };
+            let items = value
+                .get(key)
+                .ok_or_else(|| format!("旧格式缺少字段：{key}。"))?;
+            Ok(StructuredNoteSection {
+                id: definition.id.clone(),
+                items: read_string_list(items, key)?,
+            })
+        })
+        .collect()
+}
+
+fn read_string_list(value: &Value, field: &str) -> Result<Vec<String>, String> {
+    let items = value
+        .as_array()
+        .ok_or_else(|| format!("{field} 必须是数组。"))?;
+    let mut result = Vec::with_capacity(items.len());
+    for item in items {
+        let item = item
+            .as_str()
+            .ok_or_else(|| format!("{field} 只能包含字符串。"))?
+            .trim();
+        if !item.is_empty() {
+            result.push(item.to_string());
+        }
+    }
+    Ok(result)
 }
 
 fn strip_markdown_fence(content: &str) -> String {
@@ -888,14 +982,33 @@ impl MemoryToolChatStreamEvent {
     }
 }
 
-const STRUCTURED_SYSTEM_PROMPT: &str = r#"你是 SpringNote 的日报结构化助手。请把用户的中文工作记录和图片中可见的工作信息整理成 JSON，不要输出 Markdown，不要解释。
-JSON 格式必须是：
-{"completed":["完成事项"],"issues":["问题记录"],"plans":["明日计划"]}
-如果某一类没有内容，返回空数组。
-可以根据图片中明确可见的界面、文字、报错、流程或任务状态总结事实；不得编造图片外的信息。"#;
-
-fn structured_system_prompt(industry: &str) -> String {
-    with_industry_context(STRUCTURED_SYSTEM_PROMPT, industry)
+fn structured_system_prompt(
+    industry: &str,
+    sections: &[StructuredNoteSectionDefinition],
+) -> String {
+    let descriptions = sections
+        .iter()
+        .map(|section| {
+            format!(
+                "- {}（{}）：{}",
+                section.id,
+                section.title.trim(),
+                section.ai_instruction.trim()
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let example = json!({
+        "sections": sections
+            .iter()
+            .map(|section| json!({"id": section.id, "items": [section.title]}))
+            .collect::<Vec<_>>()
+    });
+    let prompt = format!(
+        "你是 SpringNote 的日报结构化助手。请把用户的中文工作记录和图片中可见的工作信息整理成 JSON，不要输出 Markdown，不要解释。\n\n栏目定义：\n{}\n\nJSON 格式必须是：\n{}\n必须原样返回以上栏目 ID；如果某一栏目没有内容，items 返回空数组。\n可以根据图片中明确可见的界面、文字、报错、流程或任务状态总结事实；不得编造图片外的信息。",
+        descriptions, example
+    );
+    with_industry_context(&prompt, industry)
 }
 
 const DAILY_MERGE_SYSTEM_PROMPT: &str = r#"你是 SpringNote 的日报整理助手。
@@ -999,20 +1112,109 @@ mod tests {
         }
     }
 
+    fn structured_definitions() -> Vec<StructuredNoteSectionDefinition> {
+        vec![
+            StructuredNoteSectionDefinition {
+                id: "oa".to_string(),
+                title: "A".to_string(),
+                ai_instruction: "A".to_string(),
+            },
+            StructuredNoteSectionDefinition {
+                id: "ob".to_string(),
+                title: "B".to_string(),
+                ai_instruction: "B".to_string(),
+            },
+            StructuredNoteSectionDefinition {
+                id: "oc".to_string(),
+                title: "C".to_string(),
+                ai_instruction: "C".to_string(),
+            },
+        ]
+    }
+
+    fn parse_structured_content(content: &str) -> StructuredNoteResult {
+        let result = AiTextResult::success(&request(), content, 1, 2, 0);
+        parse_structured_note(&result, &structured_definitions())
+    }
+
     #[test]
     fn parses_structured_note_json() {
-        let result = AiTextResult::success(
-            &request(),
-            r#"{"completed":["A"],"issues":["B"],"plans":["C"]}"#,
-            1,
-            2,
-            0,
+        let parsed = parse_structured_content(
+            r#"{"sections":[{"id":"oa","items":["A"]},{"id":"ob","items":["B"]},{"id":"oc","items":["C"]}]}"#,
         );
-        let parsed = parse_structured_note(&result);
         assert!(parsed.ok);
-        assert_eq!(parsed.completed, vec!["A"]);
-        assert_eq!(parsed.issues, vec!["B"]);
-        assert_eq!(parsed.plans, vec!["C"]);
+        assert_eq!(parsed.sections[0].items, vec!["A"]);
+        assert_eq!(parsed.sections[1].items, vec!["B"]);
+        assert_eq!(parsed.sections[2].items, vec!["C"]);
+    }
+
+    #[test]
+    fn parses_legacy_structured_note_json() {
+        let parsed =
+            parse_structured_content(r#"{"completed":["A"],"issues":["B"],"plans":["C"]}"#);
+        assert!(parsed.ok);
+        assert_eq!(parsed.sections[0].items, vec!["A"]);
+        assert_eq!(parsed.sections[1].items, vec!["B"]);
+        assert_eq!(parsed.sections[2].items, vec!["C"]);
+    }
+
+    #[test]
+    fn rejects_structured_note_with_missing_section() {
+        let parsed = parse_structured_content(
+            r#"{"sections":[{"id":"oa","items":["A"]},{"id":"ob","items":["B"]}]}"#,
+        );
+
+        assert!(!parsed.ok);
+        assert_eq!(parsed.error_code, "invalid_structured_output");
+        assert!(parsed.error_message.contains("缺少栏目 ID：oc"));
+    }
+
+    #[test]
+    fn rejects_structured_note_with_unknown_or_duplicate_section() {
+        let unknown = parse_structured_content(
+            r#"{"sections":[{"id":"oa","items":["A"]},{"id":"ob","items":["B"]},{"id":"wrong","items":["C"]}]}"#,
+        );
+        let duplicate = parse_structured_content(
+            r#"{"sections":[{"id":"oa","items":["A"]},{"id":"ob","items":["B"]},{"id":"ob","items":["C"]}]}"#,
+        );
+
+        assert!(!unknown.ok);
+        assert!(unknown.error_message.contains("未知栏目 ID：wrong"));
+        assert!(!duplicate.ok);
+        assert!(duplicate.error_message.contains("栏目 ID 重复：ob"));
+    }
+
+    #[test]
+    fn rejects_structured_note_with_non_string_items() {
+        let parsed = parse_structured_content(
+            r#"{"sections":[{"id":"oa","items":["A"]},{"id":"ob","items":[1]},{"id":"oc","items":[]}]}"#,
+        );
+
+        assert!(!parsed.ok);
+        assert!(parsed.error_message.contains("ob 只能包含字符串"));
+    }
+
+    #[test]
+    fn rejects_incomplete_legacy_structured_note() {
+        let parsed = parse_structured_content(r#"{"completed":["A"],"issues":[]}"#);
+
+        assert!(!parsed.ok);
+        assert!(parsed.error_message.contains("旧格式缺少字段：plans"));
+    }
+
+    #[test]
+    fn structured_prompt_uses_configured_sections() {
+        let sections = vec![StructuredNoteSectionDefinition {
+            id: "oa".to_string(),
+            title: "今日进展".to_string(),
+            ai_instruction: "提取今天取得的工作进展。".to_string(),
+        }];
+
+        let prompt = structured_system_prompt("互联网", &sections);
+
+        assert!(prompt.contains("oa（今日进展）：提取今天取得的工作进展。"));
+        assert!(prompt.contains(r#""id":"oa""#));
+        assert!(prompt.contains("用户所在行业是「互联网」"));
     }
 
     #[test]
@@ -1030,9 +1232,6 @@ mod tests {
             model: request().model,
             existing_markdown: "# old".to_string(),
             raw_input: "done".to_string(),
-            completed: vec!["A".to_string()],
-            issues: vec![],
-            plans: vec!["B".to_string()],
             date: date.to_string(),
             industry: String::new(),
             merge_prompt: String::new(),
@@ -1060,9 +1259,6 @@ mod tests {
             model: request().model,
             existing_markdown: "# old".to_string(),
             raw_input: "done".to_string(),
-            completed: vec![],
-            issues: vec![],
-            plans: vec![],
             date: "2026-06-18".to_string(),
             industry: String::new(),
             merge_prompt: "custom system prompt".to_string(),

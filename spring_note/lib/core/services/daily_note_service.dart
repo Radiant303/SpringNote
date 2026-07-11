@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import '../models/structured_work_note.dart';
+import '../models/structured_note_section_config.dart';
 import 'note_service.dart';
 
 class DailyNoteService {
@@ -12,11 +13,14 @@ class DailyNoteService {
     required String dailyNotesDirectory,
     required DateTime date,
     required StructuredWorkNote note,
+    List<StructuredNoteSectionConfig> sectionConfigs =
+        StructuredNoteSectionConfig.defaults,
     String? mergedMarkdown,
   }) async {
     final path = dailyNotePath(dailyNotesDirectory, date);
     final existing = await noteService.readMarkdown(path);
-    final merged = mergedMarkdown ?? _mergeMarkdown(existing, date, note);
+    final merged =
+        mergedMarkdown ?? _mergeMarkdown(existing, date, note, sectionConfigs);
     await noteService.writeMarkdown(path, merged);
     return path;
   }
@@ -40,6 +44,7 @@ class DailyNoteService {
     String existing,
     DateTime date,
     StructuredWorkNote note,
+    List<StructuredNoteSectionConfig> sectionConfigs,
   ) {
     final buffer = StringBuffer();
     final trimmedExisting = existing.trim();
@@ -56,18 +61,13 @@ class DailyNoteService {
       ..writeln()
       ..writeln('### 原始记录')
       ..writeln()
-      ..writeln(note.rawInput)
-      ..writeln()
-      ..writeln('### 完成事项');
-    _writeItems(buffer, note.completed);
-    buffer
-      ..writeln()
-      ..writeln('### 问题记录');
-    _writeItems(buffer, note.issues);
-    buffer
-      ..writeln()
-      ..writeln('### 明日计划');
-    _writeItems(buffer, note.plans);
+      ..writeln(note.rawInput);
+    for (final section in sectionConfigs) {
+      buffer
+        ..writeln()
+        ..writeln('### ${section.title}');
+      _writeItems(buffer, note.itemsFor(section.id));
+    }
 
     return '${buffer.toString().trimRight()}\n';
   }

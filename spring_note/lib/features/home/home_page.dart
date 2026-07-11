@@ -7,6 +7,7 @@ import '../../core/attachments/attachment_manager.dart';
 import '../../core/attachments/pending_image.dart';
 
 import '../../core/models/local_data_state.dart';
+import '../../core/models/structured_note_section_config.dart';
 import '../../core/models/structured_work_note.dart';
 import '../../core/services/ai_client_service.dart';
 import '../../core/services/daily_note_service.dart';
@@ -108,12 +109,7 @@ class _HomePageState extends State<HomePage> {
   LevelProgressController? _ownedLevelProgressController;
   List<HomeAttachment> _attachments = const [];
 
-  StructuredWorkNote _overview = const StructuredWorkNote(
-    rawInput: '',
-    completed: [],
-    issues: [],
-    plans: [],
-  );
+  StructuredWorkNote _overview = StructuredWorkNote.empty;
   bool _isSubmitting = false;
   bool _isPastingImages = false;
   String? _lastSavedPath;
@@ -275,9 +271,15 @@ class _HomePageState extends State<HomePage> {
       } catch (_) {
         aiFailed = true;
       }
+      if (aiStructured == null) {
+        aiFailed = true;
+      }
       final structured =
           aiStructured ??
-          widget.mockAiService.structureWorkNote(submissionInput);
+          widget.mockAiService.structureWorkNote(
+            submissionInput,
+            sectionConfigs: widget.localDataState.config.structuredNoteSections,
+          );
 
       String? aiMergedMarkdown;
       try {
@@ -301,6 +303,7 @@ class _HomePageState extends State<HomePage> {
         dailyNotesDirectory: widget.localDataState.dailyNotesDirectory,
         date: now,
         note: structured,
+        sectionConfigs: widget.localDataState.config.structuredNoteSections,
         mergedMarkdown: aiMergedMarkdown,
       );
       widget.onDailyNoteSaved?.call(savedPath);
@@ -696,12 +699,7 @@ class _HomePageState extends State<HomePage> {
     StructuredWorkNote current,
     StructuredWorkNote incoming,
   ) {
-    return StructuredWorkNote(
-      rawInput: incoming.rawInput,
-      completed: [...incoming.completed, ...current.completed],
-      issues: [...incoming.issues, ...current.issues],
-      plans: [...incoming.plans, ...current.plans],
-    );
+    return incoming.mergeWithOlder(current);
   }
 
   @override
@@ -750,7 +748,11 @@ class _HomePageState extends State<HomePage> {
                 onSubmit: _submit,
               ),
               const SizedBox(height: 32),
-              _OverviewGrid(overview: _overview),
+              _OverviewGrid(
+                overview: _overview,
+                sectionConfigs:
+                    widget.localDataState.config.structuredNoteSections,
+              ),
               if (_lastSavedPath != null) ...[
                 const SizedBox(height: 16),
                 _SavedPathBanner(path: _lastSavedPath!),
@@ -2441,9 +2443,10 @@ class _LucideSparklesPainter extends CustomPainter {
 }
 
 class _OverviewGrid extends StatelessWidget {
-  const _OverviewGrid({required this.overview});
+  const _OverviewGrid({required this.overview, required this.sectionConfigs});
 
   final StructuredWorkNote overview;
+  final List<StructuredNoteSectionConfig> sectionConfigs;
 
   @override
   Widget build(BuildContext context) {
@@ -2451,22 +2454,22 @@ class _OverviewGrid extends StatelessWidget {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final cards = [
       _OverviewCard(
-        eyebrow: 'Overview · 完成事项',
+        eyebrow: 'Overview · ${sectionConfigs[0].title}',
         accentColor: colors.textSubtle,
-        items: overview.completed,
-        emptyText: '完成事项',
+        items: overview.itemsFor(sectionConfigs[0].id),
+        emptyText: sectionConfigs[0].title,
       ),
       _OverviewCard(
-        eyebrow: 'Featured · 问题记录',
+        eyebrow: 'Featured · ${sectionConfigs[1].title}',
         accentColor: dark ? const Color(0xFFFCA5A5) : const Color(0xFFF87171),
-        items: overview.issues,
-        emptyText: '问题记录',
+        items: overview.itemsFor(sectionConfigs[1].id),
+        emptyText: sectionConfigs[1].title,
       ),
       _OverviewCard(
-        eyebrow: 'Overview · 明日计划',
+        eyebrow: 'Overview · ${sectionConfigs[2].title}',
         accentColor: colors.textSubtle,
-        items: overview.plans,
-        emptyText: '明日计划',
+        items: overview.itemsFor(sectionConfigs[2].id),
+        emptyText: sectionConfigs[2].title,
       ),
     ];
 

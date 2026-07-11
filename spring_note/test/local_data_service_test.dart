@@ -7,6 +7,7 @@ import 'package:spring_note/core/models/cloud_sync_config.dart';
 import 'package:spring_note/core/models/desktop_widget_position.dart';
 import 'package:spring_note/core/models/model_config.dart';
 import 'package:spring_note/core/models/provider_config.dart';
+import 'package:spring_note/core/models/structured_note_section_config.dart';
 import 'package:spring_note/core/services/local_data_service.dart';
 import 'package:spring_note/core/services/security_scoped_directory_access.dart';
 
@@ -97,6 +98,26 @@ void main() {
       }).notesEditorWorkspaceMode,
       'split',
     );
+  });
+
+  test('app config round trips structured note sections', () {
+    final defaults = StructuredNoteSectionConfig.defaults;
+    final config = AppConfig.defaults().copyWith(
+      structuredNoteSections: [
+        defaults[0].copyWith(title: '进展', aiInstruction: '提取今天取得的进展。'),
+        defaults[1],
+        defaults[2],
+      ],
+    );
+
+    final reloaded = AppConfig.fromJson(config.toJson());
+    final fallback = AppConfig.fromJson({});
+
+    expect(reloaded.structuredNoteSections[0].id, 'oa');
+    expect(reloaded.structuredNoteSections[0].title, '进展');
+    expect(reloaded.structuredNoteSections[0].aiInstruction, '提取今天取得的进展。');
+    expect(fallback.structuredNoteSections, hasLength(3));
+    expect(fallback.structuredNoteSections[0].title, '完成事项');
   });
 
   test('app config round trips cloud sync config', () {
