@@ -2,6 +2,7 @@ part of 'settings_page.dart';
 
 class _ProviderListItem extends StatefulWidget {
   const _ProviderListItem({
+    super.key,
     required this.provider,
     required this.selected,
     required this.onTap,
@@ -122,6 +123,114 @@ class _ProviderListItemState extends State<_ProviderListItem> {
   }
 }
 
+class _ProvidersSidebar extends StatefulWidget {
+  const _ProvidersSidebar({
+    required this.providers,
+    required this.selectedProviderId,
+    required this.onSelectedProviderChanged,
+    required this.onProviderAdded,
+  });
+
+  final List<ProviderConfig> providers;
+  final String? selectedProviderId;
+  final ValueChanged<String> onSelectedProviderChanged;
+  final Future<void> Function(ProviderConfig provider) onProviderAdded;
+
+  @override
+  State<_ProvidersSidebar> createState() => _ProvidersSidebarState();
+}
+
+class _ProvidersSidebarState extends State<_ProvidersSidebar> {
+  String _query = '';
+
+  List<ProviderConfig> get _filteredProviders {
+    final normalizedQuery = _query.trim().toLowerCase();
+    if (normalizedQuery.isEmpty) {
+      return widget.providers;
+    }
+    return widget.providers
+        .where(
+          (provider) => provider.name.toLowerCase().contains(normalizedQuery),
+        )
+        .toList(growable: false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    final filteredProviders = _filteredProviders;
+    final effectiveSelectedProviderId =
+        widget.selectedProviderId ??
+        (widget.providers.isEmpty ? null : widget.providers.first.id);
+
+    return Container(
+      width: 320,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        border: Border(right: BorderSide(color: colors.divider)),
+      ),
+      child: Column(
+        children: [
+          TextField(
+            key: const ValueKey('provider-search-field'),
+            onChanged: (value) => setState(() => _query = value),
+            textInputAction: TextInputAction.search,
+            decoration: const InputDecoration(hintText: '搜索供应商', isDense: true),
+          ),
+          const SizedBox(height: 14),
+          Expanded(
+            child: widget.providers.isEmpty
+                ? Center(
+                    child: Text(
+                      '暂无供应商',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  )
+                : filteredProviders.isEmpty
+                ? Center(
+                    child: Text(
+                      '未找到匹配的供应商',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  )
+                : ListView.separated(
+                    itemCount: filteredProviders.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 6),
+                    itemBuilder: (context, index) {
+                      final provider = filteredProviders[index];
+                      return _ProviderListItem(
+                        key: ValueKey('provider-list-item-${provider.id}'),
+                        provider: provider,
+                        selected: provider.id == effectiveSelectedProviderId,
+                        onTap: () =>
+                            widget.onSelectedProviderChanged(provider.id),
+                      );
+                    },
+                  ),
+          ),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              key: const ValueKey('add-provider-button'),
+              onPressed: () async {
+                final provider = await showDialog<ProviderConfig>(
+                  context: context,
+                  builder: (_) => const _AddProviderDialog(),
+                );
+                if (provider != null) {
+                  await widget.onProviderAdded(provider);
+                }
+              },
+              icon: const Icon(Icons.add_rounded, size: 17),
+              label: const Text('添加'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ProvidersPanel extends StatelessWidget {
   const _ProvidersPanel({
     required this.appDataDir,
@@ -155,66 +264,13 @@ class _ProvidersPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
     return Row(
       children: [
-        Container(
-          width: 320,
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            border: Border(right: BorderSide(color: colors.divider)),
-          ),
-          child: Column(
-            children: [
-              const TextField(
-                decoration: InputDecoration(
-                  hintText: '搜索供应商或分组',
-                  isDense: true,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Expanded(
-                child: providers.isEmpty
-                    ? Center(
-                        child: Text(
-                          '暂无供应商',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      )
-                    : ListView.separated(
-                        itemCount: providers.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 6),
-                        itemBuilder: (context, index) {
-                          final provider = providers[index];
-                          return _ProviderListItem(
-                            provider: provider,
-                            selected:
-                                provider.id == selectedProviderId ||
-                                (selectedProviderId == null && index == 0),
-                            onTap: () => onSelectedProviderChanged(provider.id),
-                          );
-                        },
-                      ),
-              ),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  key: const ValueKey('add-provider-button'),
-                  onPressed: () async {
-                    final provider = await showDialog<ProviderConfig>(
-                      context: context,
-                      builder: (_) => const _AddProviderDialog(),
-                    );
-                    if (provider != null) {
-                      await onProviderAdded(provider);
-                    }
-                  },
-                  icon: const Icon(Icons.add_rounded, size: 17),
-                  label: const Text('添加'),
-                ),
-              ),
-            ],
-          ),
+        _ProvidersSidebar(
+          providers: providers,
+          selectedProviderId: selectedProviderId,
+          onSelectedProviderChanged: onSelectedProviderChanged,
+          onProviderAdded: onProviderAdded,
         ),
         Expanded(
           child: selectedProvider == null

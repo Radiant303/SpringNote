@@ -971,6 +971,93 @@ void main() {
     expect(service.savedConfig.providers.first.protocol, 'customProtocol');
   });
 
+  testWidgets('provider search filters by provider name only', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const providers = [
+      ProviderConfig(
+        id: 'alpha-provider',
+        enabled: true,
+        name: 'Alpha Provider',
+        protocol: 'openaiCompatible',
+        apiKey: 'key-1',
+        baseUrl: 'https://alpha.example.com',
+        apiPath: '/chat/completions',
+        models: [
+          ModelConfig(modelId: 'hidden-group/model', displayName: 'Model'),
+        ],
+      ),
+      ProviderConfig(
+        id: 'beta-provider',
+        enabled: true,
+        name: 'Beta Provider',
+        protocol: 'openaiCompatible',
+        apiKey: 'key-2',
+        baseUrl: 'https://beta.example.com',
+        apiPath: '/chat/completions',
+        models: [],
+      ),
+    ];
+    final service = _MemoryLocalDataService(
+      AppConfig.defaults().copyWith(providers: providers),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: SettingsPage(
+          localDataState: _state(service.savedConfig),
+          localDataService: service,
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('供应商').first);
+    await tester.pump();
+
+    final searchField = find.byKey(const ValueKey('provider-search-field'));
+    expect(searchField, findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('provider-list-item-alpha-provider')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('provider-list-item-beta-provider')),
+      findsOneWidget,
+    );
+
+    await tester.enterText(searchField, 'BETA');
+    await tester.pump();
+    expect(
+      find.byKey(const ValueKey('provider-list-item-alpha-provider')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('provider-list-item-beta-provider')),
+      findsOneWidget,
+    );
+
+    await tester.enterText(searchField, 'hidden-group');
+    await tester.pump();
+    expect(find.text('未找到匹配的供应商'), findsOneWidget);
+
+    await tester.enterText(searchField, '');
+    await tester.pump();
+    expect(
+      find.byKey(const ValueKey('provider-list-item-alpha-provider')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('provider-list-item-beta-provider')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('provider and model changes persist to config file', (
     WidgetTester tester,
   ) async {
