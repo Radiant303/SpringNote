@@ -459,27 +459,30 @@ class _ProviderDetailsHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 6),
-              IconButton(
-                tooltip: '删除供应商',
-                constraints: const BoxConstraints.tightFor(
-                  width: 34,
-                  height: 34,
+              Tooltip(
+                message: '删除供应商',
+                waitDuration: const Duration(milliseconds: 450),
+                child: IconButton(
+                  constraints: const BoxConstraints.tightFor(
+                    width: 34,
+                    height: 34,
+                  ),
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  iconSize: 20,
+                  onPressed: () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (_) => _DeleteProviderConfirmDialog(
+                        providerName: provider.name,
+                      ),
+                    );
+                    if (confirmed == true) {
+                      await onProviderDeleted(provider.id);
+                    }
+                  },
+                  icon: const Icon(Icons.delete_outline_rounded),
                 ),
-                padding: EdgeInsets.zero,
-                visualDensity: VisualDensity.compact,
-                iconSize: 20,
-                onPressed: () async {
-                  final confirmed = await showDialog<bool>(
-                    context: context,
-                    builder: (_) => _DeleteProviderConfirmDialog(
-                      providerName: provider.name,
-                    ),
-                  );
-                  if (confirmed == true) {
-                    await onProviderDeleted(provider.id);
-                  }
-                },
-                icon: const Icon(Icons.delete_outline_rounded),
               ),
             ],
           ),

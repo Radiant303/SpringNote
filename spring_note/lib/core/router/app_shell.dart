@@ -789,28 +789,28 @@ class GlobalSidebar extends StatelessWidget {
         children: [
           _SidebarButton(
             icon: _SidebarIconType.layoutDashboard,
-            tooltip: '首页',
+            semanticLabel: '首页',
             selected: selectedSection == AppSection.home,
             onPressed: () => onSectionSelected(AppSection.home),
           ),
           const SizedBox(height: 8),
           _SidebarButton(
             icon: _SidebarIconType.stickyNote,
-            tooltip: '便签',
+            semanticLabel: '便签',
             selected: selectedSection == AppSection.notes,
             onPressed: () => onSectionSelected(AppSection.notes),
           ),
           const SizedBox(height: 8),
           _SidebarButton(
             icon: _SidebarIconType.bookOpen,
-            tooltip: '回忆书',
+            semanticLabel: '回忆书',
             selected: selectedSection == AppSection.memory,
             onPressed: () => onSectionSelected(AppSection.memory),
           ),
           const Spacer(),
           _SidebarButton(
             icon: _SidebarIconType.settings,
-            tooltip: '设置',
+            semanticLabel: '设置',
             selected: selectedSection == AppSection.settings,
             onPressed: () => onSectionSelected(AppSection.settings),
           ),
@@ -823,13 +823,13 @@ class GlobalSidebar extends StatelessWidget {
 class _SidebarButton extends StatefulWidget {
   const _SidebarButton({
     required this.icon,
-    required this.tooltip,
+    required this.semanticLabel,
     required this.selected,
     required this.onPressed,
   });
 
   final _SidebarIconType icon;
-  final String tooltip;
+  final String semanticLabel;
   final bool selected;
   final VoidCallback onPressed;
 
@@ -849,9 +849,10 @@ class _SidebarButtonState extends State<_SidebarButton> {
         : colors.surfaceHover;
     final iconColor = active ? colors.text : colors.textSubtle;
 
-    return Tooltip(
-      message: widget.tooltip,
-      waitDuration: const Duration(milliseconds: 450),
+    return Semantics(
+      label: widget.semanticLabel,
+      button: true,
+      selected: widget.selected,
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         onEnter: (_) => setState(() => _hovered = true),

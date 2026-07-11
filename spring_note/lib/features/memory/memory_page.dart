@@ -849,22 +849,25 @@ class _MemoryHeader extends StatelessWidget {
             onEffortChanged: onReasoningEffortChanged,
           ),
           const SizedBox(width: 12),
-          IconButton(
-            tooltip: '开启新对话',
-            onPressed: onNewConversation,
-            style: IconButton.styleFrom(
-              fixedSize: const Size(34, 34),
-              minimumSize: const Size(34, 34),
-              maximumSize: const Size(34, 34),
-              backgroundColor: Colors.transparent,
-              hoverColor: colors.surfaceMuted,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+          Tooltip(
+            message: '开启新对话',
+            waitDuration: const Duration(milliseconds: 450),
+            child: IconButton(
+              onPressed: onNewConversation,
+              style: IconButton.styleFrom(
+                fixedSize: const Size(34, 34),
+                minimumSize: const Size(34, 34),
+                maximumSize: const Size(34, 34),
+                backgroundColor: Colors.transparent,
+                hoverColor: colors.surfaceMuted,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-            ),
-            icon: _MemoryNewConversationIcon(
-              size: 17,
-              color: colors.textSubtle,
+              icon: _MemoryNewConversationIcon(
+                size: 17,
+                color: colors.textSubtle,
+              ),
             ),
           ),
         ],

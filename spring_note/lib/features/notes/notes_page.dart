@@ -1463,10 +1463,13 @@ class _NotesKindMenuButtonState extends State<_NotesKindMenuButton> {
   Widget build(BuildContext context) {
     return CompositedTransformTarget(
       link: _layerLink,
-      child: SpringNoteIconButton(
-        tooltip: '切换日报/周报/月报',
-        icon: Icons.more_horiz,
-        onPressed: _toggleOverlay,
+      child: Semantics(
+        label: '切换日报/周报/月报',
+        button: true,
+        child: SpringNoteIconButton(
+          icon: Icons.more_horiz,
+          onPressed: _toggleOverlay,
+        ),
       ),
     );
   }
@@ -2101,19 +2104,22 @@ class _EditorHeaderIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: onPressed,
-      icon: Icon(icon, size: 16),
-      color: colors.textSubtle,
-      style: IconButton.styleFrom(
-        fixedSize: const Size(30, 30),
-        minimumSize: const Size(30, 30),
-        maximumSize: const Size(30, 30),
-        padding: EdgeInsets.zero,
-        backgroundColor: Colors.transparent,
-        hoverColor: colors.surfaceMuted,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+    return Tooltip(
+      message: tooltip,
+      waitDuration: const Duration(milliseconds: 450),
+      child: IconButton(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 16),
+        color: colors.textSubtle,
+        style: IconButton.styleFrom(
+          fixedSize: const Size(30, 30),
+          minimumSize: const Size(30, 30),
+          maximumSize: const Size(30, 30),
+          padding: EdgeInsets.zero,
+          backgroundColor: Colors.transparent,
+          hoverColor: colors.surfaceMuted,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+        ),
       ),
     );
   }
