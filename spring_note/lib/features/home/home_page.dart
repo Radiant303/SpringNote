@@ -2451,19 +2451,19 @@ class _OverviewGrid extends StatelessWidget {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final cards = [
       _OverviewCard(
-        eyebrow: 'Completed · 完成事项',
+        eyebrow: 'Overview · 完成事项',
         accentColor: colors.textSubtle,
         items: overview.completed,
         emptyText: '完成事项',
       ),
       _OverviewCard(
-        eyebrow: 'Issues · 问题记录',
+        eyebrow: 'Featured · 问题记录',
         accentColor: dark ? const Color(0xFFFCA5A5) : const Color(0xFFF87171),
         items: overview.issues,
         emptyText: '问题记录',
       ),
       _OverviewCard(
-        eyebrow: 'Next Steps · 明日计划',
+        eyebrow: 'Overview · 明日计划',
         accentColor: colors.textSubtle,
         items: overview.plans,
         emptyText: '明日计划',
