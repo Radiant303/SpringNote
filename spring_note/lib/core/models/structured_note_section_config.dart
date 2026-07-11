@@ -52,13 +52,11 @@ class StructuredNoteSectionConfig {
     Map? value,
     StructuredNoteSectionConfig fallback,
   ) {
+    final title = _nonEmptyString(value?['title'], fallback.title);
     return StructuredNoteSectionConfig(
       id: fallback.id,
-      title: _nonEmptyString(value?['title'], fallback.title),
-      aiInstruction: _nonEmptyString(
-        value?['aiInstruction'],
-        fallback.aiInstruction,
-      ),
+      title: title,
+      aiInstruction: _nonEmptyString(value?['aiInstruction'], title),
     );
   }
 
@@ -66,13 +64,11 @@ class StructuredNoteSectionConfig {
     StructuredNoteSectionConfig? value,
     StructuredNoteSectionConfig fallback,
   ) {
+    final title = _nonEmptyString(value?.title, fallback.title);
     return StructuredNoteSectionConfig(
       id: fallback.id,
-      title: _nonEmptyString(value?.title, fallback.title),
-      aiInstruction: _nonEmptyString(
-        value?.aiInstruction,
-        fallback.aiInstruction,
-      ),
+      title: title,
+      aiInstruction: _nonEmptyString(value?.aiInstruction, title),
     );
   }
 

@@ -877,7 +877,7 @@ class _StructuredNoteSectionsDialogState
                 children: [
                   Expanded(
                     child: Text(
-                      '编辑首页栏目',
+                      '首页栏目',
                       style: textTheme.titleMedium?.copyWith(
                         color: colors.text,
                         fontWeight: FontWeight.w800,
@@ -895,22 +895,11 @@ class _StructuredNoteSectionsDialogState
             Divider(height: 1, color: colors.divider),
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 18, 24, 20),
-                child: Column(
-                  children: [
-                    for (var index = 0; index < widget.sections.length; index++)
-                      Padding(
-                        padding: EdgeInsets.only(
-                          bottom: index == widget.sections.length - 1 ? 0 : 14,
-                        ),
-                        child: _StructuredNoteSectionEditor(
-                          index: index,
-                          sectionId: widget.sections[index].id,
-                          titleController: _titleControllers[index],
-                          instructionController: _instructionControllers[index],
-                        ),
-                      ),
-                  ],
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 22),
+                child: _StructuredNoteSectionsEditor(
+                  sections: widget.sections,
+                  titleControllers: _titleControllers,
+                  instructionControllers: _instructionControllers,
                 ),
               ),
             ),
@@ -968,61 +957,189 @@ class _StructuredNoteSectionsDialogState
   }
 }
 
+class _StructuredNoteSectionsEditor extends StatelessWidget {
+  const _StructuredNoteSectionsEditor({
+    required this.sections,
+    required this.titleControllers,
+    required this.instructionControllers,
+  });
+
+  final List<StructuredNoteSectionConfig> sections;
+  final List<TextEditingController> titleControllers;
+  final List<TextEditingController> instructionControllers;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    final textTheme = Theme.of(context).textTheme;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final stacked = constraints.maxWidth < 540;
+        return Container(
+          decoration: BoxDecoration(
+            color: colors.inputFill,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Column(
+            children: [
+              if (!stacked)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 42),
+                      SizedBox(
+                        width: 176,
+                        child: Text(
+                          '标题',
+                          style: textTheme.labelSmall?.copyWith(
+                            color: colors.textSubtle,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 25),
+                      Expanded(
+                        child: Text(
+                          'AI 说明',
+                          style: textTheme.labelSmall?.copyWith(
+                            color: colors.textSubtle,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              for (var index = 0; index < sections.length; index++) ...[
+                if (index > 0)
+                  Divider(
+                    height: 1,
+                    indent: 20,
+                    endIndent: 20,
+                    color: colors.divider,
+                  ),
+                _StructuredNoteSectionEditor(
+                  index: index,
+                  sectionId: sections[index].id,
+                  titleController: titleControllers[index],
+                  instructionController: instructionControllers[index],
+                  stacked: stacked,
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _StructuredNoteSectionEditor extends StatelessWidget {
   const _StructuredNoteSectionEditor({
     required this.index,
     required this.sectionId,
     required this.titleController,
     required this.instructionController,
+    required this.stacked,
   });
 
   final int index;
   final String sectionId;
   final TextEditingController titleController;
   final TextEditingController instructionController;
+  final bool stacked;
 
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
     final textTheme = Theme.of(context).textTheme;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        border: Border.all(color: colors.border),
-        borderRadius: BorderRadius.circular(16),
+    final number = '${index + 1}'.padLeft(2, '0');
+    final editorTextStyle = textTheme.bodyMedium?.copyWith(
+      color: colors.textMuted,
+      height: 1.45,
+    );
+    final titleField = TextField(
+      key: ValueKey('structured-section-title-$sectionId'),
+      controller: titleController,
+      maxLines: 1,
+      textAlignVertical: TextAlignVertical.center,
+      decoration: _structuredSectionInputDecoration('栏目标题'),
+      style: editorTextStyle,
+    );
+    final instructionField = TextField(
+      key: ValueKey('structured-section-instruction-$sectionId'),
+      controller: instructionController,
+      minLines: stacked ? 2 : 1,
+      maxLines: 3,
+      decoration: _structuredSectionInputDecoration('描述分类规则'),
+      style: editorTextStyle,
+    );
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        stacked ? 14 : 10,
+        20,
+        stacked ? 14 : 12,
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '栏目 ${index + 1}',
-            style: textTheme.labelLarge?.copyWith(
-              color: colors.text,
-              fontWeight: FontWeight.w700,
+          SizedBox(
+            width: 42,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 3),
+              child: Text(
+                number,
+                style: textTheme.labelMedium?.copyWith(
+                  color: colors.textSubtle,
+                  fontWeight: FontWeight.w600,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 12),
-          Text('标题', style: textTheme.labelSmall),
-          const SizedBox(height: 5),
-          TextField(
-            key: ValueKey('structured-section-title-$sectionId'),
-            controller: titleController,
-            maxLines: 1,
-            decoration: const InputDecoration(isDense: true),
-          ),
-          const SizedBox(height: 12),
-          Text('AI 说明', style: textTheme.labelSmall),
-          const SizedBox(height: 5),
-          TextField(
-            key: ValueKey('structured-section-instruction-$sectionId'),
-            controller: instructionController,
-            minLines: 2,
-            maxLines: 3,
-            decoration: const InputDecoration(isDense: true),
+          Expanded(
+            child: stacked
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      titleField,
+                      const SizedBox(height: 8),
+                      instructionField,
+                    ],
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(width: 176, child: titleField),
+                      Container(
+                        width: 1,
+                        height: 38,
+                        margin: const EdgeInsets.symmetric(horizontal: 12),
+                        color: colors.divider,
+                      ),
+                      Expanded(child: instructionField),
+                    ],
+                  ),
           ),
         ],
       ),
+    );
+  }
+
+  InputDecoration _structuredSectionInputDecoration(String hintText) {
+    return InputDecoration(
+      hintText: hintText,
+      isDense: true,
+      filled: false,
+      hoverColor: Colors.transparent,
+      contentPadding: EdgeInsets.zero,
+      border: InputBorder.none,
+      enabledBorder: InputBorder.none,
+      focusedBorder: InputBorder.none,
+      disabledBorder: InputBorder.none,
+      errorBorder: InputBorder.none,
+      focusedErrorBorder: InputBorder.none,
     );
   }
 }

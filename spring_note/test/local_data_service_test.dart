@@ -120,6 +120,20 @@ void main() {
     expect(fallback.structuredNoteSections[0].title, '完成事项');
   });
 
+  test('blank structured note instruction falls back to its title', () {
+    final defaults = StructuredNoteSectionConfig.defaults;
+    final config = AppConfig.defaults().copyWith(
+      structuredNoteSections: [
+        defaults[0].copyWith(title: '今日进展', aiInstruction: '   '),
+        defaults[1],
+        defaults[2],
+      ],
+    );
+
+    expect(config.structuredNoteSections[0].title, '今日进展');
+    expect(config.structuredNoteSections[0].aiInstruction, '今日进展');
+  });
+
   test('app config round trips cloud sync config', () {
     final syncedAt = DateTime.utc(2026, 6, 28, 12, 40);
     final config = AppConfig.defaults().copyWith(
