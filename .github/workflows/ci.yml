@@ -83,6 +83,54 @@ jobs:
       - name: Build Windows release
         run: flutter build windows --release
 
+      - name: Resolve Windows artifact metadata
+        id: windows-artifact
+        shell: pwsh
+        run: |
+          $pubspec = Get-Content -LiteralPath "pubspec.yaml" -Raw
+          $versionMatch = [regex]::Match($pubspec, '(?m)^version:\s*([^\s+]+)')
+          if (-not $versionMatch.Success) {
+            throw "Unable to read the application version from pubspec.yaml."
+          }
+
+          $version = $versionMatch.Groups[1].Value
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "asset_name=SpringNote-$version-windows-x64-setup.exe" >> $env:GITHUB_OUTPUT
+          "artifact_name=SpringNote-$version-windows-x64-setup" >> $env:GITHUB_OUTPUT
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+
+      - name: Package Windows installer
+        shell: pwsh
+        env:
+          SPRINGNOTE_APP_VERSION: ${{ steps.windows-artifact.outputs.version }}
+          SPRINGNOTE_BUILD_OUTPUT_DIR: ${{ github.workspace }}\spring_note\build\windows\x64\runner\Release
+          SPRINGNOTE_SETUP_OUTPUT_DIR: ${{ github.workspace }}\spring_note\build\windows\installer
+        run: |
+          $isccCommand = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+          if ($null -ne $isccCommand) {
+            $iscc = $isccCommand.Source
+          } else {
+            $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          }
+          if (-not (Test-Path -LiteralPath $iscc)) {
+            throw "Inno Setup compiler not found."
+          }
+
+          & $iscc "installer\springnote.iss"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Inno Setup failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.windows-artifact.outputs.artifact_name }}
+          path: spring_note/build/windows/installer/${{ steps.windows-artifact.outputs.asset_name }}
+          if-no-files-found: error
+
   macos-build:
     name: macOS Release Build
     runs-on: macos-latest
