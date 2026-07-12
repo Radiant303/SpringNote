@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -8,10 +9,12 @@ import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:spring_note/core/models/app_config.dart';
 import 'package:spring_note/core/models/local_data_state.dart';
 import 'package:spring_note/core/models/memory_message.dart';
+import 'package:spring_note/core/services/ai_client_service.dart';
 import 'package:spring_note/core/services/memory_conversation_service.dart';
 import 'package:spring_note/core/services/memory_search_service.dart';
 import 'package:spring_note/core/widgets/spring_markdown.dart';
 import 'package:spring_note/features/memory/memory_page.dart';
+import 'package:spring_note/src/rust/ai.dart' as rust_ai;
 
 void main() {
   test('memory reasoning collapses for content or tool calls', () {
@@ -179,6 +182,55 @@ void main() {
     expect(paths, contains(notesDirectory));
   });
 
+  testWidgets('memory keeps the next draft while an answer is streaming', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 760);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final aiClientService = _DelayedMemoryAiClientService();
+    addTearDown(aiClientService.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MemoryPage(
+            localDataState: _localDataState(),
+            aiClientService: aiClientService,
+            conversationService: _FakeMemoryConversationService(),
+            searchService: const _FakeMemorySearchService(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), '第一条回忆问题');
+    await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+    for (var index = 0; index < 20 && !aiClientService.started; index++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(aiClientService.started, isTrue);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final inputFinder = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextField &&
+          widget.decoration?.hintText == '继续追问你的回忆...',
+    );
+    final inputField = tester.widget<TextField>(inputFinder);
+    final inputController = inputField.controller!;
+    expect(inputField.enabled, isTrue);
+    await tester.enterText(inputFinder, '下一条预先输入的回忆问题');
+    expect(inputController.text, '下一条预先输入的回忆问题');
+
+    aiClientService.complete();
+    await tester.pumpAndSettle();
+
+    expect(inputController.text, '下一条预先输入的回忆问题');
+  });
+
   for (final shortcut in const [
     (name: 'ctrl enter', key: LogicalKeyboardKey.controlLeft),
     (name: 'meta enter', key: LogicalKeyboardKey.metaLeft),
@@ -247,6 +299,50 @@ class _FakeMemoryConversationService extends MemoryConversationService {
     required List<MemoryMessage> messages,
   }) async {
     savedMessages = messages;
+  }
+}
+
+class _DelayedMemoryAiClientService extends AiClientService {
+  final StreamController<rust_ai.MemoryToolChatStreamEvent> _controller =
+      StreamController();
+  bool started = false;
+
+  @override
+  Stream<rust_ai.MemoryToolChatStreamEvent>? memoryToolChatStream({
+    required String appDataDir,
+    required AppConfig config,
+    required List<MemoryMessage> messages,
+    required bool thinkingEnabled,
+    required String reasoningEffort,
+  }) {
+    started = true;
+    return _controller.stream;
+  }
+
+  void complete() {
+    _controller
+      ..add(
+        const rust_ai.MemoryToolChatStreamEvent(
+          eventType: 'done',
+          contentDelta: '',
+          reasoningDelta: '',
+          content: '回答完成',
+          reasoningContent: '',
+          toolCalls: [],
+          errorCode: '',
+          errorMessage: '',
+          inputTokens: 0,
+          outputTokens: 0,
+          cachedTokens: 0,
+        ),
+      )
+      ..close();
+  }
+
+  Future<void> dispose() async {
+    if (!_controller.isClosed) {
+      await _controller.close();
+    }
   }
 }
 

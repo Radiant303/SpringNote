@@ -213,16 +213,26 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _submit() async {
-    final input = _controller.text.trim();
+    final submittedDraft = _controller.text;
+    final input = submittedDraft.trim();
+    final submittedAttachments = List<HomeAttachment>.of(_attachments);
+    final submittedImages = _attachmentManager.images;
     if ((input.isEmpty &&
-            _attachments.isEmpty &&
-            !_attachmentManager.hasImages) ||
+            submittedAttachments.isEmpty &&
+            submittedImages.isEmpty) ||
         _isSubmitting) {
       return;
     }
 
-    setState(() => _isSubmitting = true);
+    setState(() {
+      _isSubmitting = true;
+      _controller.clear();
+      _attachmentManager.clear();
+      _attachments = const [];
+      _attachmentError = null;
+    });
 
+    var submissionCompleted = false;
     try {
       final now = DateTime.now();
       final notePath = widget.dailyNoteService.dailyNotePath(
@@ -230,14 +240,11 @@ class _HomePageState extends State<HomePage> {
         now,
       );
       final savedPendingImages = await widget.pendingImageService
-          .saveForDailyNote(
-            notePath: notePath,
-            images: _attachmentManager.images,
-          );
+          .saveForDailyNote(notePath: notePath, images: submittedImages);
       final modelSupportsImages = widget.aiClientService
           .supportsMultimodalImageInput(widget.localDataState.config);
       final aiImages = modelSupportsImages
-          ? _attachmentManager.images
+          ? submittedImages
                 .where(_canSendImageToAi)
                 .map(
                   (image) => AiImageInput.fromBytes(
@@ -251,6 +258,7 @@ class _HomePageState extends State<HomePage> {
       final submissionInput = _inputWithAttachmentSummary(
         input,
         savedPendingImages,
+        submittedAttachments,
       );
       final configuredModel = widget
           .localDataState
@@ -334,27 +342,64 @@ class _HomePageState extends State<HomePage> {
             : savedPendingImages.isNotEmpty && !modelSupportsImages
             ? '当前智能生成模型未标记支持图像输入，图片已保存进日报但未发送给 AI。'
             : null;
-        _controller.clear();
-        _attachmentManager.clear();
-        _attachments = const [];
-        _attachmentError = null;
       });
+      submissionCompleted = true;
       await _levelProgressController.recordValidSubmission();
       await _loadHomeStats();
       _focusNode.requestFocus();
     } finally {
       if (mounted) {
-        setState(() => _isSubmitting = false);
+        setState(() {
+          if (!submissionCompleted) {
+            _restoreSubmittedDraft(
+              text: submittedDraft,
+              attachments: submittedAttachments,
+              images: submittedImages,
+            );
+          }
+          _isSubmitting = false;
+        });
       }
+    }
+  }
+
+  void _restoreSubmittedDraft({
+    required String text,
+    required List<HomeAttachment> attachments,
+    required List<PendingImage> images,
+  }) {
+    final currentText = _controller.text;
+    final restoredText = currentText.isEmpty
+        ? text
+        : text.isEmpty
+        ? currentText
+        : '$text\n$currentText';
+    _controller.value = TextEditingValue(
+      text: restoredText,
+      selection: TextSelection.collapsed(offset: restoredText.length),
+    );
+
+    final submittedPaths = attachments.map((item) => item.path).toSet();
+    _attachments = [
+      ...attachments,
+      ..._attachments.where((item) => !submittedPaths.contains(item.path)),
+    ];
+    for (final image in images) {
+      _attachmentManager.addImage(
+        bytes: image.bytes,
+        name: image.name,
+        extension: image.extension,
+      );
     }
   }
 
   String _inputWithAttachmentSummary(
     String input,
     List<SavedPendingImage> savedPendingImages,
+    List<HomeAttachment> attachments,
   ) {
     final trimmed = input.trim();
-    if (_attachments.isEmpty && savedPendingImages.isEmpty) {
+    if (attachments.isEmpty && savedPendingImages.isEmpty) {
       return trimmed;
     }
 
@@ -369,13 +414,13 @@ class _HomePageState extends State<HomePage> {
       for (final image in savedPendingImages) {
         buffer.writeln('![${image.name}](${image.markdownPath})');
       }
-      if (_attachments.isNotEmpty) {
+      if (attachments.isNotEmpty) {
         buffer.writeln();
       }
     }
-    if (_attachments.isNotEmpty) {
+    if (attachments.isNotEmpty) {
       buffer.writeln('附件：');
-      for (final attachment in _attachments) {
+      for (final attachment in attachments) {
         final type = switch (attachment.kind) {
           HomeAttachmentKind.image => '图片',
           HomeAttachmentKind.document => '文件',
@@ -1645,17 +1690,21 @@ class _QuickCaptureCard extends StatelessWidget {
                   ): onSubmit,
                   const SingleActivator(LogicalKeyboardKey.enter, meta: true):
                       onSubmit,
-                  const SingleActivator(LogicalKeyboardKey.keyV, control: true):
-                      onPasteShortcut,
-                  const SingleActivator(LogicalKeyboardKey.keyV, meta: true):
-                      onPasteShortcut,
+                  if (!isSubmitting)
+                    const SingleActivator(
+                      LogicalKeyboardKey.keyV,
+                      control: true,
+                    ): onPasteShortcut,
+                  if (!isSubmitting)
+                    const SingleActivator(LogicalKeyboardKey.keyV, meta: true):
+                        onPasteShortcut,
                 },
                 child: SizedBox(
                   height: 96,
                   child: TextField(
                     controller: controller,
                     focusNode: focusNode,
-                    enabled: !isSubmitting,
+                    enabled: true,
                     expands: true,
                     minLines: null,
                     maxLines: null,

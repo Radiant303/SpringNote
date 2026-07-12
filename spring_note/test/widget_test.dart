@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -380,6 +381,59 @@ void main() {
         StructuredNoteSectionIds.a,
       ),
       contains('完成首页输入流程'),
+    );
+  });
+
+  testWidgets('home keeps the next draft while generation is running', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final aiClientService = _DelayedStructuredAiClientService();
+    final homeOverviewService = _FakeHomeOverviewService();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: HomePage(
+          localDataState: _testLocalDataState(),
+          dailyNoteService: _FakeDailyNoteService(),
+          homeOverviewService: homeOverviewService,
+          aiClientService: aiClientService,
+        ),
+      ),
+    );
+
+    final inputFinder = find.byType(TextField);
+    await tester.enterText(inputFinder, '第一条整理内容');
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('home-smart-generate-button')));
+    await _pumpUntil(
+      tester,
+      () => aiClientService.started,
+      'structured generation to start',
+    );
+
+    expect(tester.widget<TextField>(inputFinder).enabled, isTrue);
+    await tester.enterText(inputFinder, '下一条预先输入的内容');
+    expect(
+      tester.widget<TextField>(inputFinder).controller?.text,
+      '下一条预先输入的内容',
+    );
+
+    aiClientService.complete();
+    await _pumpUntil(
+      tester,
+      () => homeOverviewService.savedOverview != null,
+      'structured generation to finish',
+    );
+
+    expect(aiClientService.generatedInput, '第一条整理内容');
+    expect(
+      tester.widget<TextField>(inputFinder).controller?.text,
+      '下一条预先输入的内容',
     );
   });
 
@@ -1192,6 +1246,58 @@ class _RecordingAiClientService extends AiClientService {
           items: [],
         ),
       ],
+    );
+  }
+
+  @override
+  Future<String?> mergeDailyMarkdown({
+    required String appDataDir,
+    required AppConfig config,
+    required String existingMarkdown,
+    required StructuredWorkNote note,
+    required DateTime date,
+  }) async {
+    return note.rawInput;
+  }
+}
+
+class _DelayedStructuredAiClientService extends AiClientService {
+  final Completer<StructuredWorkNote?> _completer = Completer();
+  bool started = false;
+  String? generatedInput;
+
+  @override
+  Future<StructuredWorkNote?> generateStructuredNote({
+    required String appDataDir,
+    required AppConfig config,
+    required String input,
+    List<AiImageInput> images = const [],
+  }) {
+    started = true;
+    generatedInput = input;
+    return _completer.future;
+  }
+
+  void complete() {
+    final input = generatedInput ?? '';
+    _completer.complete(
+      StructuredWorkNote(
+        rawInput: input,
+        sections: [
+          StructuredWorkNoteSection(
+            id: StructuredNoteSectionIds.a,
+            items: [input],
+          ),
+          const StructuredWorkNoteSection(
+            id: StructuredNoteSectionIds.b,
+            items: [],
+          ),
+          const StructuredWorkNoteSection(
+            id: StructuredNoteSectionIds.c,
+            items: [],
+          ),
+        ],
+      ),
     );
   }
 

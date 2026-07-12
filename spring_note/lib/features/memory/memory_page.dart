@@ -992,7 +992,7 @@ class _MemoryComposer extends StatelessWidget {
               child: TextField(
                 controller: controller,
                 focusNode: focusNode,
-                enabled: !answering,
+                enabled: true,
                 minLines: 1,
                 maxLines: multiline ? 3 : 1,
                 textInputAction: multiline
