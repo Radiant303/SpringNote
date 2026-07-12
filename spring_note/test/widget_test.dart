@@ -470,6 +470,81 @@ void main() {
     expect(find.text('Overview · 后续安排'), findsOneWidget);
   });
 
+  testWidgets('home overview dialog shows full sections and switches columns', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const overview = StructuredWorkNote(
+      rawInput: '',
+      sections: [
+        StructuredWorkNoteSection(
+          id: StructuredNoteSectionIds.a,
+          items: ['进展一', '进展二', '进展完整内容'],
+        ),
+        StructuredWorkNoteSection(
+          id: StructuredNoteSectionIds.b,
+          items: ['问题一', '问题二', '问题完整内容'],
+        ),
+        StructuredWorkNoteSection(
+          id: StructuredNoteSectionIds.c,
+          items: ['计划一', '计划二', '计划完整内容'],
+        ),
+      ],
+    );
+    final homeOverviewService = _FakeHomeOverviewService(
+      initialOverview: overview,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: HomePage(
+          localDataState: _testLocalDataState(),
+          homeOverviewService: homeOverviewService,
+        ),
+      ),
+    );
+    await _pumpUntil(
+      tester,
+      () => find.text('进展一').evaluate().isNotEmpty,
+      'home overview to load',
+    );
+
+    expect(find.text('进展完整内容'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('home-overview-card-0')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('home-overview-details-dialog')),
+      findsOneWidget,
+    );
+    expect(find.text('进展完整内容'), findsOneWidget);
+    expect(find.text('问题完整内容'), findsNothing);
+
+    await tester.tap(
+      find.byKey(const ValueKey('home-overview-details-section-1')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('进展完整内容'), findsNothing);
+    expect(find.text('问题完整内容'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('home-overview-details-close')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('home-overview-card-1')));
+    await tester.pumpAndSettle();
+    expect(find.text('问题完整内容'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('home-overview-details-close')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('home-overview-card-2')));
+    await tester.pumpAndSettle();
+    expect(find.text('计划完整内容'), findsOneWidget);
+  });
+
   testWidgets('home reports local fallback when structured AI returns null', (
     WidgetTester tester,
   ) async {
@@ -1150,6 +1225,9 @@ class _FakeDailyNoteService extends DailyNoteService {
 }
 
 class _FakeHomeOverviewService extends HomeOverviewService {
+  _FakeHomeOverviewService({this.initialOverview = StructuredWorkNote.empty});
+
+  final StructuredWorkNote initialOverview;
   StructuredWorkNote? savedOverview;
 
   @override
@@ -1157,7 +1235,7 @@ class _FakeHomeOverviewService extends HomeOverviewService {
     required String appDataDir,
     required DateTime date,
   }) async {
-    return StructuredWorkNote.empty;
+    return initialOverview;
   }
 
   @override

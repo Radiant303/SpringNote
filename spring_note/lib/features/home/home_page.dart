@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:file_selector/file_selector.dart';
 import 'package:path/path.dart' as p;
 import 'package:flutter/material.dart';
@@ -2503,22 +2505,28 @@ class _OverviewGrid extends StatelessWidget {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final cards = [
       _OverviewCard(
+        key: const ValueKey('home-overview-card-0'),
         eyebrow: 'Overview · ${sectionConfigs[0].title}',
         accentColor: colors.textSubtle,
         items: overview.itemsFor(sectionConfigs[0].id),
         emptyText: sectionConfigs[0].title,
+        onTap: () => _showDetails(context, 0),
       ),
       _OverviewCard(
+        key: const ValueKey('home-overview-card-1'),
         eyebrow: 'Featured · ${sectionConfigs[1].title}',
         accentColor: dark ? const Color(0xFFFCA5A5) : const Color(0xFFF87171),
         items: overview.itemsFor(sectionConfigs[1].id),
         emptyText: sectionConfigs[1].title,
+        onTap: () => _showDetails(context, 1),
       ),
       _OverviewCard(
+        key: const ValueKey('home-overview-card-2'),
         eyebrow: 'Overview · ${sectionConfigs[2].title}',
         accentColor: colors.textSubtle,
         items: overview.itemsFor(sectionConfigs[2].id),
         emptyText: sectionConfigs[2].title,
+        onTap: () => _showDetails(context, 2),
       ),
     ];
 
@@ -2552,105 +2560,371 @@ class _OverviewGrid extends StatelessWidget {
       },
     );
   }
+
+  void _showDetails(BuildContext context, int initialIndex) {
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.48),
+      builder: (context) => _OverviewDetailsDialog(
+        overview: overview,
+        sectionConfigs: sectionConfigs,
+        initialIndex: initialIndex,
+      ),
+    );
+  }
 }
 
-class _OverviewCard extends StatelessWidget {
+class _OverviewCard extends StatefulWidget {
   const _OverviewCard({
+    super.key,
     required this.eyebrow,
     required this.accentColor,
     required this.items,
     required this.emptyText,
+    required this.onTap,
   });
 
   final String eyebrow;
   final Color accentColor;
   final List<String> items;
   final String emptyText;
+  final VoidCallback onTap;
+
+  @override
+  State<_OverviewCard> createState() => _OverviewCardState();
+}
+
+class _OverviewCardState extends State<_OverviewCard> {
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
-    final visibleItems = items.take(2).toList();
+    final visibleItems = widget.items.take(2).toList();
     final lineTexts = [
-      if (visibleItems.isEmpty) emptyText else visibleItems[0],
+      if (visibleItems.isEmpty) widget.emptyText else visibleItems[0],
       if (visibleItems.length > 1) visibleItems[1] else '',
     ];
 
-    return SoftCard(
-      padding: const EdgeInsets.all(28),
-      borderRadius: 16,
-      withShadow: false,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  eyebrow,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: accentColor,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 1,
-                    height: 1.5,
-                  ),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            color: _hovered ? colors.surfaceHover : colors.surface,
+            border: Border.all(color: colors.border),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.eyebrow,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: widget.accentColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 1,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 36,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (var index = 0; index < 2; index++)
+                            Padding(
+                              padding: EdgeInsets.only(
+                                bottom: index == 0 ? 4 : 0,
+                              ),
+                              child: lineTexts[index].isEmpty
+                                  ? const SizedBox(width: 180, height: 16)
+                                  : ConstrainedBox(
+                                      constraints: const BoxConstraints(
+                                        maxWidth: 180,
+                                      ),
+                                      child: Text(
+                                        lineTexts[index],
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium
+                                            ?.copyWith(
+                                              color: index == 0
+                                                  ? colors.textMuted
+                                                  : colors.textSubtle,
+                                              fontSize: 12,
+                                              height: 1.333,
+                                            ),
+                                      ),
+                                    ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 36,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      for (var index = 0; index < 2; index++)
-                        Padding(
-                          padding: EdgeInsets.only(bottom: index == 0 ? 4 : 0),
-                          child: lineTexts[index].isEmpty
-                              ? const SizedBox(width: 180, height: 16)
-                              : ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                    maxWidth: 180,
+              ),
+              const SizedBox(width: 18),
+              Text(
+                widget.items.length.toString().padLeft(2, '0'),
+                style: TextStyle(
+                  color: colors.text,
+                  fontSize: 36,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.9,
+                  height: 1,
+                  fontFamily: 'monospace',
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OverviewDetailsDialog extends StatefulWidget {
+  const _OverviewDetailsDialog({
+    required this.overview,
+    required this.sectionConfigs,
+    required this.initialIndex,
+  });
+
+  final StructuredWorkNote overview;
+  final List<StructuredNoteSectionConfig> sectionConfigs;
+  final int initialIndex;
+
+  @override
+  State<_OverviewDetailsDialog> createState() => _OverviewDetailsDialogState();
+}
+
+class _OverviewDetailsDialogState extends State<_OverviewDetailsDialog> {
+  final ScrollController _scrollController = ScrollController();
+  late int _selectedIndex = widget.initialIndex;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _selectSection(int index) {
+    if (index == _selectedIndex) {
+      return;
+    }
+    setState(() => _selectedIndex = index);
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    final selectedConfig = widget.sectionConfigs[_selectedIndex];
+    final items = widget.overview.itemsFor(selectedConfig.id);
+    final dialogHeight = math.min(
+      520.0,
+      MediaQuery.sizeOf(context).height * 0.68,
+    );
+
+    return Dialog(
+      key: const ValueKey('home-overview-details-dialog'),
+      backgroundColor: AppTheme.dialogSurface(context),
+      clipBehavior: Clip.antiAlias,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: SizedBox(
+        width: 620,
+        height: dialogHeight,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 10, 12, 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: _OverviewDetailsSelector(
+                      sectionConfigs: widget.sectionConfigs,
+                      selectedIndex: _selectedIndex,
+                      onSelected: _selectSection,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  IconButton(
+                    key: const ValueKey('home-overview-details-close'),
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded, size: 19),
+                  ),
+                ],
+              ),
+            ),
+            Divider(height: 1, color: colors.divider),
+            Expanded(
+              child: items.isEmpty
+                  ? Center(
+                      child: Text(
+                        '暂无内容',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: colors.textSubtle,
+                        ),
+                      ),
+                    )
+                  : ScrollConfiguration(
+                      behavior: ScrollConfiguration.of(
+                        context,
+                      ).copyWith(scrollbars: false),
+                      child: Scrollbar(
+                        controller: _scrollController,
+                        interactive: true,
+                        child: ListView.builder(
+                          key: ValueKey(
+                            'home-overview-details-list-$_selectedIndex',
+                          ),
+                          controller: _scrollController,
+                          padding: const EdgeInsets.fromLTRB(32, 18, 32, 26),
+                          itemCount: items.length,
+                          itemBuilder: (context, index) => Padding(
+                            key: ValueKey(
+                              'home-overview-details-item-$_selectedIndex-$index',
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Container(
+                                    width: 4,
+                                    height: 4,
+                                    decoration: BoxDecoration(
+                                      color: colors.textSubtle.withValues(
+                                        alpha: 0.62,
+                                      ),
+                                      shape: BoxShape.circle,
+                                    ),
                                   ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
                                   child: Text(
-                                    lineTexts[index],
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                    items[index],
                                     style: Theme.of(context)
                                         .textTheme
                                         .bodyMedium
                                         ?.copyWith(
-                                          color: index == 0
-                                              ? colors.textMuted
-                                              : colors.textSubtle,
-                                          fontSize: 12,
-                                          height: 1.333,
+                                          color: colors.textMuted,
+                                          height: 1.6,
                                         ),
                                   ),
                                 ),
+                              ],
+                            ),
+                          ),
                         ),
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OverviewDetailsSelector extends StatelessWidget {
+  const _OverviewDetailsSelector({
+    required this.sectionConfigs,
+    required this.selectedIndex,
+    required this.onSelected,
+  });
+
+  final List<StructuredNoteSectionConfig> sectionConfigs;
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    return SizedBox(
+      height: 52,
+      child: Row(
+        children: [
+          for (final (index, config) in sectionConfigs.indexed)
+            Expanded(
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  key: ValueKey('home-overview-details-section-$index'),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => onSelected(index),
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: Center(
+                          child: AnimatedDefaultTextStyle(
+                            duration: const Duration(milliseconds: 140),
+                            style:
+                                Theme.of(
+                                  context,
+                                ).textTheme.bodyMedium?.copyWith(
+                                  color: index == selectedIndex
+                                      ? colors.text
+                                      : colors.textSubtle,
+                                  fontWeight: FontWeight.w400,
+                                  height: 1.2,
+                                ) ??
+                                TextStyle(
+                                  color: index == selectedIndex
+                                      ? colors.text
+                                      : colors.textSubtle,
+                                  height: 1.2,
+                                ),
+                            child: Text(
+                              config.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      ),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 160),
+                        curve: Curves.easeOutCubic,
+                        width: index == selectedIndex ? 26 : 0,
+                        height: 2,
+                        decoration: BoxDecoration(
+                          color: colors.text,
+                          borderRadius: BorderRadius.circular(1),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-          const SizedBox(width: 18),
-          Text(
-            items.length.toString().padLeft(2, '0'),
-            style: TextStyle(
-              color: colors.text,
-              fontSize: 36,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.9,
-              height: 1,
-              fontFamily: 'monospace',
-              fontFeatures: [FontFeature.tabularFigures()],
-            ),
-          ),
         ],
       ),
     );
