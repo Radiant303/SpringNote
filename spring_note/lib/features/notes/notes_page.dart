@@ -1699,12 +1699,6 @@ class _NoteSearchFileGroup extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(8, 0, 8, 5),
           child: Row(
             children: [
-              Icon(
-                Icons.description_outlined,
-                size: 14,
-                color: selected ? colors.textMuted : colors.textSubtle,
-              ),
-              const SizedBox(width: 7),
               Expanded(
                 child: Text(
                   result.note.title,
@@ -1888,7 +1882,6 @@ class _HighlightedSearchLine extends StatelessWidget {
             style: baseStyle?.copyWith(
               color: colors.text,
               backgroundColor: colors.surfacePressed,
-              fontWeight: FontWeight.w600,
             ),
           ),
           TextSpan(text: text.substring(matchEnd)),

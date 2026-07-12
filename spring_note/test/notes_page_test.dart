@@ -351,6 +351,15 @@ final value = 1;
           ),
     );
     expect(matchLine, findsOneWidget);
+    expect(find.byIcon(Icons.description_outlined), findsNothing);
+    final matchText = tester.widget<Text>(matchLine);
+    final matchSpan = matchText.textSpan! as TextSpan;
+    expect(
+      matchSpan.children!.whereType<TextSpan>().any(
+        (span) => span.style?.fontWeight == FontWeight.w600,
+      ),
+      isFalse,
+    );
 
     await tester.tap(matchLine);
     await tester.pump();
