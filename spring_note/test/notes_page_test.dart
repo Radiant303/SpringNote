@@ -316,13 +316,15 @@ final value = 1;
     addTearDown(tester.view.resetDevicePixelRatio);
 
     const hiddenKeyword = '深层搜索关键字';
+    const matchingPath = 'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-17.md';
+    const matchingContent =
+        '# 2026-06-17 日报\n\n'
+        '这是一段足够长的正文摘要内容，用来占满列表中展示的预览文本，确保后面的关键词不会出现在七十二字符以内。'
+        '$hiddenKeyword';
     final noteService = _MemoryNoteService({
       'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-19.md':
           '# 2026-06-19 日报\n\n普通内容',
-      'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-17.md':
-          '# 2026-06-17 日报\n\n'
-          '这是一段足够长的正文摘要内容，用来占满列表中展示的预览文本，确保后面的关键词不会出现在七十二字符以内。'
-          '$hiddenKeyword',
+      matchingPath: matchingContent,
     });
 
     await tester.pumpWidget(
@@ -353,6 +355,32 @@ final value = 1;
     await tester.tap(matchLine);
     await tester.pump();
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final matchStart = matchingContent.indexOf(hiddenKeyword);
+    final selectedResult = find.byKey(
+      ValueKey(
+        '$matchingPath:$matchStart:${matchStart + hiddenKeyword.length}',
+      ),
+    );
+    final selectedBackground = find.descendant(
+      of: selectedResult,
+      matching: find.byType(AnimatedOpacity),
+    );
+    final selectedDecoration = find.descendant(
+      of: selectedResult,
+      matching: find.byType(DecoratedBox),
+    );
+    expect(selectedResult, findsOneWidget);
+    expect(selectedBackground, findsOneWidget);
+    expect(selectedDecoration, findsOneWidget);
+    expect(tester.widget<AnimatedOpacity>(selectedBackground).opacity, 1);
+    expect(
+      (tester.widget<DecoratedBox>(selectedDecoration).decoration
+              as BoxDecoration)
+          .color,
+      SpringThemeColors.light.surfacePressed,
+    );
 
     final selection = _editableSelection(tester);
     expect(

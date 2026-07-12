@@ -111,6 +111,7 @@ class _NotesPageState extends State<NotesPage> {
   Timer? _searchDebounce;
   List<NoteSearchFile> _searchResults = [];
   bool _searching = false;
+  _NoteSearchSelection? _selectedSearchMatch;
   Timer? _autoCloudSyncTimer;
   bool _autoCloudUploadAfterSave = false;
   bool _editorFocusedByPointer = false;
@@ -363,6 +364,7 @@ class _NotesPageState extends State<NotesPage> {
       _saving = false;
       _searchResults = [];
       _searching = _searchController.text.trim().isNotEmpty;
+      _selectedSearchMatch = null;
     });
 
     final directory = _directoryFor(kind);
@@ -422,6 +424,7 @@ class _NotesPageState extends State<NotesPage> {
     NoteFile note, {
     TextSelection? initialSelection,
     bool focusEditor = false,
+    _NoteSearchSelection? searchSelection,
   }) async {
     final generation = ++_noteSelectionGeneration;
     _saveGeneration++;
@@ -429,6 +432,7 @@ class _NotesPageState extends State<NotesPage> {
       _selectedNote = note;
       _loading = true;
       _saving = false;
+      _selectedSearchMatch = searchSelection;
     });
 
     final content = await widget.noteService.readMarkdown(note.path);
@@ -1229,10 +1233,10 @@ class _NotesPageState extends State<NotesPage> {
   }
 
   void _handleSearchChanged() {
-    _scheduleSearch();
+    _scheduleSearch(clearSelection: true);
   }
 
-  void _scheduleSearch({bool immediate = false}) {
+  void _scheduleSearch({bool immediate = false, bool clearSelection = false}) {
     final query = _searchController.text.trim();
     final generation = ++_searchGeneration;
     _searchDebounce?.cancel();
@@ -1241,12 +1245,20 @@ class _NotesPageState extends State<NotesPage> {
         setState(() {
           _searchResults = [];
           _searching = false;
+          if (clearSelection) {
+            _selectedSearchMatch = null;
+          }
         });
       }
       return;
     }
     if (mounted) {
-      setState(() => _searching = true);
+      setState(() {
+        _searching = true;
+        if (clearSelection) {
+          _selectedSearchMatch = null;
+        }
+      });
     }
 
     void start() {
@@ -1297,7 +1309,16 @@ class _NotesPageState extends State<NotesPage> {
         ? TextSelection.collapsed(offset: start)
         : TextSelection(baseOffset: start, extentOffset: end);
     unawaited(
-      _selectNote(file.note, initialSelection: selection, focusEditor: true),
+      _selectNote(
+        file.note,
+        initialSelection: selection,
+        focusEditor: true,
+        searchSelection: _NoteSearchSelection(
+          path: file.note.path,
+          matchStart: start,
+          matchEnd: end,
+        ),
+      ),
     );
   }
 
@@ -1317,6 +1338,7 @@ class _NotesPageState extends State<NotesPage> {
             searchQuery: _searchController.text.trim(),
             searching: _searching,
             selectedPath: selected?.path,
+            selectedSearchMatch: _selectedSearchMatch,
             searchController: _searchController,
             onKindChanged: (kind) => _loadNotes(kind: kind),
             onNoteSelected: _selectNote,
@@ -1472,6 +1494,28 @@ class _FimTextEditingController extends TextEditingController {
   }
 }
 
+class _NoteSearchSelection {
+  const _NoteSearchSelection({
+    required this.path,
+    required this.matchStart,
+    required this.matchEnd,
+  });
+
+  final String path;
+  final int matchStart;
+  final int matchEnd;
+
+  bool matches(String notePath, NoteSearchLine match) {
+    return _normalizedPath(path) == _normalizedPath(notePath) &&
+        matchStart == match.matchStart &&
+        matchEnd == match.matchEnd;
+  }
+
+  String _normalizedPath(String value) {
+    return value.replaceAll('\\', '/').toLowerCase();
+  }
+}
+
 class _NotesSidebar extends StatelessWidget {
   const _NotesSidebar({
     required this.kind,
@@ -1480,6 +1524,7 @@ class _NotesSidebar extends StatelessWidget {
     required this.searchQuery,
     required this.searching,
     required this.selectedPath,
+    required this.selectedSearchMatch,
     required this.searchController,
     required this.onKindChanged,
     required this.onNoteSelected,
@@ -1492,6 +1537,7 @@ class _NotesSidebar extends StatelessWidget {
   final String searchQuery;
   final bool searching;
   final String? selectedPath;
+  final _NoteSearchSelection? selectedSearchMatch;
   final TextEditingController searchController;
   final ValueChanged<NoteKind> onKindChanged;
   final ValueChanged<NoteFile> onNoteSelected;
@@ -1543,6 +1589,7 @@ class _NotesSidebar extends StatelessWidget {
                     query: searchQuery,
                     searching: searching,
                     selectedPath: selectedPath,
+                    selectedSearchMatch: selectedSearchMatch,
                     onMatchSelected: onSearchMatchSelected,
                   )
                 : notes.isEmpty
@@ -1578,6 +1625,7 @@ class _NoteSearchResultsList extends StatelessWidget {
     required this.query,
     required this.searching,
     required this.selectedPath,
+    required this.selectedSearchMatch,
     required this.onMatchSelected,
   });
 
@@ -1585,6 +1633,7 @@ class _NoteSearchResultsList extends StatelessWidget {
   final String query;
   final bool searching;
   final String? selectedPath;
+  final _NoteSearchSelection? selectedSearchMatch;
   final void Function(NoteSearchFile file, NoteSearchLine match)
   onMatchSelected;
 
@@ -1604,9 +1653,11 @@ class _NoteSearchResultsList extends StatelessWidget {
       itemBuilder: (context, index) {
         final result = results[index];
         return _NoteSearchFileGroup(
+          key: ValueKey(result.note.path),
           result: result,
           query: query,
           selected: _sameDisplayPath(result.note.path, selectedPath),
+          selectedSearchMatch: selectedSearchMatch,
           onMatchSelected: (match) => onMatchSelected(result, match),
         );
       },
@@ -1624,15 +1675,18 @@ class _NoteSearchResultsList extends StatelessWidget {
 
 class _NoteSearchFileGroup extends StatelessWidget {
   const _NoteSearchFileGroup({
+    super.key,
     required this.result,
     required this.query,
     required this.selected,
+    required this.selectedSearchMatch,
     required this.onMatchSelected,
   });
 
   final NoteSearchFile result;
   final String query;
   final bool selected;
+  final _NoteSearchSelection? selectedSearchMatch;
   final ValueChanged<NoteSearchLine> onMatchSelected;
 
   @override
@@ -1675,8 +1729,13 @@ class _NoteSearchFileGroup extends StatelessWidget {
         ),
         for (final match in result.matches)
           _NoteSearchMatchItem(
+            key: ValueKey(
+              '${result.note.path}:${match.matchStart}:${match.matchEnd}',
+            ),
             match: match,
             query: query,
+            selected:
+                selectedSearchMatch?.matches(result.note.path, match) ?? false,
             onTap: () => onMatchSelected(match),
           ),
       ],
@@ -1686,13 +1745,16 @@ class _NoteSearchFileGroup extends StatelessWidget {
 
 class _NoteSearchMatchItem extends StatefulWidget {
   const _NoteSearchMatchItem({
+    super.key,
     required this.match,
     required this.query,
+    required this.selected,
     required this.onTap,
   });
 
   final NoteSearchLine match;
   final String query;
+  final bool selected;
   final VoidCallback onTap;
 
   @override
@@ -1705,45 +1767,75 @@ class _NoteSearchMatchItemState extends State<_NoteSearchMatchItem> {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
+    final active = widget.selected || _hovered;
+    final backgroundColor = widget.selected
+        ? colors.surfacePressed
+        : colors.surfaceHover;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
+      onEnter: (_) {
+        if (!_hovered) {
+          setState(() => _hovered = true);
+        }
+      },
+      onExit: (_) {
+        if (_hovered) {
+          setState(() => _hovered = false);
+        }
+      },
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
-          decoration: BoxDecoration(
-            color: _hovered ? colors.surfaceHover : Colors.transparent,
-            borderRadius: BorderRadius.circular(9),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 30,
-                child: Text(
-                  '${widget.match.lineNumber}',
-                  textAlign: TextAlign.right,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colors.textSubtle,
-                    fontSize: 10,
-                    fontFamily: 'Consolas',
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 240),
+                curve: Curves.easeOutCubic,
+                opacity: active ? 1 : 0,
+                child: TweenAnimationBuilder<Color?>(
+                  tween: ColorTween(end: backgroundColor),
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, color, _) {
+                    return DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: color ?? backgroundColor,
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 30,
+                    child: Text(
+                      '${widget.match.lineNumber}',
+                      textAlign: TextAlign.right,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colors.textSubtle,
+                        fontSize: 10,
+                        fontFamily: 'Consolas',
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _HighlightedSearchLine(
+                      text: widget.match.lineText.trim(),
+                      query: widget.query,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _HighlightedSearchLine(
-                  text: widget.match.lineText.trim(),
-                  query: widget.query,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
