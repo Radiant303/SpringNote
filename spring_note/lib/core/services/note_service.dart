@@ -95,6 +95,78 @@ class NoteService {
     });
   }
 
+  Future<bool> refreshMarkdownIndex({
+    required String directoryPath,
+    required NoteKind kind,
+  }) async {
+    return false;
+  }
+
+  Future<void> indexMarkdownFile({
+    required String directoryPath,
+    required NoteKind kind,
+    required String notePath,
+  }) async {}
+
+  NoteFile describeMarkdown({
+    required NoteFile note,
+    required String content,
+    DateTime? modifiedAt,
+  }) {
+    return NoteFile(
+      path: note.path,
+      name: note.name,
+      title: _titleFromContent(content, note.name),
+      modifiedAt: modifiedAt ?? DateTime.now(),
+      kind: note.kind,
+      preview: _previewFromContent(content),
+      searchText: _searchTextFromContent(content),
+    );
+  }
+
+  Future<List<NoteSearchFile>> searchMarkdownFiles({
+    required String directoryPath,
+    required NoteKind kind,
+    required String query,
+  }) async {
+    final normalizedQuery = query.trim().toLowerCase();
+    if (normalizedQuery.isEmpty) {
+      return const [];
+    }
+
+    final notes = await listMarkdownFiles(
+      directoryPath: directoryPath,
+      kind: kind,
+    );
+    final results = <NoteSearchFile>[];
+    for (final note in notes) {
+      final content = await readMarkdown(note.path);
+      final matches = _lineMatches(content, normalizedQuery);
+      if (matches.isNotEmpty) {
+        results.add(NoteSearchFile(note: note, matches: matches));
+      } else if (note.name.toLowerCase().contains(normalizedQuery) ||
+          note.title.toLowerCase().contains(normalizedQuery)) {
+        results.add(
+          NoteSearchFile(
+            note: note,
+            matches: [
+              NoteSearchLine(
+                lineNumber: 1,
+                lineText: note.title,
+                matchStart: 0,
+                matchEnd: 0,
+              ),
+            ],
+          ),
+        );
+      }
+      if (results.length >= 100) {
+        break;
+      }
+    }
+    return results;
+  }
+
   Future<File> ensureMarkdownFile(
     String path, {
     String defaultContent = '',
@@ -156,6 +228,39 @@ class NoteService {
     final month = date.month.toString().padLeft(2, '0');
     final day = date.day.toString().padLeft(2, '0');
     return '$year-$month-$day';
+  }
+
+  List<NoteSearchLine> _lineMatches(String content, String query) {
+    final matches = <NoteSearchLine>[];
+    var documentOffset = 0;
+    final lines = content.split('\n');
+    for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+      final line = lines[lineIndex].endsWith('\r')
+          ? lines[lineIndex].substring(0, lines[lineIndex].length - 1)
+          : lines[lineIndex];
+      final normalizedLine = line.toLowerCase();
+      var searchOffset = 0;
+      while (searchOffset <= normalizedLine.length - query.length) {
+        final matchOffset = normalizedLine.indexOf(query, searchOffset);
+        if (matchOffset < 0) {
+          break;
+        }
+        matches.add(
+          NoteSearchLine(
+            lineNumber: lineIndex + 1,
+            lineText: line,
+            matchStart: documentOffset + matchOffset,
+            matchEnd: documentOffset + matchOffset + query.length,
+          ),
+        );
+        if (matches.length >= 5) {
+          return matches;
+        }
+        searchOffset = matchOffset + query.length;
+      }
+      documentOffset += lines[lineIndex].length + 1;
+    }
+    return matches;
   }
 
   int _isoWeekNumber(DateTime date) {

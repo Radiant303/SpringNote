@@ -7,6 +7,7 @@ import 'ai.dart';
 import 'api/ai_api.dart';
 import 'api/cloud_sync_api.dart';
 import 'api/note_image_cleanup_api.dart';
+import 'api/note_index_api.dart';
 import 'api/stats_api.dart';
 import 'cloud_sync.dart';
 import 'dart:async';
@@ -14,6 +15,7 @@ import 'dart:convert';
 import 'dart:ffi' as ffi;
 import 'frb_generated.dart';
 import 'note_image_cleanup.dart';
+import 'note_index.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
 import 'stats.dart';
 
@@ -164,6 +166,17 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  List<NoteIndexEntry> dco_decode_list_note_index_entry(dynamic raw);
+
+  @protected
+  List<NoteSearchFileResult> dco_decode_list_note_search_file_result(
+    dynamic raw,
+  );
+
+  @protected
+  List<NoteSearchLineMatch> dco_decode_list_note_search_line_match(dynamic raw);
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
@@ -196,6 +209,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ModelListResult dco_decode_model_list_result(dynamic raw);
 
   @protected
+  NoteContentResult dco_decode_note_content_result(dynamic raw);
+
+  @protected
   NoteImageCleanupDeleteResult dco_decode_note_image_cleanup_delete_result(
     dynamic raw,
   );
@@ -207,6 +223,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   NoteImageCleanupScanResult dco_decode_note_image_cleanup_scan_result(
     dynamic raw,
   );
+
+  @protected
+  NoteIndexEntry dco_decode_note_index_entry(dynamic raw);
+
+  @protected
+  NoteIndexListResult dco_decode_note_index_list_result(dynamic raw);
+
+  @protected
+  NoteIndexRefreshResult dco_decode_note_index_refresh_result(dynamic raw);
+
+  @protected
+  NoteSearchFileResult dco_decode_note_search_file_result(dynamic raw);
+
+  @protected
+  NoteSearchLineMatch dco_decode_note_search_line_match(dynamic raw);
+
+  @protected
+  NoteSearchResult dco_decode_note_search_result(dynamic raw);
 
   @protected
   ProviderTestResult dco_decode_provider_test_result(dynamic raw);
@@ -414,6 +448,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  List<NoteIndexEntry> sse_decode_list_note_index_entry(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<NoteSearchFileResult> sse_decode_list_note_search_file_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<NoteSearchLineMatch> sse_decode_list_note_search_line_match(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
@@ -456,6 +505,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ModelListResult sse_decode_model_list_result(SseDeserializer deserializer);
 
   @protected
+  NoteContentResult sse_decode_note_content_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   NoteImageCleanupDeleteResult sse_decode_note_image_cleanup_delete_result(
     SseDeserializer deserializer,
   );
@@ -469,6 +523,32 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   NoteImageCleanupScanResult sse_decode_note_image_cleanup_scan_result(
     SseDeserializer deserializer,
   );
+
+  @protected
+  NoteIndexEntry sse_decode_note_index_entry(SseDeserializer deserializer);
+
+  @protected
+  NoteIndexListResult sse_decode_note_index_list_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  NoteIndexRefreshResult sse_decode_note_index_refresh_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  NoteSearchFileResult sse_decode_note_search_file_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  NoteSearchLineMatch sse_decode_note_search_line_match(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  NoteSearchResult sse_decode_note_search_result(SseDeserializer deserializer);
 
   @protected
   ProviderTestResult sse_decode_provider_test_result(
@@ -726,6 +806,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_note_index_entry(
+    List<NoteIndexEntry> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_note_search_file_result(
+    List<NoteSearchFileResult> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_note_search_line_match(
+    List<NoteSearchLineMatch> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
     SseSerializer serializer,
@@ -780,6 +878,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_note_content_result(
+    NoteContentResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_note_image_cleanup_delete_result(
     NoteImageCleanupDeleteResult self,
     SseSerializer serializer,
@@ -794,6 +898,42 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_note_image_cleanup_scan_result(
     NoteImageCleanupScanResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_note_index_entry(
+    NoteIndexEntry self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_note_index_list_result(
+    NoteIndexListResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_note_index_refresh_result(
+    NoteIndexRefreshResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_note_search_file_result(
+    NoteSearchFileResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_note_search_line_match(
+    NoteSearchLineMatch self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_note_search_result(
+    NoteSearchResult self,
     SseSerializer serializer,
   );
 

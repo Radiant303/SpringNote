@@ -5,6 +5,7 @@ import 'core/models/app_config.dart';
 import 'core/models/local_data_state.dart';
 import 'core/router/app_shell.dart';
 import 'core/services/local_data_service.dart';
+import 'core/services/note_service.dart';
 import 'core/services/stats_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/app_window_frame.dart';
@@ -14,10 +15,12 @@ class SpringNoteApp extends StatefulWidget {
     super.key,
     this.localDataService = const LocalDataService(),
     this.statsService = const StatsService(),
+    this.noteService = const NoteService(),
   });
 
   final LocalDataService localDataService;
   final StatsService statsService;
+  final NoteService noteService;
 
   @override
   State<SpringNoteApp> createState() => _SpringNoteAppState();
@@ -85,6 +88,7 @@ class _SpringNoteAppState extends State<SpringNoteApp> {
 
             return AppShell(
               localDataState: snapshot.data!,
+              noteService: widget.noteService,
               onConfigChanged: _handleConfigChanged,
             );
           },

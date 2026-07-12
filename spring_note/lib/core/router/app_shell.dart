@@ -21,6 +21,7 @@ import '../services/desktop_widget_window_bridge.dart';
 import '../services/global_hotkey_service.dart';
 import '../services/level_progress_controller.dart';
 import '../services/local_data_service.dart';
+import '../services/note_service.dart';
 import '../services/note_upload_queue.dart';
 import '../services/startup_report_generation_service.dart';
 import '../services/tray_service.dart';
@@ -42,6 +43,7 @@ class AppShell extends StatefulWidget {
     this.updateCheckService = const UpdateCheckService(),
     this.cloudSyncService = const CloudSyncService(),
     this.localDataService = const LocalDataService(),
+    this.noteService = const NoteService(),
     this.onConfigChanged,
   });
 
@@ -50,6 +52,7 @@ class AppShell extends StatefulWidget {
   final UpdateCheckService updateCheckService;
   final CloudSyncService cloudSyncService;
   final LocalDataService localDataService;
+  final NoteService noteService;
   final ValueChanged<AppConfig>? onConfigChanged;
 
   @override
@@ -670,6 +673,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                           ),
                           NotesPage(
                             localDataState: _localDataState,
+                            noteService: widget.noteService,
                             externalNoteUpdate: _noteExternalUpdate,
                             noteUploadQueue: _noteUploadQueue,
                             localDataService: widget.localDataService,

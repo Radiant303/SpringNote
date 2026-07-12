@@ -38,7 +38,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.12.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 2089791714;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1546117408;
 
 // Section: executor
 
@@ -328,6 +328,46 @@ fn wire__crate__api__stats_api__get_stats_snapshot_impl(
         },
     )
 }
+fn wire__crate__api__note_index_api__index_note_file_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "index_note_file",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_directory_path = <String>::sse_decode(&mut deserializer);
+            let api_kind = <String>::sse_decode(&mut deserializer);
+            let api_note_path = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(crate::api::note_index_api::index_note_file(
+                            api_directory_path,
+                            api_kind,
+                            api_note_path,
+                        ))?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__ai_api__init_app_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -356,6 +396,82 @@ fn wire__crate__api__ai_api__init_app_impl(
                     let output_ok = Result::<_, ()>::Ok({
                         crate::api::ai_api::init_app();
                     })?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__note_index_api__list_indexed_notes_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "list_indexed_notes",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_directory_path = <String>::sse_decode(&mut deserializer);
+            let api_kind = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(crate::api::note_index_api::list_indexed_notes(
+                            api_directory_path,
+                            api_kind,
+                        ))?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__note_index_api__load_note_content_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "load_note_content",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_directory_path = <String>::sse_decode(&mut deserializer);
+            let api_note_path = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(crate::api::note_index_api::load_note_content(
+                            api_directory_path,
+                            api_note_path,
+                        ))?;
                     Ok(output_ok)
                 })())
             }
@@ -628,6 +744,44 @@ fn wire__crate__api__stats_api__record_work_time_impl(
         },
     )
 }
+fn wire__crate__api__note_index_api__refresh_note_index_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "refresh_note_index",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_directory_path = <String>::sse_decode(&mut deserializer);
+            let api_kind = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(crate::api::note_index_api::refresh_note_index(
+                            api_directory_path,
+                            api_kind,
+                        ))?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__note_image_cleanup_api__scan_note_images_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -657,6 +811,46 @@ fn wire__crate__api__note_image_cleanup_api__scan_note_images_impl(
                     let output_ok = Result::<_, ()>::Ok(
                         crate::api::note_image_cleanup_api::scan_note_images(api_data_directory),
                     )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__note_index_api__search_indexed_notes_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "search_indexed_notes",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_directory_path = <String>::sse_decode(&mut deserializer);
+            let api_kind = <String>::sse_decode(&mut deserializer);
+            let api_query = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(crate::api::note_index_api::search_indexed_notes(
+                            api_directory_path,
+                            api_kind,
+                            api_query,
+                        ))?;
                     Ok(output_ok)
                 })())
             }
@@ -1286,6 +1480,48 @@ impl SseDecode for Vec<crate::note_image_cleanup::NoteImageCleanupEntry> {
     }
 }
 
+impl SseDecode for Vec<crate::note_index::NoteIndexEntry> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::note_index::NoteIndexEntry>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::note_index::NoteSearchFileResult> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::note_index::NoteSearchFileResult>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::note_index::NoteSearchLineMatch> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::note_index::NoteSearchLineMatch>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<u8> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1454,6 +1690,20 @@ impl SseDecode for crate::ai::ModelListResult {
     }
 }
 
+impl SseDecode for crate::note_index::NoteContentResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_ok = <bool>::sse_decode(deserializer);
+        let mut var_errorMessage = <String>::sse_decode(deserializer);
+        let mut var_content = <String>::sse_decode(deserializer);
+        return crate::note_index::NoteContentResult {
+            ok: var_ok,
+            error_message: var_errorMessage,
+            content: var_content,
+        };
+    }
+}
+
 impl SseDecode for crate::note_image_cleanup::NoteImageCleanupDeleteResult {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1503,6 +1753,102 @@ impl SseDecode for crate::note_image_cleanup::NoteImageCleanupScanResult {
             referenced_image_count: var_referencedImageCount,
             total_size_bytes: var_totalSizeBytes,
             unused_images: var_unusedImages,
+        };
+    }
+}
+
+impl SseDecode for crate::note_index::NoteIndexEntry {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_path = <String>::sse_decode(deserializer);
+        let mut var_name = <String>::sse_decode(deserializer);
+        let mut var_title = <String>::sse_decode(deserializer);
+        let mut var_preview = <String>::sse_decode(deserializer);
+        let mut var_kind = <String>::sse_decode(deserializer);
+        let mut var_modifiedMillis = <i64>::sse_decode(deserializer);
+        let mut var_sizeBytes = <i64>::sse_decode(deserializer);
+        return crate::note_index::NoteIndexEntry {
+            path: var_path,
+            name: var_name,
+            title: var_title,
+            preview: var_preview,
+            kind: var_kind,
+            modified_millis: var_modifiedMillis,
+            size_bytes: var_sizeBytes,
+        };
+    }
+}
+
+impl SseDecode for crate::note_index::NoteIndexListResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_ok = <bool>::sse_decode(deserializer);
+        let mut var_errorMessage = <String>::sse_decode(deserializer);
+        let mut var_notes = <Vec<crate::note_index::NoteIndexEntry>>::sse_decode(deserializer);
+        return crate::note_index::NoteIndexListResult {
+            ok: var_ok,
+            error_message: var_errorMessage,
+            notes: var_notes,
+        };
+    }
+}
+
+impl SseDecode for crate::note_index::NoteIndexRefreshResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_ok = <bool>::sse_decode(deserializer);
+        let mut var_errorMessage = <String>::sse_decode(deserializer);
+        let mut var_indexedCount = <i32>::sse_decode(deserializer);
+        let mut var_removedCount = <i32>::sse_decode(deserializer);
+        return crate::note_index::NoteIndexRefreshResult {
+            ok: var_ok,
+            error_message: var_errorMessage,
+            indexed_count: var_indexedCount,
+            removed_count: var_removedCount,
+        };
+    }
+}
+
+impl SseDecode for crate::note_index::NoteSearchFileResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_note = <crate::note_index::NoteIndexEntry>::sse_decode(deserializer);
+        let mut var_matches =
+            <Vec<crate::note_index::NoteSearchLineMatch>>::sse_decode(deserializer);
+        return crate::note_index::NoteSearchFileResult {
+            note: var_note,
+            matches: var_matches,
+        };
+    }
+}
+
+impl SseDecode for crate::note_index::NoteSearchLineMatch {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_lineNumber = <i32>::sse_decode(deserializer);
+        let mut var_lineText = <String>::sse_decode(deserializer);
+        let mut var_matchStartUtf16 = <i32>::sse_decode(deserializer);
+        let mut var_matchEndUtf16 = <i32>::sse_decode(deserializer);
+        return crate::note_index::NoteSearchLineMatch {
+            line_number: var_lineNumber,
+            line_text: var_lineText,
+            match_start_utf16: var_matchStartUtf16,
+            match_end_utf16: var_matchEndUtf16,
+        };
+    }
+}
+
+impl SseDecode for crate::note_index::NoteSearchResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_ok = <bool>::sse_decode(deserializer);
+        let mut var_errorMessage = <String>::sse_decode(deserializer);
+        let mut var_files =
+            <Vec<crate::note_index::NoteSearchFileResult>>::sse_decode(deserializer);
+        return crate::note_index::NoteSearchResult {
+            ok: var_ok,
+            error_message: var_errorMessage,
+            files: var_files,
         };
     }
 }
@@ -1732,51 +2078,81 @@ fn pde_ffi_dispatcher_primary_impl(
         7 => {
             wire__crate__api__stats_api__get_stats_snapshot_impl(port, ptr, rust_vec_len, data_len)
         }
-        8 => wire__crate__api__ai_api__init_app_impl(port, ptr, rust_vec_len, data_len),
-        9 => wire__crate__api__ai_api__memory_chat_impl(port, ptr, rust_vec_len, data_len),
-        10 => wire__crate__api__ai_api__memory_tool_chat_impl(port, ptr, rust_vec_len, data_len),
-        11 => wire__crate__api__ai_api__memory_tool_chat_stream_impl(
+        8 => wire__crate__api__note_index_api__index_note_file_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        12 => wire__crate__api__ai_api__merge_daily_note_impl(port, ptr, rust_vec_len, data_len),
-        13 => {
+        9 => wire__crate__api__ai_api__init_app_impl(port, ptr, rust_vec_len, data_len),
+        10 => wire__crate__api__note_index_api__list_indexed_notes_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        11 => wire__crate__api__note_index_api__load_note_content_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        12 => wire__crate__api__ai_api__memory_chat_impl(port, ptr, rust_vec_len, data_len),
+        13 => wire__crate__api__ai_api__memory_tool_chat_impl(port, ptr, rust_vec_len, data_len),
+        14 => wire__crate__api__ai_api__memory_tool_chat_stream_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        15 => wire__crate__api__ai_api__merge_daily_note_impl(port, ptr, rust_vec_len, data_len),
+        16 => {
             wire__crate__api__stats_api__record_app_startup_impl(port, ptr, rust_vec_len, data_len)
         }
-        14 => wire__crate__api__stats_api__record_home_generation_impl(
+        17 => wire__crate__api__stats_api__record_home_generation_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        15 => wire__crate__api__stats_api__record_work_time_impl(port, ptr, rust_vec_len, data_len),
-        16 => wire__crate__api__note_image_cleanup_api__scan_note_images_impl(
+        18 => wire__crate__api__stats_api__record_work_time_impl(port, ptr, rust_vec_len, data_len),
+        19 => wire__crate__api__note_index_api__refresh_note_index_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        17 => wire__crate__api__cloud_sync_api__sync_web_dav_notes_impl(
+        20 => wire__crate__api__note_image_cleanup_api__scan_note_images_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        18 => wire__crate__api__ai_api__test_provider_connection_impl(
+        21 => wire__crate__api__note_index_api__search_indexed_notes_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        19 => wire__crate__api__cloud_sync_api__test_web_dav_connection_impl(
+        22 => wire__crate__api__cloud_sync_api__sync_web_dav_notes_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        20 => wire__crate__api__cloud_sync_api__upload_web_dav_note_impl(
+        23 => wire__crate__api__ai_api__test_provider_connection_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        24 => wire__crate__api__cloud_sync_api__test_web_dav_connection_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        25 => wire__crate__api__cloud_sync_api__upload_web_dav_note_impl(
             port,
             ptr,
             rust_vec_len,
@@ -2263,6 +2639,28 @@ impl flutter_rust_bridge::IntoIntoDart<crate::ai::ModelListResult> for crate::ai
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::note_index::NoteContentResult {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.ok.into_into_dart().into_dart(),
+            self.error_message.into_into_dart().into_dart(),
+            self.content.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::note_index::NoteContentResult
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::note_index::NoteContentResult>
+    for crate::note_index::NoteContentResult
+{
+    fn into_into_dart(self) -> crate::note_index::NoteContentResult {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::note_image_cleanup::NoteImageCleanupDeleteResult {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -2329,6 +2727,143 @@ impl flutter_rust_bridge::IntoIntoDart<crate::note_image_cleanup::NoteImageClean
     for crate::note_image_cleanup::NoteImageCleanupScanResult
 {
     fn into_into_dart(self) -> crate::note_image_cleanup::NoteImageCleanupScanResult {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::note_index::NoteIndexEntry {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.path.into_into_dart().into_dart(),
+            self.name.into_into_dart().into_dart(),
+            self.title.into_into_dart().into_dart(),
+            self.preview.into_into_dart().into_dart(),
+            self.kind.into_into_dart().into_dart(),
+            self.modified_millis.into_into_dart().into_dart(),
+            self.size_bytes.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::note_index::NoteIndexEntry
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::note_index::NoteIndexEntry>
+    for crate::note_index::NoteIndexEntry
+{
+    fn into_into_dart(self) -> crate::note_index::NoteIndexEntry {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::note_index::NoteIndexListResult {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.ok.into_into_dart().into_dart(),
+            self.error_message.into_into_dart().into_dart(),
+            self.notes.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::note_index::NoteIndexListResult
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::note_index::NoteIndexListResult>
+    for crate::note_index::NoteIndexListResult
+{
+    fn into_into_dart(self) -> crate::note_index::NoteIndexListResult {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::note_index::NoteIndexRefreshResult {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.ok.into_into_dart().into_dart(),
+            self.error_message.into_into_dart().into_dart(),
+            self.indexed_count.into_into_dart().into_dart(),
+            self.removed_count.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::note_index::NoteIndexRefreshResult
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::note_index::NoteIndexRefreshResult>
+    for crate::note_index::NoteIndexRefreshResult
+{
+    fn into_into_dart(self) -> crate::note_index::NoteIndexRefreshResult {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::note_index::NoteSearchFileResult {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.note.into_into_dart().into_dart(),
+            self.matches.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::note_index::NoteSearchFileResult
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::note_index::NoteSearchFileResult>
+    for crate::note_index::NoteSearchFileResult
+{
+    fn into_into_dart(self) -> crate::note_index::NoteSearchFileResult {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::note_index::NoteSearchLineMatch {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.line_number.into_into_dart().into_dart(),
+            self.line_text.into_into_dart().into_dart(),
+            self.match_start_utf16.into_into_dart().into_dart(),
+            self.match_end_utf16.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::note_index::NoteSearchLineMatch
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::note_index::NoteSearchLineMatch>
+    for crate::note_index::NoteSearchLineMatch
+{
+    fn into_into_dart(self) -> crate::note_index::NoteSearchLineMatch {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::note_index::NoteSearchResult {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.ok.into_into_dart().into_dart(),
+            self.error_message.into_into_dart().into_dart(),
+            self.files.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::note_index::NoteSearchResult
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::note_index::NoteSearchResult>
+    for crate::note_index::NoteSearchResult
+{
+    fn into_into_dart(self) -> crate::note_index::NoteSearchResult {
         self
     }
 }
@@ -2861,6 +3396,36 @@ impl SseEncode for Vec<crate::note_image_cleanup::NoteImageCleanupEntry> {
     }
 }
 
+impl SseEncode for Vec<crate::note_index::NoteIndexEntry> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::note_index::NoteIndexEntry>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::note_index::NoteSearchFileResult> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::note_index::NoteSearchFileResult>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::note_index::NoteSearchLineMatch> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::note_index::NoteSearchLineMatch>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<u8> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2970,6 +3535,15 @@ impl SseEncode for crate::ai::ModelListResult {
     }
 }
 
+impl SseEncode for crate::note_index::NoteContentResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.ok, serializer);
+        <String>::sse_encode(self.error_message, serializer);
+        <String>::sse_encode(self.content, serializer);
+    }
+}
+
 impl SseEncode for crate::note_image_cleanup::NoteImageCleanupDeleteResult {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -3007,6 +3581,65 @@ impl SseEncode for crate::note_image_cleanup::NoteImageCleanupScanResult {
             self.unused_images,
             serializer,
         );
+    }
+}
+
+impl SseEncode for crate::note_index::NoteIndexEntry {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.path, serializer);
+        <String>::sse_encode(self.name, serializer);
+        <String>::sse_encode(self.title, serializer);
+        <String>::sse_encode(self.preview, serializer);
+        <String>::sse_encode(self.kind, serializer);
+        <i64>::sse_encode(self.modified_millis, serializer);
+        <i64>::sse_encode(self.size_bytes, serializer);
+    }
+}
+
+impl SseEncode for crate::note_index::NoteIndexListResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.ok, serializer);
+        <String>::sse_encode(self.error_message, serializer);
+        <Vec<crate::note_index::NoteIndexEntry>>::sse_encode(self.notes, serializer);
+    }
+}
+
+impl SseEncode for crate::note_index::NoteIndexRefreshResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.ok, serializer);
+        <String>::sse_encode(self.error_message, serializer);
+        <i32>::sse_encode(self.indexed_count, serializer);
+        <i32>::sse_encode(self.removed_count, serializer);
+    }
+}
+
+impl SseEncode for crate::note_index::NoteSearchFileResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <crate::note_index::NoteIndexEntry>::sse_encode(self.note, serializer);
+        <Vec<crate::note_index::NoteSearchLineMatch>>::sse_encode(self.matches, serializer);
+    }
+}
+
+impl SseEncode for crate::note_index::NoteSearchLineMatch {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.line_number, serializer);
+        <String>::sse_encode(self.line_text, serializer);
+        <i32>::sse_encode(self.match_start_utf16, serializer);
+        <i32>::sse_encode(self.match_end_utf16, serializer);
+    }
+}
+
+impl SseEncode for crate::note_index::NoteSearchResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.ok, serializer);
+        <String>::sse_encode(self.error_message, serializer);
+        <Vec<crate::note_index::NoteSearchFileResult>>::sse_encode(self.files, serializer);
     }
 }
 

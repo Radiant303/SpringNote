@@ -337,9 +337,70 @@ final value = 1;
     await tester.pump();
 
     await tester.enterText(find.byType(TextField).first, hiddenKeyword);
+    await tester.pump(const Duration(milliseconds: 200));
     await tester.pump();
 
     expect(find.text('2026-06-17 日报'), findsOneWidget);
+    final matchLine = find.byWidgetPredicate(
+      (widget) =>
+          widget is Text &&
+          (widget.textSpan?.toPlainText() ?? widget.data ?? '').contains(
+            hiddenKeyword,
+          ),
+    );
+    expect(matchLine, findsOneWidget);
+
+    await tester.tap(matchLine);
+    await tester.pump();
+    await tester.pump();
+
+    final selection = _editableSelection(tester);
+    expect(
+      _editableRealText(tester).substring(selection.start, selection.end),
+      hiddenKeyword,
+    );
+  });
+
+  testWidgets('notes search stays within the selected note kind', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const keyword = '共同关键字';
+    final noteService = _MemoryNoteService({
+      'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-18.md': '# 日报命中\n\n$keyword',
+      'D:\\Temp\\SpringNote\\notes\\weekly\\2026-W25.md': '# 周报命中\n\n$keyword',
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: NotesPage(
+          localDataState: _localDataState,
+          noteService: noteService,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.enterText(find.byType(TextField).first, keyword);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump();
+    expect(find.text('日报命中'), findsOneWidget);
+    expect(find.text('周报命中'), findsNothing);
+
+    await tester.tap(find.byIcon(Icons.more_horiz));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('周报').last);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump();
+
+    expect(find.text('日报命中'), findsNothing);
+    expect(find.text('周报命中'), findsOneWidget);
   });
 
   testWidgets('notes page uploads dirty focused note once', (

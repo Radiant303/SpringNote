@@ -314,10 +314,19 @@ void main() {
       '${state.dailyNotesDirectory}${Platform.pathSeparator}2026-06-24.md',
     );
     await dailyNote.writeAsString('# Today\n\nMoved note');
+    for (final suffix in const ['', '-wal', '-shm']) {
+      await File(
+        '${state.dataDirectory}${Platform.pathSeparator}.springnote-note-index.db$suffix',
+      ).writeAsString('derived index');
+    }
 
     final target = Directory(
       '${temp.path}${Platform.pathSeparator}custom_store',
     );
+    await target.create(recursive: true);
+    await File(
+      '${target.path}${Platform.pathSeparator}.springnote-note-index.db',
+    ).writeAsString('stale derived index');
     final migrated = await service.migrateDataDirectory(
       currentState: state.copyWith(
         config: state.config.copyWith(dailyWorkHours: 7),
@@ -334,6 +343,14 @@ void main() {
       ).readAsString(),
       '# Today\n\nMoved note',
     );
+    for (final suffix in const ['', '-wal', '-shm']) {
+      expect(
+        await File(
+          '${migrated.dataDirectory}${Platform.pathSeparator}.springnote-note-index.db$suffix',
+        ).exists(),
+        isFalse,
+      );
+    }
 
     final reinitialized = await service.initialize();
     expect(reinitialized.dataDirectory, target.absolute.path);

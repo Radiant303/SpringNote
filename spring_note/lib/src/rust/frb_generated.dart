@@ -7,6 +7,7 @@ import 'ai.dart';
 import 'api/ai_api.dart';
 import 'api/cloud_sync_api.dart';
 import 'api/note_image_cleanup_api.dart';
+import 'api/note_index_api.dart';
 import 'api/stats_api.dart';
 import 'cloud_sync.dart';
 import 'dart:async';
@@ -15,6 +16,7 @@ import 'frb_generated.dart';
 import 'frb_generated.io.dart'
     if (dart.library.js_interop) 'frb_generated.web.dart';
 import 'note_image_cleanup.dart';
+import 'note_index.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'stats.dart';
 
@@ -73,7 +75,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.12.0';
 
   @override
-  int get rustContentHash => 2089791714;
+  int get rustContentHash => 1546117408;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -122,7 +124,23 @@ abstract class RustLibApi extends BaseApi {
     required String endDate,
   });
 
+  Future<NoteIndexRefreshResult> crateApiNoteIndexApiIndexNoteFile({
+    required String directoryPath,
+    required String kind,
+    required String notePath,
+  });
+
   Future<void> crateApiAiApiInitApp();
+
+  Future<NoteIndexListResult> crateApiNoteIndexApiListIndexedNotes({
+    required String directoryPath,
+    required String kind,
+  });
+
+  Future<NoteContentResult> crateApiNoteIndexApiLoadNoteContent({
+    required String directoryPath,
+    required String notePath,
+  });
 
   Future<AiTextResult> crateApiAiApiMemoryChat({
     required MemoryChatRequest request,
@@ -152,8 +170,19 @@ abstract class RustLibApi extends BaseApi {
     required double coins,
   });
 
+  Future<NoteIndexRefreshResult> crateApiNoteIndexApiRefreshNoteIndex({
+    required String directoryPath,
+    required String kind,
+  });
+
   Future<NoteImageCleanupScanResult> crateApiNoteImageCleanupApiScanNoteImages({
     required String dataDirectory,
+  });
+
+  Future<NoteSearchResult> crateApiNoteIndexApiSearchIndexedNotes({
+    required String directoryPath,
+    required String kind,
+    required String query,
   });
 
   Future<CloudSyncResult> crateApiCloudSyncApiSyncWebDavNotes({
@@ -445,6 +474,43 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<NoteIndexRefreshResult> crateApiNoteIndexApiIndexNoteFile({
+    required String directoryPath,
+    required String kind,
+    required String notePath,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(directoryPath, serializer);
+          sse_encode_String(kind, serializer);
+          sse_encode_String(notePath, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 8,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_note_index_refresh_result,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiNoteIndexApiIndexNoteFileConstMeta,
+        argValues: [directoryPath, kind, notePath],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiNoteIndexApiIndexNoteFileConstMeta =>
+      const TaskConstMeta(
+        debugName: "index_note_file",
+        argNames: ["directoryPath", "kind", "notePath"],
+      );
+
+  @override
   Future<void> crateApiAiApiInitApp() {
     return handler.executeNormal(
       NormalTask(
@@ -453,7 +519,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 9,
             port: port_,
           );
         },
@@ -472,6 +538,76 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "init_app", argNames: []);
 
   @override
+  Future<NoteIndexListResult> crateApiNoteIndexApiListIndexedNotes({
+    required String directoryPath,
+    required String kind,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(directoryPath, serializer);
+          sse_encode_String(kind, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 10,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_note_index_list_result,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiNoteIndexApiListIndexedNotesConstMeta,
+        argValues: [directoryPath, kind],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiNoteIndexApiListIndexedNotesConstMeta =>
+      const TaskConstMeta(
+        debugName: "list_indexed_notes",
+        argNames: ["directoryPath", "kind"],
+      );
+
+  @override
+  Future<NoteContentResult> crateApiNoteIndexApiLoadNoteContent({
+    required String directoryPath,
+    required String notePath,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(directoryPath, serializer);
+          sse_encode_String(notePath, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 11,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_note_content_result,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiNoteIndexApiLoadNoteContentConstMeta,
+        argValues: [directoryPath, notePath],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiNoteIndexApiLoadNoteContentConstMeta =>
+      const TaskConstMeta(
+        debugName: "load_note_content",
+        argNames: ["directoryPath", "notePath"],
+      );
+
+  @override
   Future<AiTextResult> crateApiAiApiMemoryChat({
     required MemoryChatRequest request,
   }) {
@@ -483,7 +619,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 12,
             port: port_,
           );
         },
@@ -513,7 +649,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 13,
             port: port_,
           );
         },
@@ -552,7 +688,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 11,
+              funcId: 14,
               port: port_,
             );
           },
@@ -587,7 +723,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 15,
             port: port_,
           );
         },
@@ -615,7 +751,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 16,
             port: port_,
           );
         },
@@ -648,7 +784,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 17,
             port: port_,
           );
         },
@@ -685,7 +821,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 18,
             port: port_,
           );
         },
@@ -707,6 +843,41 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<NoteIndexRefreshResult> crateApiNoteIndexApiRefreshNoteIndex({
+    required String directoryPath,
+    required String kind,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(directoryPath, serializer);
+          sse_encode_String(kind, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 19,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_note_index_refresh_result,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiNoteIndexApiRefreshNoteIndexConstMeta,
+        argValues: [directoryPath, kind],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiNoteIndexApiRefreshNoteIndexConstMeta =>
+      const TaskConstMeta(
+        debugName: "refresh_note_index",
+        argNames: ["directoryPath", "kind"],
+      );
+
+  @override
   Future<NoteImageCleanupScanResult> crateApiNoteImageCleanupApiScanNoteImages({
     required String dataDirectory,
   }) {
@@ -718,7 +889,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 20,
             port: port_,
           );
         },
@@ -740,6 +911,43 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<NoteSearchResult> crateApiNoteIndexApiSearchIndexedNotes({
+    required String directoryPath,
+    required String kind,
+    required String query,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(directoryPath, serializer);
+          sse_encode_String(kind, serializer);
+          sse_encode_String(query, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 21,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_note_search_result,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiNoteIndexApiSearchIndexedNotesConstMeta,
+        argValues: [directoryPath, kind, query],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiNoteIndexApiSearchIndexedNotesConstMeta =>
+      const TaskConstMeta(
+        debugName: "search_indexed_notes",
+        argNames: ["directoryPath", "kind", "query"],
+      );
+
+  @override
   Future<CloudSyncResult> crateApiCloudSyncApiSyncWebDavNotes({
     required CloudSyncRequest request,
   }) {
@@ -751,7 +959,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 22,
             port: port_,
           );
         },
@@ -790,7 +998,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 23,
             port: port_,
           );
         },
@@ -823,7 +1031,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 24,
             port: port_,
           );
         },
@@ -859,7 +1067,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 25,
             port: port_,
           );
         },
@@ -1296,6 +1504,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<NoteIndexEntry> dco_decode_list_note_index_entry(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_note_index_entry).toList();
+  }
+
+  @protected
+  List<NoteSearchFileResult> dco_decode_list_note_search_file_result(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_note_search_file_result)
+        .toList();
+  }
+
+  @protected
+  List<NoteSearchLineMatch> dco_decode_list_note_search_line_match(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_note_search_line_match)
+        .toList();
+  }
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
@@ -1418,6 +1652,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  NoteContentResult dco_decode_note_content_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return NoteContentResult(
+      ok: dco_decode_bool(arr[0]),
+      errorMessage: dco_decode_String(arr[1]),
+      content: dco_decode_String(arr[2]),
+    );
+  }
+
+  @protected
   NoteImageCleanupDeleteResult dco_decode_note_image_cleanup_delete_result(
     dynamic raw,
   ) {
@@ -1461,6 +1708,89 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       referencedImageCount: dco_decode_i_32(arr[3]),
       totalSizeBytes: dco_decode_i_64(arr[4]),
       unusedImages: dco_decode_list_note_image_cleanup_entry(arr[5]),
+    );
+  }
+
+  @protected
+  NoteIndexEntry dco_decode_note_index_entry(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 7)
+      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
+    return NoteIndexEntry(
+      path: dco_decode_String(arr[0]),
+      name: dco_decode_String(arr[1]),
+      title: dco_decode_String(arr[2]),
+      preview: dco_decode_String(arr[3]),
+      kind: dco_decode_String(arr[4]),
+      modifiedMillis: dco_decode_i_64(arr[5]),
+      sizeBytes: dco_decode_i_64(arr[6]),
+    );
+  }
+
+  @protected
+  NoteIndexListResult dco_decode_note_index_list_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return NoteIndexListResult(
+      ok: dco_decode_bool(arr[0]),
+      errorMessage: dco_decode_String(arr[1]),
+      notes: dco_decode_list_note_index_entry(arr[2]),
+    );
+  }
+
+  @protected
+  NoteIndexRefreshResult dco_decode_note_index_refresh_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return NoteIndexRefreshResult(
+      ok: dco_decode_bool(arr[0]),
+      errorMessage: dco_decode_String(arr[1]),
+      indexedCount: dco_decode_i_32(arr[2]),
+      removedCount: dco_decode_i_32(arr[3]),
+    );
+  }
+
+  @protected
+  NoteSearchFileResult dco_decode_note_search_file_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return NoteSearchFileResult(
+      note: dco_decode_note_index_entry(arr[0]),
+      matches: dco_decode_list_note_search_line_match(arr[1]),
+    );
+  }
+
+  @protected
+  NoteSearchLineMatch dco_decode_note_search_line_match(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return NoteSearchLineMatch(
+      lineNumber: dco_decode_i_32(arr[0]),
+      lineText: dco_decode_String(arr[1]),
+      matchStartUtf16: dco_decode_i_32(arr[2]),
+      matchEndUtf16: dco_decode_i_32(arr[3]),
+    );
+  }
+
+  @protected
+  NoteSearchResult dco_decode_note_search_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return NoteSearchResult(
+      ok: dco_decode_bool(arr[0]),
+      errorMessage: dco_decode_String(arr[1]),
+      files: dco_decode_list_note_search_file_result(arr[2]),
     );
   }
 
@@ -2148,6 +2478,48 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<NoteIndexEntry> sse_decode_list_note_index_entry(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <NoteIndexEntry>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_note_index_entry(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<NoteSearchFileResult> sse_decode_list_note_search_file_result(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <NoteSearchFileResult>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_note_search_file_result(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<NoteSearchLineMatch> sse_decode_list_note_search_line_match(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <NoteSearchLineMatch>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_note_search_line_match(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
@@ -2319,6 +2691,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  NoteContentResult sse_decode_note_content_result(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_ok = sse_decode_bool(deserializer);
+    var var_errorMessage = sse_decode_String(deserializer);
+    var var_content = sse_decode_String(deserializer);
+    return NoteContentResult(
+      ok: var_ok,
+      errorMessage: var_errorMessage,
+      content: var_content,
+    );
+  }
+
+  @protected
   NoteImageCleanupDeleteResult sse_decode_note_image_cleanup_delete_result(
     SseDeserializer deserializer,
   ) {
@@ -2374,6 +2761,99 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       referencedImageCount: var_referencedImageCount,
       totalSizeBytes: var_totalSizeBytes,
       unusedImages: var_unusedImages,
+    );
+  }
+
+  @protected
+  NoteIndexEntry sse_decode_note_index_entry(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_path = sse_decode_String(deserializer);
+    var var_name = sse_decode_String(deserializer);
+    var var_title = sse_decode_String(deserializer);
+    var var_preview = sse_decode_String(deserializer);
+    var var_kind = sse_decode_String(deserializer);
+    var var_modifiedMillis = sse_decode_i_64(deserializer);
+    var var_sizeBytes = sse_decode_i_64(deserializer);
+    return NoteIndexEntry(
+      path: var_path,
+      name: var_name,
+      title: var_title,
+      preview: var_preview,
+      kind: var_kind,
+      modifiedMillis: var_modifiedMillis,
+      sizeBytes: var_sizeBytes,
+    );
+  }
+
+  @protected
+  NoteIndexListResult sse_decode_note_index_list_result(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_ok = sse_decode_bool(deserializer);
+    var var_errorMessage = sse_decode_String(deserializer);
+    var var_notes = sse_decode_list_note_index_entry(deserializer);
+    return NoteIndexListResult(
+      ok: var_ok,
+      errorMessage: var_errorMessage,
+      notes: var_notes,
+    );
+  }
+
+  @protected
+  NoteIndexRefreshResult sse_decode_note_index_refresh_result(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_ok = sse_decode_bool(deserializer);
+    var var_errorMessage = sse_decode_String(deserializer);
+    var var_indexedCount = sse_decode_i_32(deserializer);
+    var var_removedCount = sse_decode_i_32(deserializer);
+    return NoteIndexRefreshResult(
+      ok: var_ok,
+      errorMessage: var_errorMessage,
+      indexedCount: var_indexedCount,
+      removedCount: var_removedCount,
+    );
+  }
+
+  @protected
+  NoteSearchFileResult sse_decode_note_search_file_result(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_note = sse_decode_note_index_entry(deserializer);
+    var var_matches = sse_decode_list_note_search_line_match(deserializer);
+    return NoteSearchFileResult(note: var_note, matches: var_matches);
+  }
+
+  @protected
+  NoteSearchLineMatch sse_decode_note_search_line_match(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_lineNumber = sse_decode_i_32(deserializer);
+    var var_lineText = sse_decode_String(deserializer);
+    var var_matchStartUtf16 = sse_decode_i_32(deserializer);
+    var var_matchEndUtf16 = sse_decode_i_32(deserializer);
+    return NoteSearchLineMatch(
+      lineNumber: var_lineNumber,
+      lineText: var_lineText,
+      matchStartUtf16: var_matchStartUtf16,
+      matchEndUtf16: var_matchEndUtf16,
+    );
+  }
+
+  @protected
+  NoteSearchResult sse_decode_note_search_result(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_ok = sse_decode_bool(deserializer);
+    var var_errorMessage = sse_decode_String(deserializer);
+    var var_files = sse_decode_list_note_search_file_result(deserializer);
+    return NoteSearchResult(
+      ok: var_ok,
+      errorMessage: var_errorMessage,
+      files: var_files,
     );
   }
 
@@ -3012,6 +3492,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_note_index_entry(
+    List<NoteIndexEntry> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_note_index_entry(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_note_search_file_result(
+    List<NoteSearchFileResult> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_note_search_file_result(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_note_search_line_match(
+    List<NoteSearchLineMatch> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_note_search_line_match(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
     SseSerializer serializer,
@@ -3137,6 +3653,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_note_content_result(
+    NoteContentResult self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_bool(self.ok, serializer);
+    sse_encode_String(self.errorMessage, serializer);
+    sse_encode_String(self.content, serializer);
+  }
+
+  @protected
   void sse_encode_note_image_cleanup_delete_result(
     NoteImageCleanupDeleteResult self,
     SseSerializer serializer,
@@ -3171,6 +3698,77 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.referencedImageCount, serializer);
     sse_encode_i_64(self.totalSizeBytes, serializer);
     sse_encode_list_note_image_cleanup_entry(self.unusedImages, serializer);
+  }
+
+  @protected
+  void sse_encode_note_index_entry(
+    NoteIndexEntry self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.path, serializer);
+    sse_encode_String(self.name, serializer);
+    sse_encode_String(self.title, serializer);
+    sse_encode_String(self.preview, serializer);
+    sse_encode_String(self.kind, serializer);
+    sse_encode_i_64(self.modifiedMillis, serializer);
+    sse_encode_i_64(self.sizeBytes, serializer);
+  }
+
+  @protected
+  void sse_encode_note_index_list_result(
+    NoteIndexListResult self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_bool(self.ok, serializer);
+    sse_encode_String(self.errorMessage, serializer);
+    sse_encode_list_note_index_entry(self.notes, serializer);
+  }
+
+  @protected
+  void sse_encode_note_index_refresh_result(
+    NoteIndexRefreshResult self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_bool(self.ok, serializer);
+    sse_encode_String(self.errorMessage, serializer);
+    sse_encode_i_32(self.indexedCount, serializer);
+    sse_encode_i_32(self.removedCount, serializer);
+  }
+
+  @protected
+  void sse_encode_note_search_file_result(
+    NoteSearchFileResult self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_note_index_entry(self.note, serializer);
+    sse_encode_list_note_search_line_match(self.matches, serializer);
+  }
+
+  @protected
+  void sse_encode_note_search_line_match(
+    NoteSearchLineMatch self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.lineNumber, serializer);
+    sse_encode_String(self.lineText, serializer);
+    sse_encode_i_32(self.matchStartUtf16, serializer);
+    sse_encode_i_32(self.matchEndUtf16, serializer);
+  }
+
+  @protected
+  void sse_encode_note_search_result(
+    NoteSearchResult self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_bool(self.ok, serializer);
+    sse_encode_String(self.errorMessage, serializer);
+    sse_encode_list_note_search_file_result(self.files, serializer);
   }
 
   @protected

@@ -19,6 +19,7 @@ class LocalDataService {
   static const String _dailyDirectoryName = 'daily';
   static const String _weeklyDirectoryName = 'weekly';
   static const String _monthlyDirectoryName = 'monthly';
+  static const String _noteIndexDatabaseName = '.springnote-note-index.db';
   static const String _appDataDirectoryName = 'SpringNote';
   static const String _windowsAppDataEnv = 'APPDATA';
   static const String _homeEnv = 'HOME';
@@ -93,6 +94,7 @@ class LocalDataService {
 
     await targetRoot.create(recursive: true);
     if (!targetAlreadyHasData) {
+      await _deleteDerivedNoteIndexFiles(targetRoot);
       await _copyDirectoryContents(currentRoot, targetRoot);
     }
 
@@ -503,7 +505,7 @@ class LocalDataService {
 
     await for (final entity in source.list(followLinks: false)) {
       final name = _fileName(entity.path);
-      if (name == _directoryPointerFileName) {
+      if (name == _directoryPointerFileName || _isDerivedNoteIndexFile(name)) {
         continue;
       }
       final targetPath = _join(target.path, name);
@@ -520,6 +522,21 @@ class LocalDataService {
         await link.create(await entity.target(), recursive: true);
       }
     }
+  }
+
+  Future<void> _deleteDerivedNoteIndexFiles(Directory root) async {
+    for (final suffix in const ['', '-wal', '-shm']) {
+      final file = File(_join(root.path, '$_noteIndexDatabaseName$suffix'));
+      if (await file.exists()) {
+        await file.delete();
+      }
+    }
+  }
+
+  bool _isDerivedNoteIndexFile(String name) {
+    return name == _noteIndexDatabaseName ||
+        name == '$_noteIndexDatabaseName-wal' ||
+        name == '$_noteIndexDatabaseName-shm';
   }
 
   bool _isWithin(String childPath, String parentPath) {

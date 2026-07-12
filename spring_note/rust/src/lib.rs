@@ -6,6 +6,7 @@ pub mod ai_openai;
 pub mod api;
 pub mod cloud_sync;
 pub mod note_image_cleanup;
+pub mod note_index;
 pub mod stats;
 
 mod frb_generated;
