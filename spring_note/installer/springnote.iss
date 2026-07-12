@@ -24,6 +24,12 @@
 #else
   #define SetupOutputDir BuildOutputDir
 #endif
+#define VCRedistFileName "VC_redist.x64.exe"
+#define VCRedistSource AddBackslash(SourcePath) + "prerequisites\" + VCRedistFileName
+#define VCRedistVersion "14.51.36247.0"
+#if GetVersionNumbersString(VCRedistSource) != VCRedistVersion
+  #error "Unexpected VC++ Redistributable version."
+#endif
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
@@ -64,6 +70,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "{#BuildOutputDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#VCRedistSource}"; DestDir: "{tmp}"; DestName: "{#VCRedistFileName}"; Flags: deleteafterinstall; Check: NeedsVCRuntime; AfterInstall: InstallVCRuntime
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
@@ -71,5 +78,105 @@ Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
-Filename: "{app}\{#MyAppExeName}"; Flags: nowait skipifnotsilent
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent; Check: CanLaunchApplication
+Filename: "{app}\{#MyAppExeName}"; Flags: nowait skipifnotsilent; Check: CanLaunchApplication
+
+[Code]
+const
+  VCRuntimeRegistryKey = 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64';
+  RequiredVCRuntimeMajor = 14;
+  RequiredVCRuntimeMinor = 51;
+  RequiredVCRuntimeBuild = 36247;
+
+var
+  VCRuntimeRestartRequired: Boolean;
+
+function InstalledVCRuntimeIsSufficient: Boolean;
+var
+  Installed: Cardinal;
+  Major: Cardinal;
+  Minor: Cardinal;
+  Build: Cardinal;
+begin
+  Result := False;
+  if not RegQueryDWordValue(
+    HKLM64, VCRuntimeRegistryKey, 'Installed', Installed
+  ) or (Installed <> 1) then
+    Exit;
+  if not RegQueryDWordValue(HKLM64, VCRuntimeRegistryKey, 'Major', Major) then
+    Exit;
+  if not RegQueryDWordValue(HKLM64, VCRuntimeRegistryKey, 'Minor', Minor) then
+    Exit;
+  if not RegQueryDWordValue(HKLM64, VCRuntimeRegistryKey, 'Bld', Build) then
+    Exit;
+  if not FileExists(ExpandConstant('{sys}\MSVCP140.dll')) then
+    Exit;
+  if not FileExists(ExpandConstant('{sys}\VCRUNTIME140.dll')) then
+    Exit;
+  if not FileExists(ExpandConstant('{sys}\VCRUNTIME140_1.dll')) then
+    Exit;
+
+  if Major <> RequiredVCRuntimeMajor then
+  begin
+    Result := Major > RequiredVCRuntimeMajor;
+    Exit;
+  end;
+  if Minor <> RequiredVCRuntimeMinor then
+  begin
+    Result := Minor > RequiredVCRuntimeMinor;
+    Exit;
+  end;
+  Result := Build >= RequiredVCRuntimeBuild;
+end;
+
+function NeedsVCRuntime: Boolean;
+begin
+  Result := not InstalledVCRuntimeIsSufficient;
+end;
+
+procedure InstallVCRuntime;
+var
+  ResultCode: Integer;
+begin
+  WizardForm.StatusLabel.Caption := 'Installing Microsoft Visual C++ Runtime...';
+  if not Exec(
+    ExpandConstant('{tmp}\{#VCRedistFileName}'),
+    '/install /quiet /norestart',
+    '',
+    SW_HIDE,
+    ewWaitUntilTerminated,
+    ResultCode
+  ) then
+    RaiseException('Unable to start the Microsoft Visual C++ Runtime installer.');
+
+  if ResultCode = 3010 then
+  begin
+    VCRuntimeRestartRequired := True;
+    Exit;
+  end;
+  if (ResultCode <> 0) and (ResultCode <> 1638) then
+    RaiseException(
+      'Microsoft Visual C++ Runtime installation failed with exit code ' +
+      IntToStr(ResultCode) + '.'
+    );
+  if (ResultCode = 0) and not InstalledVCRuntimeIsSufficient then
+    RaiseException('Microsoft Visual C++ Runtime installation did not provide the required version.');
+end;
+
+function CanLaunchApplication: Boolean;
+begin
+  Result := not VCRuntimeRestartRequired;
+end;
+
+function NeedRestart: Boolean;
+begin
+  Result := VCRuntimeRestartRequired;
+end;
+
+function GetCustomSetupExitCode: Integer;
+begin
+  if VCRuntimeRestartRequired then
+    Result := 3010
+  else
+    Result := 0;
+end;

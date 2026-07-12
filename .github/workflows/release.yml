@@ -129,6 +129,93 @@ jobs:
       - name: Build Windows release
         run: flutter build windows --release --dart-define SPRINGNOTE_UPDATE_BASE_URL=https://api.github.com/repos/${{ github.repository }}/contents/update
 
+      - name: Validate pinned VC++ runtime
+        shell: pwsh
+        run: |
+          $runtimePath = "installer\prerequisites\VC_redist.x64.exe"
+          $expectedVersion = "14.51.36247.0"
+          $expectedHash = "843068991DAAA1F73AD9F6239BCE4D0F6A07A51F18C37EA2A867E9BECA71295C"
+
+          if (-not (Test-Path -LiteralPath $runtimePath)) {
+            throw "Pinned VC++ Redistributable is missing."
+          }
+
+          $runtime = Get-Item -LiteralPath $runtimePath
+          if ($runtime.VersionInfo.FileVersion -ne $expectedVersion) {
+            throw "Unexpected VC++ Redistributable version: $($runtime.VersionInfo.FileVersion)"
+          }
+
+          $actualHash = (Get-FileHash -LiteralPath $runtimePath -Algorithm SHA256).Hash
+          if ($actualHash -ne $expectedHash) {
+            throw "VC++ Redistributable checksum mismatch."
+          }
+
+          $signature = Get-AuthenticodeSignature -LiteralPath $runtimePath
+          if (($signature.Status -ne "Valid") -or
+              ($signature.SignerCertificate.Subject -notmatch "CN=Microsoft Corporation")) {
+            throw "VC++ Redistributable signature is invalid."
+          }
+
+          $compilerConfig = Get-ChildItem "build\windows\x64\CMakeFiles" `
+            -Recurse -Filter "CMakeCXXCompiler.cmake" |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+          if ($null -eq $compilerConfig) {
+            throw "CMake compiler metadata was not generated."
+          }
+
+          $compilerMetadata = Get-Content -LiteralPath $compilerConfig.FullName -Raw
+          $compilerMatch = [regex]::Match(
+            $compilerMetadata,
+            'set\(CMAKE_CXX_COMPILER "([^"]+)"\)'
+          )
+          if (-not $compilerMatch.Success) {
+            throw "Unable to locate the MSVC compiler used by CMake."
+          }
+
+          $compilerVersionMatch = [regex]::Match(
+            $compilerMetadata,
+            'set\(CMAKE_CXX_COMPILER_VERSION "([^"]+)"\)'
+          )
+          if (-not $compilerVersionMatch.Success) {
+            throw "Unable to determine the MSVC compiler version used by CMake."
+          }
+
+          $compilerVersion = [version]$compilerVersionMatch.Groups[1].Value
+          $maximumCompilerVersion = [version]"19.51.36248.0"
+          if ($compilerVersion -gt $maximumCompilerVersion) {
+            throw "MSVC $compilerVersion is newer than the pinned VC++ Runtime supports."
+          }
+
+          $compilerPath = $compilerMatch.Groups[1].Value.Replace('/', '\')
+          $dumpbin = Join-Path (Split-Path -Parent $compilerPath) "dumpbin.exe"
+          if (-not (Test-Path -LiteralPath $dumpbin)) {
+            throw "dumpbin.exe was not found beside the selected MSVC compiler."
+          }
+
+          $releaseDir = "build\windows\x64\runner\Release"
+          $unsupported = @()
+          Get-ChildItem $releaseDir -Recurse -File |
+            Where-Object { $_.Extension -in ".exe", ".dll" } |
+            ForEach-Object {
+              $headers = & $dumpbin /nologo /headers $_.FullName 2>$null
+              $linkerMatch = [regex]::Match(
+                ($headers -join "`n"),
+                '(\d+)\.(\d+)\s+linker version'
+              )
+              if ($linkerMatch.Success) {
+                $major = [int]$linkerMatch.Groups[1].Value
+                $minor = [int]$linkerMatch.Groups[2].Value
+                if (($major -gt 14) -or (($major -eq 14) -and ($minor -gt 51))) {
+                  $unsupported += "$($_.Name): $major.$minor"
+                }
+              }
+            }
+
+          if ($unsupported.Count -gt 0) {
+            throw "Windows binaries require a newer VC++ Runtime: $($unsupported -join ', ')"
+          }
+
       - name: Install Inno Setup
         shell: pwsh
         run: choco install innosetup --yes --no-progress

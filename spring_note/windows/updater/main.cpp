@@ -8,6 +8,8 @@
 
 namespace {
 
+constexpr DWORD kRestartRequiredExitCode = 3010;
+
 struct Options {
   std::wstring installer;
   std::wstring app;
@@ -224,6 +226,15 @@ int APIENTRY wWinMain(HINSTANCE, HINSTANCE, wchar_t*, int) {
   WriteLog(options, L"helper started");
   WaitForOldProcess(options);
   const DWORD installer_exit_code = RunInstaller(options);
+  if (installer_exit_code == kRestartRequiredExitCode) {
+    WriteLog(options, L"installer requested a Windows restart");
+    MessageBoxW(
+        nullptr,
+        L"SpringNote was updated, but Windows must be restarted before the "
+        L"new version can start.",
+        L"SpringNote Update", MB_OK | MB_ICONINFORMATION | MB_SETFOREGROUND);
+    return 0;
+  }
   if (installer_exit_code != 0) {
     WriteLog(options, L"helper exiting after installer failure");
     return static_cast<int>(installer_exit_code);
