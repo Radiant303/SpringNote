@@ -2773,10 +2773,13 @@ class _OverviewDetailsDialogState extends State<_OverviewDetailsDialog> {
                     ),
                   ),
                   const SizedBox(width: 14),
-                  IconButton(
-                    key: const ValueKey('home-overview-details-close'),
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close_rounded, size: 19),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: IconButton(
+                      key: const ValueKey('home-overview-details-close'),
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close_rounded, size: 19),
+                    ),
                   ),
                 ],
               ),
@@ -2814,20 +2817,17 @@ class _OverviewDetailsDialogState extends State<_OverviewDetailsDialog> {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: Container(
-                                    width: 4,
-                                    height: 4,
-                                    decoration: BoxDecoration(
-                                      color: colors.textSubtle.withValues(
-                                        alpha: 0.62,
+                                Text(
+                                  '•',
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        color: colors.textSubtle.withValues(
+                                          alpha: 0.62,
+                                        ),
+                                        height: 1.6,
                                       ),
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
                                 ),
-                                const SizedBox(width: 14),
+                                const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
                                     items[index],
