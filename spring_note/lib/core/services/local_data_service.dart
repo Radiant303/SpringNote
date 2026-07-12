@@ -37,6 +37,7 @@ class LocalDataService {
   static const int _closingBrace = 125;
   static const int _jsonObjectEndOffset = 1;
   static const int _backupTimestampLength = 17;
+  static int _temporaryFileCounter = 0;
 
   final String? appDataPath;
   final String? executableDirectoryPath;
@@ -138,7 +139,7 @@ class LocalDataService {
     } else if (config != null) {
       await _writeConfig(configFile, nextConfig);
     }
-    await _writeActiveDataDirectoryPointer(nextConfig.customDataDirectory);
+    await _ensureActiveDataDirectoryPointer(nextConfig.customDataDirectory);
 
     return LocalDataState(
       dataDirectory: root.path,
@@ -198,7 +199,6 @@ class LocalDataService {
       if (await _ensureDirectoryAccess(pointerRoot)) {
         return pointerRoot;
       }
-      await _writeActiveDataDirectoryPointer(null);
       return defaultRoot;
     }
 
@@ -341,9 +341,28 @@ class LocalDataService {
     await _writeJson(file, {'dataDirectory': activePath});
   }
 
+  Future<void> _ensureActiveDataDirectoryPointer(String? customPath) async {
+    final defaultRoot = await _resolveDefaultDataDirectory();
+    final file = await _activeDataDirectoryPointerFile();
+    if (await file.exists()) {
+      return;
+    }
+    final activePath = customPath == null || customPath.trim().isEmpty
+        ? defaultRoot.path
+        : customPath.trim();
+    await _writeJson(file, {'dataDirectory': activePath});
+  }
+
   Future<void> _writeJson(File file, Map<String, Object?> json) async {
     const encoder = JsonEncoder.withIndent(_jsonIndent);
-    await file.writeAsString('${encoder.convert(json)}\n');
+    await file.parent.create(recursive: true);
+    final temporary = File('${file.path}.tmp-${_temporaryFileSuffix()}');
+    try {
+      await temporary.writeAsString('${encoder.convert(json)}\n', flush: true);
+      await temporary.rename(file.path);
+    } finally {
+      await _deleteTemporaryFile(temporary);
+    }
   }
 
   Map<String, Object?>? _tryDecodeJsonMap(String content) {
@@ -444,19 +463,32 @@ class LocalDataService {
   }
 
   Future<bool> _canUsePointerFile(File file) async {
+    final probe = File(
+      _join(file.parent.path, '$_writeTestFileName-${_temporaryFileSuffix()}'),
+    );
     try {
       await file.parent.create(recursive: true);
-      if (await file.exists()) {
-        final content = await file.readAsString();
-        await file.writeAsString(content);
-        return true;
-      }
-      final probe = File(_join(file.parent.path, _writeTestFileName));
-      await probe.writeAsString(_writeTestContent);
-      await probe.delete();
+      await probe.writeAsString(_writeTestContent, flush: true);
       return true;
     } catch (_) {
       return false;
+    } finally {
+      await _deleteTemporaryFile(probe);
+    }
+  }
+
+  String _temporaryFileSuffix() {
+    final counter = _temporaryFileCounter++;
+    return '$pid-${DateTime.now().microsecondsSinceEpoch}-$counter';
+  }
+
+  Future<void> _deleteTemporaryFile(File file) async {
+    try {
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } on FileSystemException {
+      // A failed cleanup must not replace a successful pointer operation.
     }
   }
 

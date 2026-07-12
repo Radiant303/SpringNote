@@ -192,7 +192,66 @@ void main() {
       ).exists(),
       isTrue,
     );
+    expect(
+      await executableDir.list().any(
+        (entity) =>
+            entity.path.contains('.spring_note_write_test-') ||
+            entity.path.contains('data-directory.json.tmp-'),
+      ),
+      isFalse,
+    );
   });
+
+  test(
+    'local data service does not rewrite an existing pointer on startup',
+    () async {
+      final temp = await Directory.systemTemp.createTemp(
+        'spring_note_stable_pointer_',
+      );
+      addTearDown(() async {
+        if (await temp.exists()) {
+          await temp.delete(recursive: true);
+        }
+      });
+
+      final executableDir = Directory(
+        '${temp.path}${Platform.pathSeparator}bin',
+      );
+      final customRoot = Directory(
+        '${temp.path}${Platform.pathSeparator}custom_store',
+      );
+      await executableDir.create(recursive: true);
+      await customRoot.create(recursive: true);
+      final pointer = File(
+        '${executableDir.path}${Platform.pathSeparator}data-directory.json',
+      );
+      final pointerContent =
+          '${jsonEncode({'dataDirectory': customRoot.path, 'marker': 'preserve'})}\n';
+      await pointer.writeAsString(pointerContent);
+      final preservedModifiedTime = DateTime.utc(2000, 1, 2, 3, 4, 5);
+      await pointer.setLastModified(preservedModifiedTime);
+
+      final state = await LocalDataService(
+        appDataPath: temp.path,
+        executableDirectoryPath: executableDir.path,
+      ).initialize();
+
+      expect(state.dataDirectory, customRoot.path);
+      expect(await pointer.readAsString(), pointerContent);
+      expect(
+        (await pointer.lastModified()).millisecondsSinceEpoch,
+        preservedModifiedTime.millisecondsSinceEpoch,
+      );
+      expect(
+        await executableDir.list().any(
+          (entity) =>
+              entity.path.contains('.spring_note_write_test-') ||
+              entity.path.contains('data-directory.json.tmp-'),
+        ),
+        isFalse,
+      );
+    },
+  );
 
   test('local data service saves and reads provider model config', () async {
     final temp = await Directory.systemTemp.createTemp('spring_note_config_');
@@ -438,6 +497,12 @@ void main() {
             entity.path.contains('data-directory.json.invalid-'),
       ),
       isTrue,
+    );
+    expect(
+      await File(
+        '${executableDir.path}${Platform.pathSeparator}data-directory.json',
+      ).readAsString(),
+      '}\n',
     );
   });
 
