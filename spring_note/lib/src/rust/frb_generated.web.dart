@@ -171,14 +171,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<NoteIndexEntry> dco_decode_list_note_index_entry(dynamic raw);
 
   @protected
-  List<NoteSearchFileResult> dco_decode_list_note_search_file_result(
-    dynamic raw,
-  );
-
-  @protected
-  List<NoteSearchLineMatch> dco_decode_list_note_search_line_match(dynamic raw);
-
-  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
@@ -234,12 +226,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   NoteIndexRefreshResult dco_decode_note_index_refresh_result(dynamic raw);
-
-  @protected
-  NoteSearchFileResult dco_decode_note_search_file_result(dynamic raw);
-
-  @protected
-  NoteSearchLineMatch dco_decode_note_search_line_match(dynamic raw);
 
   @protected
   NoteSearchResult dco_decode_note_search_result(dynamic raw);
@@ -455,16 +441,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  List<NoteSearchFileResult> sse_decode_list_note_search_file_result(
-    SseDeserializer deserializer,
-  );
-
-  @protected
-  List<NoteSearchLineMatch> sse_decode_list_note_search_line_match(
-    SseDeserializer deserializer,
-  );
-
-  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
@@ -536,16 +512,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   NoteIndexRefreshResult sse_decode_note_index_refresh_result(
-    SseDeserializer deserializer,
-  );
-
-  @protected
-  NoteSearchFileResult sse_decode_note_search_file_result(
-    SseDeserializer deserializer,
-  );
-
-  @protected
-  NoteSearchLineMatch sse_decode_note_search_line_match(
     SseDeserializer deserializer,
   );
 
@@ -814,18 +780,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void sse_encode_list_note_search_file_result(
-    List<NoteSearchFileResult> self,
-    SseSerializer serializer,
-  );
-
-  @protected
-  void sse_encode_list_note_search_line_match(
-    List<NoteSearchLineMatch> self,
-    SseSerializer serializer,
-  );
-
-  @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
     SseSerializer serializer,
@@ -918,18 +872,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_note_index_refresh_result(
     NoteIndexRefreshResult self,
-    SseSerializer serializer,
-  );
-
-  @protected
-  void sse_encode_note_search_file_result(
-    NoteSearchFileResult self,
-    SseSerializer serializer,
-  );
-
-  @protected
-  void sse_encode_note_search_line_match(
-    NoteSearchLineMatch self,
     SseSerializer serializer,
   );
 

@@ -80,7 +80,7 @@ class IndexedNoteService extends NoteService {
   }
 
   @override
-  Future<List<NoteSearchFile>> searchMarkdownFiles({
+  Future<List<NoteFile>> searchMarkdownFiles({
     required String directoryPath,
     required NoteKind kind,
     required String query,
@@ -97,23 +97,7 @@ class IndexedNoteService extends NoteService {
         query: query,
       );
     }
-    return result.files
-        .map(
-          (file) => NoteSearchFile(
-            note: _noteFromRust(file.note, kind),
-            matches: file.matches
-                .map(
-                  (match) => NoteSearchLine(
-                    lineNumber: match.lineNumber,
-                    lineText: match.lineText,
-                    matchStart: match.matchStartUtf16,
-                    matchEnd: match.matchEndUtf16,
-                  ),
-                )
-                .toList(),
-          ),
-        )
-        .toList();
+    return result.notes.map((note) => _noteFromRust(note, kind)).toList();
   }
 
   NoteFile _noteFromRust(rust_model.NoteIndexEntry note, NoteKind kind) {

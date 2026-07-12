@@ -8,10 +8,11 @@ use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const INDEX_DB_FILENAME: &str = ".springnote-note-index.db";
+const INDEX_SCHEMA_VERSION: i32 = 2;
 const DB_BUSY_TIMEOUT: Duration = Duration::from_secs(5);
+const MIN_CONTENT_QUERY_CHARS: usize = 3;
 const MAX_SEARCH_FILES: usize = 100;
-const MAX_SEARCH_CANDIDATES: usize = 2_000;
-const MAX_MATCHES_PER_FILE: usize = 5;
+const LARGE_REMOVAL_MIN_FILES: usize = 64;
 
 static INITIALIZED_DATABASES: OnceLock<Mutex<HashSet<PathBuf>>> = OnceLock::new();
 
@@ -49,24 +50,10 @@ pub struct NoteContentResult {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct NoteSearchLineMatch {
-    pub line_number: i32,
-    pub line_text: String,
-    pub match_start_utf16: i32,
-    pub match_end_utf16: i32,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct NoteSearchFileResult {
-    pub note: NoteIndexEntry,
-    pub matches: Vec<NoteSearchLineMatch>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NoteSearchResult {
     pub ok: bool,
     pub error_message: String,
-    pub files: Vec<NoteSearchFileResult>,
+    pub notes: Vec<NoteIndexEntry>,
 }
 
 #[derive(Debug)]
@@ -115,11 +102,6 @@ struct IndexedDocument {
     scope: String,
     content: String,
     modified_nanos: i64,
-}
-
-struct SearchDocument {
-    entry: NoteIndexEntry,
-    content: String,
 }
 
 pub fn list(directory_path: &str, kind: &str) -> NoteIndexListResult {
@@ -188,15 +170,15 @@ pub fn load_content(directory_path: &str, note_path: &str) -> NoteContentResult 
 
 pub fn search(directory_path: &str, kind: &str, query: &str) -> NoteSearchResult {
     match search_internal(directory_path, kind, query) {
-        Ok(files) => NoteSearchResult {
+        Ok(notes) => NoteSearchResult {
             ok: true,
             error_message: String::new(),
-            files,
+            notes,
         },
         Err(error) => NoteSearchResult {
             ok: false,
             error_message: error.to_string(),
-            files: Vec::new(),
+            notes: Vec::new(),
         },
     }
 }
@@ -322,7 +304,7 @@ fn refresh_internal(directory_path: &str, kind: &str) -> Result<(usize, usize), 
         .filter(|path| !seen.contains(*path) && !Path::new(path.as_str()).exists())
         .cloned()
         .collect::<Vec<_>>();
-    let indexed_count = changed.len();
+    let should_compact = should_compact_after_removal(stale.len(), existing.len());
     let transaction = connection.transaction()?;
     let migrated_scope_rows = transaction.execute(
         "DELETE FROM note_index WHERE kind = ?1 AND scope <> ?2",
@@ -332,11 +314,20 @@ fn refresh_internal(directory_path: &str, kind: &str) -> Result<(usize, usize), 
         "DELETE FROM note_index_state WHERE kind = ?1 AND scope <> ?2",
         params![kind, scope],
     )?;
+    let mut indexed_count = 0;
     for document in &changed {
-        upsert_document(&transaction, document)?;
+        indexed_count += usize::from(upsert_document(&transaction, document)?);
     }
     for path in &stale {
         transaction.execute("DELETE FROM note_index WHERE path = ?1", params![path])?;
+    }
+    if should_compact {
+        transaction.execute(
+            "INSERT INTO note_index_maintenance (key, value)
+             VALUES ('compaction_pending', 1)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            [],
+        )?;
     }
     transaction.execute(
         "INSERT INTO note_index_state (scope, kind, refreshed_millis)
@@ -354,6 +345,7 @@ fn refresh_internal(directory_path: &str, kind: &str) -> Result<(usize, usize), 
         ],
     )?;
     transaction.commit()?;
+    let _ = run_pending_compaction(&connection);
     Ok((
         indexed_count,
         stale.len().saturating_add(migrated_scope_rows),
@@ -380,9 +372,9 @@ fn index_file_internal(
 
     let document = read_indexed_document(&directory, &scope, kind, &path)?;
     let transaction = connection.transaction()?;
-    upsert_document(&transaction, &document)?;
+    let indexed = upsert_document(&transaction, &document)?;
     transaction.commit()?;
-    Ok((1, 0))
+    Ok((usize::from(indexed), 0))
 }
 
 fn load_content_internal(directory_path: &str, note_path: &str) -> Result<String, IndexError> {
@@ -398,119 +390,41 @@ fn search_internal(
     directory_path: &str,
     kind: &str,
     raw_query: &str,
-) -> Result<Vec<NoteSearchFileResult>, IndexError> {
+) -> Result<Vec<NoteIndexEntry>, IndexError> {
     validate_kind(kind)?;
     let query = raw_query.trim();
-    if query.is_empty() {
+    if query.chars().count() < MIN_CONTENT_QUERY_CHARS {
         return Ok(Vec::new());
     }
 
     let directory = prepare_directory(directory_path)?;
     let scope = scope_key(&directory);
     let connection = open_connection(&directory)?;
-    let documents = if query.chars().count() >= 3 {
-        fts_search_documents(&connection, &scope, kind, query)
-            .or_else(|_| fallback_search_documents(&connection, &scope, kind, query))?
-    } else {
-        fallback_search_documents(&connection, &scope, kind, query)?
-    };
-    let normalized_query = normalized_chars(query);
-    if normalized_query.is_empty() {
-        return Ok(Vec::new());
-    }
-    let prefix = kmp_prefix(&normalized_query);
-
-    Ok(documents
-        .into_iter()
-        .filter_map(|document| {
-            let matches = line_matches(&document.content, &normalized_query, &prefix);
-            if !matches.is_empty() {
-                return Some(NoteSearchFileResult {
-                    note: document.entry,
-                    matches,
-                });
-            }
-
-            let metadata_matches = contains_normalized(&document.entry.name, &normalized_query)
-                || contains_normalized(&document.entry.title, &normalized_query);
-            metadata_matches.then(|| NoteSearchFileResult {
-                note: document.entry.clone(),
-                matches: vec![NoteSearchLineMatch {
-                    line_number: 1,
-                    line_text: document.entry.title,
-                    match_start_utf16: 0,
-                    match_end_utf16: 0,
-                }],
-            })
-        })
-        .take(MAX_SEARCH_FILES)
-        .collect())
+    fts_search_entries(&connection, &scope, kind, query).map_err(IndexError::from)
 }
 
-fn fts_search_documents(
+fn fts_search_entries(
     connection: &Connection,
     scope: &str,
     kind: &str,
     query: &str,
-) -> Result<Vec<SearchDocument>, rusqlite::Error> {
+) -> Result<Vec<NoteIndexEntry>, rusqlite::Error> {
     let expression = format!("\"{}\"", query.replace('"', "\"\""));
-    let mut candidate_statement = connection.prepare(
-        "SELECT rowid FROM note_index_fts
-         WHERE note_index_fts MATCH ?1
-         LIMIT ?2",
-    )?;
-    let candidate_rows = candidate_statement
-        .query_map(params![expression, MAX_SEARCH_CANDIDATES as i64], |row| {
-            row.get::<_, i64>(0)
-        })?;
-    let candidate_ids = candidate_rows.collect::<Result<Vec<_>, _>>()?;
-
-    let mut document_statement = connection.prepare(
-        "SELECT path, name, title, preview, kind, modified_millis, size_bytes, content
-         FROM note_index
-         WHERE id = ?1 AND scope = ?2 AND kind = ?3",
-    )?;
-    let mut documents = Vec::new();
-    for candidate_id in candidate_ids {
-        if let Some(document) = document_statement
-            .query_row(params![candidate_id, scope, kind], search_document_from_row)
-            .optional()?
-        {
-            documents.push(document);
-        }
-    }
-    documents.sort_by(|left, right| {
-        right
-            .entry
-            .name
-            .to_lowercase()
-            .cmp(&left.entry.name.to_lowercase())
-    });
-    documents.truncate(MAX_SEARCH_FILES);
-    Ok(documents)
-}
-
-fn fallback_search_documents(
-    connection: &Connection,
-    scope: &str,
-    kind: &str,
-    query: &str,
-) -> Result<Vec<SearchDocument>, rusqlite::Error> {
-    let pattern = format!("%{}%", escape_like_pattern(&query.to_lowercase()));
     let mut statement = connection.prepare(
-        "SELECT path, name, title, preview, kind, modified_millis, size_bytes, content
-         FROM note_index
-         WHERE scope = ?1 AND kind = ?2 AND (
-             LOWER(name) LIKE ?3 ESCAPE '\\' OR
-             LOWER(title) LIKE ?3 ESCAPE '\\' OR
-             LOWER(content) LIKE ?3 ESCAPE '\\'
-         )
-         ORDER BY name COLLATE NOCASE DESC
+        "SELECT note_index.path, note_index.name, note_index.title,
+                note_index.preview, note_index.kind,
+                note_index.modified_millis, note_index.size_bytes
+         FROM note_index_fts
+         JOIN note_index ON note_index.id = note_index_fts.rowid
+         WHERE note_index_fts MATCH ?1
+           AND note_index.scope = ?2
+           AND note_index.kind = ?3
+         ORDER BY note_index.name COLLATE NOCASE DESC
          LIMIT ?4",
     )?;
     let rows = statement.query_map(
-        params![scope, kind, pattern, MAX_SEARCH_FILES as i64],
-        search_document_from_row,
+        params![expression, scope, kind, MAX_SEARCH_FILES as i64],
+        note_entry_from_row,
     )?;
     rows.collect::<Result<Vec<_>, _>>()
 }
@@ -536,37 +450,57 @@ fn existing_fingerprints(
 fn upsert_document(
     transaction: &Transaction<'_>,
     document: &IndexedDocument,
-) -> Result<(), rusqlite::Error> {
-    transaction.execute(
-        "INSERT INTO note_index (
-            path, scope, kind, name, title, preview, content,
+) -> Result<bool, rusqlite::Error> {
+    let row_id = transaction
+        .query_row(
+            "INSERT INTO note_index (
+            path, scope, kind, name, title, preview,
             modified_nanos, modified_millis, size_bytes
-         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
          ON CONFLICT(path) DO UPDATE SET
             scope = excluded.scope,
             kind = excluded.kind,
             name = excluded.name,
             title = excluded.title,
             preview = excluded.preview,
-            content = excluded.content,
             modified_nanos = excluded.modified_nanos,
             modified_millis = excluded.modified_millis,
             size_bytes = excluded.size_bytes
-         WHERE excluded.modified_nanos >= note_index.modified_nanos",
+         WHERE excluded.modified_nanos >= note_index.modified_nanos
+         RETURNING id",
+            params![
+                document.entry.path,
+                document.scope,
+                document.entry.kind,
+                document.entry.name,
+                document.entry.title,
+                document.entry.preview,
+                document.modified_nanos,
+                document.entry.modified_millis,
+                document.entry.size_bytes,
+            ],
+            |row| row.get::<_, i64>(0),
+        )
+        .optional()?;
+    let Some(row_id) = row_id else {
+        return Ok(false);
+    };
+
+    transaction.execute(
+        "DELETE FROM note_index_fts WHERE rowid = ?1",
+        params![row_id],
+    )?;
+    transaction.execute(
+        "INSERT INTO note_index_fts(rowid, name, title, content)
+         VALUES (?1, ?2, ?3, ?4)",
         params![
-            document.entry.path,
-            document.scope,
-            document.entry.kind,
+            row_id,
             document.entry.name,
             document.entry.title,
-            document.entry.preview,
             document.content,
-            document.modified_nanos,
-            document.entry.modified_millis,
-            document.entry.size_bytes,
         ],
     )?;
-    Ok(())
+    Ok(true)
 }
 
 fn read_indexed_document(
@@ -631,8 +565,39 @@ fn open_connection(directory: &Path) -> Result<Connection, IndexError> {
     }
     connection.execute_batch(
         "PRAGMA journal_mode = WAL;
-         PRAGMA synchronous = NORMAL;
-         CREATE TABLE IF NOT EXISTS note_index (
+         PRAGMA synchronous = NORMAL;",
+    )?;
+    let schema_version =
+        connection.pragma_query_value(None, "user_version", |row| row.get::<_, i32>(0))?;
+    if schema_version != INDEX_SCHEMA_VERSION {
+        rebuild_schema(&connection, database_existed)?;
+    } else {
+        create_schema(&connection)?;
+    }
+    let _ = run_pending_compaction(&connection);
+    initialized.insert(database_path);
+    Ok(connection)
+}
+
+fn rebuild_schema(connection: &Connection, database_existed: bool) -> Result<(), IndexError> {
+    connection.execute_batch(
+        "DROP TRIGGER IF EXISTS note_index_ai;
+         DROP TRIGGER IF EXISTS note_index_ad;
+         DROP TRIGGER IF EXISTS note_index_au;
+         DROP TABLE IF EXISTS note_index_fts;
+         DROP TABLE IF EXISTS note_index_state;
+         DROP TABLE IF EXISTS note_index_maintenance;
+         DROP TABLE IF EXISTS note_index;",
+    )?;
+    if database_existed {
+        connection.execute_batch("PRAGMA wal_checkpoint(TRUNCATE); VACUUM;")?;
+    }
+    create_schema(connection)
+}
+
+fn create_schema(connection: &Connection) -> Result<(), IndexError> {
+    connection.execute_batch(
+        "CREATE TABLE IF NOT EXISTS note_index (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             path TEXT NOT NULL UNIQUE,
             scope TEXT NOT NULL,
@@ -640,7 +605,6 @@ fn open_connection(directory: &Path) -> Result<Connection, IndexError> {
             name TEXT NOT NULL,
             title TEXT NOT NULL,
             preview TEXT NOT NULL,
-            content TEXT NOT NULL,
             modified_nanos INTEGER NOT NULL,
             modified_millis INTEGER NOT NULL,
             size_bytes INTEGER NOT NULL
@@ -653,31 +617,55 @@ fn open_connection(directory: &Path) -> Result<Connection, IndexError> {
             refreshed_millis INTEGER NOT NULL,
             PRIMARY KEY(scope, kind)
          );
+         CREATE TABLE IF NOT EXISTS note_index_maintenance (
+            key TEXT PRIMARY KEY,
+            value INTEGER NOT NULL
+         );
          CREATE VIRTUAL TABLE IF NOT EXISTS note_index_fts USING fts5(
             name,
             title,
             content,
-            content = 'note_index',
-            content_rowid = 'id',
+            content = '',
+            contentless_delete = 1,
             tokenize = 'trigram'
          );
-         CREATE TRIGGER IF NOT EXISTS note_index_ai AFTER INSERT ON note_index BEGIN
-            INSERT INTO note_index_fts(rowid, name, title, content)
-            VALUES (new.id, new.name, new.title, new.content);
-         END;
          CREATE TRIGGER IF NOT EXISTS note_index_ad AFTER DELETE ON note_index BEGIN
-            INSERT INTO note_index_fts(note_index_fts, rowid, name, title, content)
-            VALUES ('delete', old.id, old.name, old.title, old.content);
+            DELETE FROM note_index_fts WHERE rowid = old.id;
          END;
-         CREATE TRIGGER IF NOT EXISTS note_index_au AFTER UPDATE ON note_index BEGIN
-            INSERT INTO note_index_fts(note_index_fts, rowid, name, title, content)
-            VALUES ('delete', old.id, old.name, old.title, old.content);
-            INSERT INTO note_index_fts(rowid, name, title, content)
-            VALUES (new.id, new.name, new.title, new.content);
-         END;",
+         PRAGMA user_version = 2;",
     )?;
-    initialized.insert(database_path);
-    Ok(connection)
+    Ok(())
+}
+
+fn should_compact_after_removal(removed_count: usize, previous_count: usize) -> bool {
+    removed_count >= LARGE_REMOVAL_MIN_FILES
+        && previous_count > 0
+        && removed_count.saturating_mul(2) >= previous_count
+}
+
+fn run_pending_compaction(connection: &Connection) -> Result<(), rusqlite::Error> {
+    let pending = connection
+        .query_row(
+            "SELECT value FROM note_index_maintenance WHERE key = 'compaction_pending'",
+            [],
+            |row| row.get::<_, i64>(0),
+        )
+        .optional()?
+        .is_some_and(|value| value != 0);
+    if !pending {
+        return Ok(());
+    }
+
+    connection.execute(
+        "INSERT INTO note_index_fts(note_index_fts) VALUES('optimize')",
+        [],
+    )?;
+    connection.execute_batch("PRAGMA wal_checkpoint(TRUNCATE); VACUUM;")?;
+    connection.execute(
+        "DELETE FROM note_index_maintenance WHERE key = 'compaction_pending'",
+        [],
+    )?;
+    Ok(())
 }
 
 fn index_database_path(directory: &Path) -> Result<PathBuf, IndexError> {
@@ -851,109 +839,6 @@ fn note_entry_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<NoteIndexEnt
     })
 }
 
-fn search_document_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SearchDocument> {
-    Ok(SearchDocument {
-        entry: note_entry_from_row(row)?,
-        content: row.get(7)?,
-    })
-}
-
-fn line_matches(content: &str, query: &[char], prefix: &[usize]) -> Vec<NoteSearchLineMatch> {
-    let mut results = Vec::new();
-    let mut document_utf16 = 0usize;
-    for (line_index, segment) in content.split_inclusive('\n').enumerate() {
-        let line_without_newline = segment.strip_suffix('\n').unwrap_or(segment);
-        let line = line_without_newline
-            .strip_suffix('\r')
-            .unwrap_or(line_without_newline);
-        let (normalized, offsets) = normalized_chars_with_offsets(line);
-        for (start, end) in kmp_matches(&normalized, query, prefix) {
-            let local_start = offsets[start].0;
-            let local_end = offsets[end - 1].1;
-            results.push(NoteSearchLineMatch {
-                line_number: count_to_i32(line_index + 1),
-                line_text: line.to_owned(),
-                match_start_utf16: count_to_i32(document_utf16 + local_start),
-                match_end_utf16: count_to_i32(document_utf16 + local_end),
-            });
-            if results.len() >= MAX_MATCHES_PER_FILE {
-                return results;
-            }
-        }
-        document_utf16 = document_utf16.saturating_add(segment.encode_utf16().count());
-    }
-    results
-}
-
-fn normalized_chars(value: &str) -> Vec<char> {
-    value
-        .chars()
-        .map(|character| character.to_ascii_lowercase())
-        .collect()
-}
-
-fn normalized_chars_with_offsets(value: &str) -> (Vec<char>, Vec<(usize, usize)>) {
-    let mut normalized = Vec::new();
-    let mut offsets = Vec::new();
-    let mut utf16_offset = 0usize;
-    for character in value.chars() {
-        let start = utf16_offset;
-        utf16_offset = utf16_offset.saturating_add(character.len_utf16());
-        normalized.push(character.to_ascii_lowercase());
-        offsets.push((start, utf16_offset));
-    }
-    (normalized, offsets)
-}
-
-fn contains_normalized(value: &str, query: &[char]) -> bool {
-    let normalized = normalized_chars(value);
-    let prefix = kmp_prefix(query);
-    !kmp_matches(&normalized, query, &prefix).is_empty()
-}
-
-fn kmp_prefix(pattern: &[char]) -> Vec<usize> {
-    let mut prefix = vec![0; pattern.len()];
-    let mut matched = 0usize;
-    for index in 1..pattern.len() {
-        while matched > 0 && pattern[index] != pattern[matched] {
-            matched = prefix[matched - 1];
-        }
-        if pattern[index] == pattern[matched] {
-            matched += 1;
-            prefix[index] = matched;
-        }
-    }
-    prefix
-}
-
-fn kmp_matches(text: &[char], pattern: &[char], prefix: &[usize]) -> Vec<(usize, usize)> {
-    if pattern.is_empty() {
-        return Vec::new();
-    }
-    let mut results = Vec::new();
-    let mut matched = 0usize;
-    for (index, character) in text.iter().enumerate() {
-        while matched > 0 && *character != pattern[matched] {
-            matched = prefix[matched - 1];
-        }
-        if *character == pattern[matched] {
-            matched += 1;
-        }
-        if matched == pattern.len() {
-            results.push((index + 1 - pattern.len(), index + 1));
-            matched = prefix[matched - 1];
-        }
-    }
-    results
-}
-
-fn escape_like_pattern(value: &str) -> String {
-    value
-        .replace('\\', "\\\\")
-        .replace('%', "\\%")
-        .replace('_', "\\_")
-}
-
 fn count_to_i32(value: usize) -> i32 {
     i32::try_from(value).unwrap_or(i32::MAX)
 }
@@ -990,24 +875,86 @@ mod tests {
 
         let search_result = search(daily.to_str().unwrap(), "daily", "搜索算法");
         assert!(search_result.ok, "{}", search_result.error_message);
-        assert_eq!(search_result.files.len(), 1);
-        let matched = &search_result.files[0].matches[0];
-        assert_eq!(matched.line_number, 3);
-        let content = fs::read_to_string(&first).unwrap();
-        let utf16 = content.encode_utf16().collect::<Vec<_>>();
-        let selected = String::from_utf16(
-            &utf16[matched.match_start_utf16 as usize..matched.match_end_utf16 as usize],
-        )
-        .unwrap();
-        assert_eq!(selected, "搜索算法");
+        assert_eq!(search_result.notes.len(), 1);
+        assert_eq!(search_result.notes[0].path, path_key(&first));
 
         let short_query = search(daily.to_str().unwrap(), "daily", "搜索");
         assert!(short_query.ok, "{}", short_query.error_message);
-        assert_eq!(short_query.files.len(), 1);
+        assert!(short_query.notes.is_empty());
 
         let loaded = load_content(daily.to_str().unwrap(), first.to_str().unwrap());
         assert!(loaded.ok, "{}", loaded.error_message);
         assert!(loaded.content.contains("Rust 全文搜索"));
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn schema_keeps_search_content_only_in_contentless_fts() {
+        let root = temp_root();
+        let daily = root.join("notes").join("daily");
+        fs::create_dir_all(&daily).unwrap();
+        fs::write(
+            daily.join("2026-07-12.md"),
+            "# 日报\n\n数据库不保存完整正文副本\n",
+        )
+        .unwrap();
+        assert!(refresh(daily.to_str().unwrap(), "daily").ok);
+
+        let connection = Connection::open(index_database_path(&daily).unwrap()).unwrap();
+        let columns = connection
+            .prepare("PRAGMA table_info(note_index)")
+            .unwrap()
+            .query_map([], |row| row.get::<_, String>(1))
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        assert!(!columns.iter().any(|column| column == "content"));
+        let fts_schema = connection
+            .query_row(
+                "SELECT sql FROM sqlite_master WHERE name = 'note_index_fts'",
+                [],
+                |row| row.get::<_, String>(0),
+            )
+            .unwrap();
+        let normalized_fts_schema = fts_schema.split_whitespace().collect::<String>();
+        assert!(normalized_fts_schema.contains("contentless_delete=1"));
+
+        drop(connection);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn large_removal_compacts_database() {
+        let root = temp_root();
+        let daily = root.join("notes").join("daily");
+        fs::create_dir_all(&daily).unwrap();
+        for index in 0..96 {
+            fs::write(
+                daily.join(format!("2026-{index:04}.md")),
+                format!(
+                    "# 第 {index} 篇日报\n\n{}\n",
+                    format!("唯一搜索内容{index:04} Rust SQLite ").repeat(160)
+                ),
+            )
+            .unwrap();
+        }
+        assert!(refresh(daily.to_str().unwrap(), "daily").ok);
+        let database = index_database_path(&daily).unwrap();
+        let before = fs::metadata(&database).unwrap().len();
+
+        for index in 3..96 {
+            fs::remove_file(daily.join(format!("2026-{index:04}.md"))).unwrap();
+        }
+        let refreshed = refresh(daily.to_str().unwrap(), "daily");
+        assert!(refreshed.ok, "{}", refreshed.error_message);
+        assert_eq!(refreshed.removed_count, 93);
+        let after = fs::metadata(&database).unwrap().len();
+        assert!(
+            after < before,
+            "database did not shrink: {before} -> {after}"
+        );
+        assert_eq!(list(daily.to_str().unwrap(), "daily").notes.len(), 3);
 
         fs::remove_dir_all(root).unwrap();
     }

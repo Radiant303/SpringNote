@@ -1494,34 +1494,6 @@ impl SseDecode for Vec<crate::note_index::NoteIndexEntry> {
     }
 }
 
-impl SseDecode for Vec<crate::note_index::NoteSearchFileResult> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut len_ = <i32>::sse_decode(deserializer);
-        let mut ans_ = Vec::with_capacity(len_ as usize);
-        for idx_ in 0..len_ {
-            ans_.push(<crate::note_index::NoteSearchFileResult>::sse_decode(
-                deserializer,
-            ));
-        }
-        return ans_;
-    }
-}
-
-impl SseDecode for Vec<crate::note_index::NoteSearchLineMatch> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut len_ = <i32>::sse_decode(deserializer);
-        let mut ans_ = Vec::with_capacity(len_ as usize);
-        for idx_ in 0..len_ {
-            ans_.push(<crate::note_index::NoteSearchLineMatch>::sse_decode(
-                deserializer,
-            ));
-        }
-        return ans_;
-    }
-}
-
 impl SseDecode for Vec<u8> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1809,46 +1781,16 @@ impl SseDecode for crate::note_index::NoteIndexRefreshResult {
     }
 }
 
-impl SseDecode for crate::note_index::NoteSearchFileResult {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_note = <crate::note_index::NoteIndexEntry>::sse_decode(deserializer);
-        let mut var_matches =
-            <Vec<crate::note_index::NoteSearchLineMatch>>::sse_decode(deserializer);
-        return crate::note_index::NoteSearchFileResult {
-            note: var_note,
-            matches: var_matches,
-        };
-    }
-}
-
-impl SseDecode for crate::note_index::NoteSearchLineMatch {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_lineNumber = <i32>::sse_decode(deserializer);
-        let mut var_lineText = <String>::sse_decode(deserializer);
-        let mut var_matchStartUtf16 = <i32>::sse_decode(deserializer);
-        let mut var_matchEndUtf16 = <i32>::sse_decode(deserializer);
-        return crate::note_index::NoteSearchLineMatch {
-            line_number: var_lineNumber,
-            line_text: var_lineText,
-            match_start_utf16: var_matchStartUtf16,
-            match_end_utf16: var_matchEndUtf16,
-        };
-    }
-}
-
 impl SseDecode for crate::note_index::NoteSearchResult {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_ok = <bool>::sse_decode(deserializer);
         let mut var_errorMessage = <String>::sse_decode(deserializer);
-        let mut var_files =
-            <Vec<crate::note_index::NoteSearchFileResult>>::sse_decode(deserializer);
+        let mut var_notes = <Vec<crate::note_index::NoteIndexEntry>>::sse_decode(deserializer);
         return crate::note_index::NoteSearchResult {
             ok: var_ok,
             error_message: var_errorMessage,
-            files: var_files,
+            notes: var_notes,
         };
     }
 }
@@ -2802,56 +2744,12 @@ impl flutter_rust_bridge::IntoIntoDart<crate::note_index::NoteIndexRefreshResult
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::note_index::NoteSearchFileResult {
-    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        [
-            self.note.into_into_dart().into_dart(),
-            self.matches.into_into_dart().into_dart(),
-        ]
-        .into_dart()
-    }
-}
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::note_index::NoteSearchFileResult
-{
-}
-impl flutter_rust_bridge::IntoIntoDart<crate::note_index::NoteSearchFileResult>
-    for crate::note_index::NoteSearchFileResult
-{
-    fn into_into_dart(self) -> crate::note_index::NoteSearchFileResult {
-        self
-    }
-}
-// Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::note_index::NoteSearchLineMatch {
-    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        [
-            self.line_number.into_into_dart().into_dart(),
-            self.line_text.into_into_dart().into_dart(),
-            self.match_start_utf16.into_into_dart().into_dart(),
-            self.match_end_utf16.into_into_dart().into_dart(),
-        ]
-        .into_dart()
-    }
-}
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::note_index::NoteSearchLineMatch
-{
-}
-impl flutter_rust_bridge::IntoIntoDart<crate::note_index::NoteSearchLineMatch>
-    for crate::note_index::NoteSearchLineMatch
-{
-    fn into_into_dart(self) -> crate::note_index::NoteSearchLineMatch {
-        self
-    }
-}
-// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::note_index::NoteSearchResult {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.ok.into_into_dart().into_dart(),
             self.error_message.into_into_dart().into_dart(),
-            self.files.into_into_dart().into_dart(),
+            self.notes.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -3406,26 +3304,6 @@ impl SseEncode for Vec<crate::note_index::NoteIndexEntry> {
     }
 }
 
-impl SseEncode for Vec<crate::note_index::NoteSearchFileResult> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <i32>::sse_encode(self.len() as _, serializer);
-        for item in self {
-            <crate::note_index::NoteSearchFileResult>::sse_encode(item, serializer);
-        }
-    }
-}
-
-impl SseEncode for Vec<crate::note_index::NoteSearchLineMatch> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <i32>::sse_encode(self.len() as _, serializer);
-        for item in self {
-            <crate::note_index::NoteSearchLineMatch>::sse_encode(item, serializer);
-        }
-    }
-}
-
 impl SseEncode for Vec<u8> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -3616,30 +3494,12 @@ impl SseEncode for crate::note_index::NoteIndexRefreshResult {
     }
 }
 
-impl SseEncode for crate::note_index::NoteSearchFileResult {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <crate::note_index::NoteIndexEntry>::sse_encode(self.note, serializer);
-        <Vec<crate::note_index::NoteSearchLineMatch>>::sse_encode(self.matches, serializer);
-    }
-}
-
-impl SseEncode for crate::note_index::NoteSearchLineMatch {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <i32>::sse_encode(self.line_number, serializer);
-        <String>::sse_encode(self.line_text, serializer);
-        <i32>::sse_encode(self.match_start_utf16, serializer);
-        <i32>::sse_encode(self.match_end_utf16, serializer);
-    }
-}
-
 impl SseEncode for crate::note_index::NoteSearchResult {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <bool>::sse_encode(self.ok, serializer);
         <String>::sse_encode(self.error_message, serializer);
-        <Vec<crate::note_index::NoteSearchFileResult>>::sse_encode(self.files, serializer);
+        <Vec<crate::note_index::NoteIndexEntry>>::sse_encode(self.notes, serializer);
     }
 }
 

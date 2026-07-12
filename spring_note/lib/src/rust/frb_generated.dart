@@ -1510,26 +1510,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<NoteSearchFileResult> dco_decode_list_note_search_file_result(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>)
-        .map(dco_decode_note_search_file_result)
-        .toList();
-  }
-
-  @protected
-  List<NoteSearchLineMatch> dco_decode_list_note_search_line_match(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>)
-        .map(dco_decode_note_search_line_match)
-        .toList();
-  }
-
-  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
@@ -1756,32 +1736,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  NoteSearchFileResult dco_decode_note_search_file_result(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
-    return NoteSearchFileResult(
-      note: dco_decode_note_index_entry(arr[0]),
-      matches: dco_decode_list_note_search_line_match(arr[1]),
-    );
-  }
-
-  @protected
-  NoteSearchLineMatch dco_decode_note_search_line_match(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
-    return NoteSearchLineMatch(
-      lineNumber: dco_decode_i_32(arr[0]),
-      lineText: dco_decode_String(arr[1]),
-      matchStartUtf16: dco_decode_i_32(arr[2]),
-      matchEndUtf16: dco_decode_i_32(arr[3]),
-    );
-  }
-
-  @protected
   NoteSearchResult dco_decode_note_search_result(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -1790,7 +1744,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return NoteSearchResult(
       ok: dco_decode_bool(arr[0]),
       errorMessage: dco_decode_String(arr[1]),
-      files: dco_decode_list_note_search_file_result(arr[2]),
+      notes: dco_decode_list_note_index_entry(arr[2]),
     );
   }
 
@@ -2492,34 +2446,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<NoteSearchFileResult> sse_decode_list_note_search_file_result(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <NoteSearchFileResult>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_note_search_file_result(deserializer));
-    }
-    return ans_;
-  }
-
-  @protected
-  List<NoteSearchLineMatch> sse_decode_list_note_search_line_match(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <NoteSearchLineMatch>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_note_search_line_match(deserializer));
-    }
-    return ans_;
-  }
-
-  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
@@ -2818,42 +2744,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  NoteSearchFileResult sse_decode_note_search_file_result(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_note = sse_decode_note_index_entry(deserializer);
-    var var_matches = sse_decode_list_note_search_line_match(deserializer);
-    return NoteSearchFileResult(note: var_note, matches: var_matches);
-  }
-
-  @protected
-  NoteSearchLineMatch sse_decode_note_search_line_match(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_lineNumber = sse_decode_i_32(deserializer);
-    var var_lineText = sse_decode_String(deserializer);
-    var var_matchStartUtf16 = sse_decode_i_32(deserializer);
-    var var_matchEndUtf16 = sse_decode_i_32(deserializer);
-    return NoteSearchLineMatch(
-      lineNumber: var_lineNumber,
-      lineText: var_lineText,
-      matchStartUtf16: var_matchStartUtf16,
-      matchEndUtf16: var_matchEndUtf16,
-    );
-  }
-
-  @protected
   NoteSearchResult sse_decode_note_search_result(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_ok = sse_decode_bool(deserializer);
     var var_errorMessage = sse_decode_String(deserializer);
-    var var_files = sse_decode_list_note_search_file_result(deserializer);
+    var var_notes = sse_decode_list_note_index_entry(deserializer);
     return NoteSearchResult(
       ok: var_ok,
       errorMessage: var_errorMessage,
-      files: var_files,
+      notes: var_notes,
     );
   }
 
@@ -3504,30 +3403,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_list_note_search_file_result(
-    List<NoteSearchFileResult> self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_note_search_file_result(item, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_list_note_search_line_match(
-    List<NoteSearchLineMatch> self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_note_search_line_match(item, serializer);
-    }
-  }
-
-  @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
     SseSerializer serializer,
@@ -3739,28 +3614,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_note_search_file_result(
-    NoteSearchFileResult self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_note_index_entry(self.note, serializer);
-    sse_encode_list_note_search_line_match(self.matches, serializer);
-  }
-
-  @protected
-  void sse_encode_note_search_line_match(
-    NoteSearchLineMatch self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.lineNumber, serializer);
-    sse_encode_String(self.lineText, serializer);
-    sse_encode_i_32(self.matchStartUtf16, serializer);
-    sse_encode_i_32(self.matchEndUtf16, serializer);
-  }
-
-  @protected
   void sse_encode_note_search_result(
     NoteSearchResult self,
     SseSerializer serializer,
@@ -3768,7 +3621,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_bool(self.ok, serializer);
     sse_encode_String(self.errorMessage, serializer);
-    sse_encode_list_note_search_file_result(self.files, serializer);
+    sse_encode_list_note_index_entry(self.notes, serializer);
   }
 
   @protected

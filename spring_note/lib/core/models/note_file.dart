@@ -33,24 +33,3 @@ class NoteFile {
   final String preview;
   final String searchText;
 }
-
-class NoteSearchLine {
-  const NoteSearchLine({
-    required this.lineNumber,
-    required this.lineText,
-    required this.matchStart,
-    required this.matchEnd,
-  });
-
-  final int lineNumber;
-  final String lineText;
-  final int matchStart;
-  final int matchEnd;
-}
-
-class NoteSearchFile {
-  const NoteSearchFile({required this.note, required this.matches});
-
-  final NoteFile note;
-  final List<NoteSearchLine> matches;
-}

@@ -320,6 +320,7 @@ final value = 1;
     const matchingContent =
         '# 2026-06-17 日报\n\n'
         '这是一段足够长的正文摘要内容，用来占满列表中展示的预览文本，确保后面的关键词不会出现在七十二字符以内。'
+        '前面的摘要继续增加长度，以保证搜索关键词只存在于完整正文而不出现在便签预览中。'
         '$hiddenKeyword';
     final noteService = _MemoryNoteService({
       'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-19.md':
@@ -343,44 +344,30 @@ final value = 1;
     await tester.pump();
 
     expect(find.text('2026-06-17 日报'), findsOneWidget);
-    final matchLine = find.byWidgetPredicate(
+    final renderedMatchLine = find.byWidgetPredicate(
       (widget) =>
           widget is Text &&
           (widget.textSpan?.toPlainText() ?? widget.data ?? '').contains(
             hiddenKeyword,
           ),
     );
-    expect(matchLine, findsOneWidget);
-    expect(find.byIcon(Icons.description_outlined), findsNothing);
-    final matchText = tester.widget<Text>(matchLine);
-    final matchSpan = matchText.textSpan! as TextSpan;
-    expect(
-      matchSpan.children!.whereType<TextSpan>().any(
-        (span) => span.style?.fontWeight == FontWeight.w600,
-      ),
-      isFalse,
-    );
+    expect(renderedMatchLine, findsNothing);
 
-    await tester.tap(matchLine);
+    final filteredNote = find.byKey(const ValueKey(matchingPath));
+    expect(filteredNote, findsOneWidget);
+    await tester.tap(filteredNote);
     await tester.pump();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    final matchStart = matchingContent.indexOf(hiddenKeyword);
-    final selectedResult = find.byKey(
-      ValueKey(
-        '$matchingPath:$matchStart:${matchStart + hiddenKeyword.length}',
-      ),
-    );
     final selectedBackground = find.descendant(
-      of: selectedResult,
+      of: filteredNote,
       matching: find.byType(AnimatedOpacity),
     );
     final selectedDecoration = find.descendant(
-      of: selectedResult,
+      of: filteredNote,
       matching: find.byType(DecoratedBox),
     );
-    expect(selectedResult, findsOneWidget);
     expect(selectedBackground, findsOneWidget);
     expect(selectedDecoration, findsOneWidget);
     expect(tester.widget<AnimatedOpacity>(selectedBackground).opacity, 1);
@@ -392,10 +379,37 @@ final value = 1;
     );
 
     final selection = _editableSelection(tester);
-    expect(
-      _editableRealText(tester).substring(selection.start, selection.end),
-      hiddenKeyword,
+    expect(_editableRealText(tester), matchingContent);
+    expect(selection.isCollapsed, isTrue);
+    expect(selection.extentOffset, matchingContent.length);
+  });
+
+  testWidgets('notes content filter requires at least three characters', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final noteService = _MemoryNoteService({
+      'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-18.md': '# 日报\n\n搜索',
+    });
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: NotesPage(
+          localDataState: _localDataState,
+          noteService: noteService,
+        ),
+      ),
     );
+    await tester.pump();
+
+    await tester.enterText(find.byType(TextField).first, '搜索');
+    await tester.pump();
+
+    expect(find.text('至少输入 3 个字符'), findsOneWidget);
   });
 
   testWidgets('notes search stays within the selected note kind', (

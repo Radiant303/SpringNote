@@ -128,68 +128,19 @@ class NoteIndexRefreshResult {
           removedCount == other.removedCount;
 }
 
-class NoteSearchFileResult {
-  final NoteIndexEntry note;
-  final List<NoteSearchLineMatch> matches;
-
-  const NoteSearchFileResult({required this.note, required this.matches});
-
-  @override
-  int get hashCode => note.hashCode ^ matches.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is NoteSearchFileResult &&
-          runtimeType == other.runtimeType &&
-          note == other.note &&
-          matches == other.matches;
-}
-
-class NoteSearchLineMatch {
-  final int lineNumber;
-  final String lineText;
-  final int matchStartUtf16;
-  final int matchEndUtf16;
-
-  const NoteSearchLineMatch({
-    required this.lineNumber,
-    required this.lineText,
-    required this.matchStartUtf16,
-    required this.matchEndUtf16,
-  });
-
-  @override
-  int get hashCode =>
-      lineNumber.hashCode ^
-      lineText.hashCode ^
-      matchStartUtf16.hashCode ^
-      matchEndUtf16.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is NoteSearchLineMatch &&
-          runtimeType == other.runtimeType &&
-          lineNumber == other.lineNumber &&
-          lineText == other.lineText &&
-          matchStartUtf16 == other.matchStartUtf16 &&
-          matchEndUtf16 == other.matchEndUtf16;
-}
-
 class NoteSearchResult {
   final bool ok;
   final String errorMessage;
-  final List<NoteSearchFileResult> files;
+  final List<NoteIndexEntry> notes;
 
   const NoteSearchResult({
     required this.ok,
     required this.errorMessage,
-    required this.files,
+    required this.notes,
   });
 
   @override
-  int get hashCode => ok.hashCode ^ errorMessage.hashCode ^ files.hashCode;
+  int get hashCode => ok.hashCode ^ errorMessage.hashCode ^ notes.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -198,5 +149,5 @@ class NoteSearchResult {
           runtimeType == other.runtimeType &&
           ok == other.ok &&
           errorMessage == other.errorMessage &&
-          files == other.files;
+          notes == other.notes;
 }
