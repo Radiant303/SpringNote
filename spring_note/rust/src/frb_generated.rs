@@ -38,7 +38,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.12.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1546117408;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 853363048;
 
 // Section: executor
 
@@ -811,6 +811,50 @@ fn wire__crate__api__note_image_cleanup_api__scan_note_images_impl(
                     let output_ok = Result::<_, ()>::Ok(
                         crate::api::note_image_cleanup_api::scan_note_images(api_data_directory),
                     )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__note_index_api__search_all_indexed_notes_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "search_all_indexed_notes",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_daily_directory_path = <String>::sse_decode(&mut deserializer);
+            let api_weekly_directory_path = <String>::sse_decode(&mut deserializer);
+            let api_monthly_directory_path = <String>::sse_decode(&mut deserializer);
+            let api_queries = <Vec<String>>::sse_decode(&mut deserializer);
+            let api_max_results = <i32>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(crate::api::note_index_api::search_all_indexed_notes(
+                            api_daily_directory_path,
+                            api_weekly_directory_path,
+                            api_monthly_directory_path,
+                            api_queries,
+                            api_max_results,
+                        ))?;
                     Ok(output_ok)
                 })())
             }
@@ -2070,31 +2114,37 @@ fn pde_ffi_dispatcher_primary_impl(
             rust_vec_len,
             data_len,
         ),
-        21 => wire__crate__api__note_index_api__search_indexed_notes_impl(
+        21 => wire__crate__api__note_index_api__search_all_indexed_notes_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        22 => wire__crate__api__cloud_sync_api__sync_web_dav_notes_impl(
+        22 => wire__crate__api__note_index_api__search_indexed_notes_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        23 => wire__crate__api__ai_api__test_provider_connection_impl(
+        23 => wire__crate__api__cloud_sync_api__sync_web_dav_notes_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        24 => wire__crate__api__cloud_sync_api__test_web_dav_connection_impl(
+        24 => wire__crate__api__ai_api__test_provider_connection_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        25 => wire__crate__api__cloud_sync_api__upload_web_dav_note_impl(
+        25 => wire__crate__api__cloud_sync_api__test_web_dav_connection_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        26 => wire__crate__api__cloud_sync_api__upload_web_dav_note_impl(
             port,
             ptr,
             rust_vec_len,

@@ -75,7 +75,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.12.0';
 
   @override
-  int get rustContentHash => 1546117408;
+  int get rustContentHash => 853363048;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -177,6 +177,14 @@ abstract class RustLibApi extends BaseApi {
 
   Future<NoteImageCleanupScanResult> crateApiNoteImageCleanupApiScanNoteImages({
     required String dataDirectory,
+  });
+
+  Future<NoteSearchResult> crateApiNoteIndexApiSearchAllIndexedNotes({
+    required String dailyDirectoryPath,
+    required String weeklyDirectoryPath,
+    required String monthlyDirectoryPath,
+    required List<String> queries,
+    required int maxResults,
   });
 
   Future<NoteSearchResult> crateApiNoteIndexApiSearchIndexedNotes({
@@ -911,6 +919,59 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<NoteSearchResult> crateApiNoteIndexApiSearchAllIndexedNotes({
+    required String dailyDirectoryPath,
+    required String weeklyDirectoryPath,
+    required String monthlyDirectoryPath,
+    required List<String> queries,
+    required int maxResults,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(dailyDirectoryPath, serializer);
+          sse_encode_String(weeklyDirectoryPath, serializer);
+          sse_encode_String(monthlyDirectoryPath, serializer);
+          sse_encode_list_String(queries, serializer);
+          sse_encode_i_32(maxResults, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 21,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_note_search_result,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiNoteIndexApiSearchAllIndexedNotesConstMeta,
+        argValues: [
+          dailyDirectoryPath,
+          weeklyDirectoryPath,
+          monthlyDirectoryPath,
+          queries,
+          maxResults,
+        ],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiNoteIndexApiSearchAllIndexedNotesConstMeta =>
+      const TaskConstMeta(
+        debugName: "search_all_indexed_notes",
+        argNames: [
+          "dailyDirectoryPath",
+          "weeklyDirectoryPath",
+          "monthlyDirectoryPath",
+          "queries",
+          "maxResults",
+        ],
+      );
+
+  @override
   Future<NoteSearchResult> crateApiNoteIndexApiSearchIndexedNotes({
     required String directoryPath,
     required String kind,
@@ -926,7 +987,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 22,
             port: port_,
           );
         },
@@ -959,7 +1020,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 22,
+            funcId: 23,
             port: port_,
           );
         },
@@ -998,7 +1059,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 23,
+            funcId: 24,
             port: port_,
           );
         },
@@ -1031,7 +1092,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 24,
+            funcId: 25,
             port: port_,
           );
         },
@@ -1067,7 +1128,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 25,
+            funcId: 26,
             port: port_,
           );
         },

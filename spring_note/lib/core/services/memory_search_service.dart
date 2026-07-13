@@ -1,11 +1,26 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../../src/rust/api/note_index_api.dart' as rust_note_index;
+import '../../src/rust/note_index.dart';
 import '../models/local_data_state.dart';
 import '../models/memory_message.dart';
 
+typedef MemoryIndexedNoteSearch =
+    Future<NoteSearchResult> Function({
+      required String dailyDirectoryPath,
+      required String weeklyDirectoryPath,
+      required String monthlyDirectoryPath,
+      required List<String> queries,
+      required int maxResults,
+    });
+
 class MemorySearchService {
-  const MemorySearchService();
+  const MemorySearchService({
+    this.indexedNoteSearch = rust_note_index.searchAllIndexedNotes,
+  });
+
+  final MemoryIndexedNoteSearch indexedNoteSearch;
 
   Future<MemoryToolExecution> executeTool({
     required LocalDataState localDataState,
@@ -13,28 +28,41 @@ class MemorySearchService {
     required Map<String, Object?> arguments,
     required int limit,
   }) async {
-    final sources = switch (toolName) {
-      'get_current_date' => <MemorySource>[],
-      'keyword_search' => await search(
-        localDataState: localDataState,
-        keywords: _readStringList(arguments['keywords']),
-        limit: _keywordSearchResultLimit(localDataState),
-      ),
-      'read_daily_note' => await _executeReadDaily(
-        localDataState,
-        arguments['date']?.toString() ?? '',
-      ),
-      'read_week_daily_notes' => await _executeReadWeek(
-        localDataState,
-        arguments['startDate']?.toString() ?? '',
-        arguments['endDate']?.toString() ?? '',
-      ),
-      'read_month_report' => await _executeReadMonth(
-        localDataState,
-        arguments['month']?.toString() ?? '',
-      ),
-      _ => <MemorySource>[],
-    };
+    List<MemorySource> sources;
+    try {
+      sources = switch (toolName) {
+        'get_current_date' => <MemorySource>[],
+        'keyword_search' => await search(
+          localDataState: localDataState,
+          keywords: _readStringList(arguments['keywords']),
+          limit: _keywordSearchResultLimit(localDataState),
+        ),
+        'read_daily_note' => await _executeReadDaily(
+          localDataState,
+          arguments['date']?.toString() ?? '',
+        ),
+        'read_week_daily_notes' => await _executeReadWeek(
+          localDataState,
+          arguments['startDate']?.toString() ?? '',
+          arguments['endDate']?.toString() ?? '',
+        ),
+        'read_month_report' => await _executeReadMonth(
+          localDataState,
+          arguments['month']?.toString() ?? '',
+        ),
+        _ => <MemorySource>[],
+      };
+    } catch (_) {
+      return MemoryToolExecution(
+        toolName: toolName,
+        arguments: arguments,
+        content: jsonEncode({
+          'results': const <Object>[],
+          'error': 'local_tool_execution_failed',
+        }),
+        sources: const [],
+      );
+    }
 
     final content = toolName == 'get_current_date'
         ? jsonEncode({'date': _formatDate(DateTime.now())})
@@ -116,17 +144,54 @@ class MemorySearchService {
     required List<String> keywords,
     required int limit,
   }) async {
-    final files = await _markdownFiles(localDataState);
     final terms = keywords
         .map((keyword) => keyword.trim().toLowerCase())
-        .where((keyword) => keyword.isNotEmpty)
+        .where((keyword) => keyword.runes.length >= 2)
+        .toSet()
         .toList();
+    if (terms.isEmpty) {
+      return const [];
+    }
+
+    final indexed = await indexedNoteSearch(
+      dailyDirectoryPath: localDataState.dailyNotesDirectory,
+      weeklyDirectoryPath: localDataState.weeklyNotesDirectory,
+      monthlyDirectoryPath: localDataState.monthlyNotesDirectory,
+      queries: terms,
+      maxResults: 200,
+    );
+    if (!indexed.ok) {
+      throw StateError(
+        indexed.errorMessage.isEmpty
+            ? 'Indexed note search failed.'
+            : indexed.errorMessage,
+      );
+    }
+    return _rankFiles(
+      indexed.notes.map((note) => File(note.path)),
+      terms,
+      localDataState,
+      limit,
+    );
+  }
+
+  Future<List<MemorySource>> _rankFiles(
+    Iterable<File> files,
+    List<String> terms,
+    LocalDataState localDataState,
+    int limit,
+  ) async {
     final scored = <MemorySource>[];
 
     for (final file in files) {
-      final content = await file.readAsString();
+      String content;
+      try {
+        content = await file.readAsString();
+      } on FileSystemException {
+        continue;
+      }
       final score = _score(content, terms);
-      if (score <= 0 && terms.isNotEmpty) {
+      if (score <= 0) {
         continue;
       }
       scored.add(
@@ -391,27 +456,6 @@ class MemorySearchService {
     );
   }
 
-  Future<List<File>> _markdownFiles(LocalDataState state) async {
-    final directories = [
-      state.dailyNotesDirectory,
-      state.weeklyNotesDirectory,
-      state.monthlyNotesDirectory,
-    ];
-    final files = <File>[];
-    for (final path in directories) {
-      final directory = Directory(path);
-      if (!await directory.exists()) {
-        continue;
-      }
-      await for (final entity in directory.list()) {
-        if (entity is File && entity.path.toLowerCase().endsWith('.md')) {
-          files.add(entity);
-        }
-      }
-    }
-    return files;
-  }
-
   List<MemorySource> _dedupe(List<MemorySource> sources) {
     final seen = <String>{};
     final result = <MemorySource>[];
@@ -433,7 +477,7 @@ class MemorySearchService {
           ),
         )
         .map((term) => term.trim())
-        .where((term) => term.length >= 2)
+        .where((term) => term.runes.length >= 2)
         .take(8)
         .toList();
   }
@@ -447,10 +491,11 @@ class MemorySearchService {
     const stopWords = {'什么时候', '哪天', '日期', '查看', '一下', '的'};
     final filtered = terms
         .map((term) => _cleanKeyword(term, stopWords))
-        .where((term) => term.isNotEmpty)
+        .where((term) => term.runes.length >= 2)
         .where((term) => !RegExp(r'^20\d{2}').hasMatch(term))
         .toList();
-    return (filtered.isEmpty ? terms : filtered).take(6).toList();
+    final selected = filtered.isEmpty ? terms : filtered;
+    return selected.where((term) => term.runes.length >= 2).take(6).toList();
   }
 
   String _cleanKeyword(String term, Set<String> stopWords) {
@@ -536,9 +581,7 @@ class MemorySearchService {
     final name = file.uri.pathSegments.isEmpty
         ? file.path
         : file.uri.pathSegments.last;
-    return Uri.decodeComponent(
-      name,
-    ).replaceAll(RegExp(r'\.md$', caseSensitive: false), '');
+    return name.replaceAll(RegExp(r'\.md$', caseSensitive: false), '');
   }
 
   DateTime? _dateFromSource(MemorySource source) {

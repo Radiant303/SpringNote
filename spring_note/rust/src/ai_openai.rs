@@ -994,16 +994,19 @@ pub fn memory_tools_json() -> Value {
             "function": {
                 "name": "keyword_search",
                 "strict": true,
-                "description": "Search SpringNote daily, weekly, and monthly Markdown records by one or more keywords. Returns zero or more matching records.",
+                "description": "Run one global indexed search across SpringNote daily, weekly, and monthly Markdown records. When calling keyword_search, submit all distinctive keywords in this single call. Every keyword must contain at least two Unicode characters.",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "keywords": {
                             "type": "array",
-                            "description": "One or more concise keywords or phrases, sorted by importance.",
+                            "description": "All concise keywords or phrases needed for one global search, sorted by importance.",
+                            "minItems": 1,
+                            "maxItems": 8,
                             "items": {
                                 "type": "string",
-                                "description": "A concise keyword or phrase."
+                                "description": "A concise keyword or phrase containing at least two Unicode characters.",
+                                "minLength": 2
                             }
                         }
                     },
@@ -1884,6 +1887,20 @@ mod tests {
         assert_eq!(
             body["tools"][1]["function"]["parameters"]["additionalProperties"],
             false
+        );
+        assert_eq!(
+            body["tools"][1]["function"]["parameters"]["properties"]["keywords"]["items"]["minLength"],
+            2
+        );
+        assert_eq!(
+            body["tools"][1]["function"]["parameters"]["properties"]["keywords"]["maxItems"],
+            8
+        );
+        assert!(
+            body["tools"][1]["function"]["description"]
+                .as_str()
+                .unwrap()
+                .contains("submit all distinctive keywords in this single call")
         );
     }
 

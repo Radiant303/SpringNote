@@ -50,3 +50,17 @@ Future<NoteSearchResult> searchIndexedNotes({
   kind: kind,
   query: query,
 );
+
+Future<NoteSearchResult> searchAllIndexedNotes({
+  required String dailyDirectoryPath,
+  required String weeklyDirectoryPath,
+  required String monthlyDirectoryPath,
+  required List<String> queries,
+  required int maxResults,
+}) => RustLib.instance.api.crateApiNoteIndexApiSearchAllIndexedNotes(
+  dailyDirectoryPath: dailyDirectoryPath,
+  weeklyDirectoryPath: weeklyDirectoryPath,
+  monthlyDirectoryPath: monthlyDirectoryPath,
+  queries: queries,
+  maxResults: maxResults,
+);

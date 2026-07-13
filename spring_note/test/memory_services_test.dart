@@ -6,6 +6,7 @@ import 'package:spring_note/core/models/local_data_state.dart';
 import 'package:spring_note/core/models/memory_message.dart';
 import 'package:spring_note/core/services/memory_conversation_service.dart';
 import 'package:spring_note/core/services/memory_search_service.dart';
+import 'package:spring_note/src/rust/note_index.dart';
 
 void main() {
   test(
@@ -76,7 +77,10 @@ void main() {
       '${weekly.path}${Platform.pathSeparator}2026-W25.md',
     ).writeAsString('# 周报\n\n处理了统计热力图。');
 
-    const service = MemorySearchService();
+    final service = _indexedSearchService([
+      File('${daily.path}${Platform.pathSeparator}2026-06-18.md'),
+      File('${weekly.path}${Platform.pathSeparator}2026-W25.md'),
+    ]);
     final result = await service.search(
       localDataState: LocalDataState(
         dataDirectory: temp.path,
@@ -93,6 +97,136 @@ void main() {
     expect(result, isNotEmpty);
     expect(result.first.title, '2026-06-18');
     expect(result.first.snippet, contains('回忆书'));
+  });
+
+  test('memory search service ignores one-character keywords', () async {
+    final temp = await Directory.systemTemp.createTemp(
+      'spring_note_memory_short_search_',
+    );
+    addTearDown(() async {
+      if (await temp.exists()) {
+        await temp.delete(recursive: true);
+      }
+    });
+    final daily = Directory('${temp.path}${Platform.pathSeparator}daily');
+    final weekly = Directory('${temp.path}${Platform.pathSeparator}weekly');
+    final monthly = Directory('${temp.path}${Platform.pathSeparator}monthly');
+    await Future.wait([
+      daily.create(recursive: true),
+      weekly.create(recursive: true),
+      monthly.create(recursive: true),
+    ]);
+    await File(
+      '${daily.path}${Platform.pathSeparator}2026-06-18.md',
+    ).writeAsString('# 日报\n\n回忆书');
+
+    const service = MemorySearchService();
+    final result = await service.search(
+      localDataState: LocalDataState(
+        dataDirectory: temp.path,
+        configPath: '${temp.path}${Platform.pathSeparator}config.json',
+        dailyNotesDirectory: daily.path,
+        weeklyNotesDirectory: weekly.path,
+        monthlyNotesDirectory: monthly.path,
+        config: AppConfig.defaults(),
+      ),
+      keywords: const ['回'],
+      limit: 10,
+    );
+
+    expect(result, isEmpty);
+  });
+
+  test('memory search supports decoded non-ASCII note filenames', () async {
+    final temp = await Directory.systemTemp.createTemp(
+      'spring_note_memory_percent_filename_',
+    );
+    addTearDown(() async {
+      if (await temp.exists()) {
+        await temp.delete(recursive: true);
+      }
+    });
+    final daily = Directory('${temp.path}${Platform.pathSeparator}daily');
+    final weekly = Directory('${temp.path}${Platform.pathSeparator}weekly');
+    final monthly = Directory('${temp.path}${Platform.pathSeparator}monthly');
+    await Future.wait([
+      daily.create(recursive: true),
+      weekly.create(recursive: true),
+      monthly.create(recursive: true),
+    ]);
+    await File(
+      '${daily.path}${Platform.pathSeparator}2026-06-20 - 副本.md',
+    ).writeAsString('# 日报\n\n忽如一夜春风来。');
+
+    final result =
+        await _indexedSearchService([
+          File('${daily.path}${Platform.pathSeparator}2026-06-20 - 副本.md'),
+        ]).search(
+          localDataState: LocalDataState(
+            dataDirectory: temp.path,
+            configPath: '${temp.path}${Platform.pathSeparator}config.json',
+            dailyNotesDirectory: daily.path,
+            weeklyNotesDirectory: weekly.path,
+            monthlyNotesDirectory: monthly.path,
+            config: AppConfig.defaults(),
+          ),
+          keywords: const ['春风'],
+          limit: 2,
+        );
+
+    expect(result, hasLength(1));
+    expect(result.single.title, '2026-06-20 - 副本');
+  });
+
+  test('memory search does not scan files when the index fails', () async {
+    final temp = await Directory.systemTemp.createTemp(
+      'spring_note_memory_index_failure_',
+    );
+    addTearDown(() async {
+      if (await temp.exists()) {
+        await temp.delete(recursive: true);
+      }
+    });
+    final daily = Directory('${temp.path}${Platform.pathSeparator}daily');
+    await daily.create(recursive: true);
+    await File(
+      '${daily.path}${Platform.pathSeparator}2026-06-20.md',
+    ).writeAsString('# 日报\n\n这里包含春风，但不应被全量扫描。');
+    final state = LocalDataState(
+      dataDirectory: temp.path,
+      configPath: '${temp.path}${Platform.pathSeparator}config.json',
+      dailyNotesDirectory: daily.path,
+      weeklyNotesDirectory: '${temp.path}${Platform.pathSeparator}weekly',
+      monthlyNotesDirectory: '${temp.path}${Platform.pathSeparator}monthly',
+      config: AppConfig.defaults(),
+    );
+    final service = MemorySearchService(
+      indexedNoteSearch:
+          ({
+            required dailyDirectoryPath,
+            required weeklyDirectoryPath,
+            required monthlyDirectoryPath,
+            required queries,
+            required maxResults,
+          }) async => const NoteSearchResult(
+            ok: false,
+            errorMessage: 'index unavailable',
+            notes: [],
+          ),
+    );
+
+    final execution = await service.executeTool(
+      localDataState: state,
+      toolName: 'keyword_search',
+      arguments: const {
+        'keywords': ['春风'],
+      },
+      limit: 10,
+    );
+
+    expect(execution.sources, isEmpty);
+    expect(execution.content, contains('local_tool_execution_failed'));
+    expect(execution.content, isNot(contains('2026-06-20')));
   });
 
   test('memory recall uses daily weekly and monthly tools', () async {
@@ -130,7 +264,11 @@ void main() {
       monthlyNotesDirectory: monthly.path,
       config: AppConfig.defaults(),
     );
-    const service = MemorySearchService();
+    final service = _indexedSearchService([
+      File('${daily.path}${Platform.pathSeparator}2026-06-18.md'),
+      File('${weekly.path}${Platform.pathSeparator}2026-W25.md'),
+      File('${monthly.path}${Platform.pathSeparator}2026-06.md'),
+    ]);
 
     final dailyRecall = await service.recall(
       localDataState: state,
@@ -219,7 +357,9 @@ void main() {
         '${daily.path}${Platform.pathSeparator}2026-06-18.md',
       ).writeAsString('# 日报\n\n上午删除 nacos 配置，下午验证服务启动。');
 
-      const service = MemorySearchService();
+      final service = _indexedSearchService([
+        File('${daily.path}${Platform.pathSeparator}2026-06-18.md'),
+      ]);
       final recall = await service.recall(
         localDataState: LocalDataState(
           dataDirectory: temp.path,
@@ -244,5 +384,36 @@ void main() {
       expect(trace, contains('Act: keyword_search(keywords=['));
       expect(trace, contains('nacos'));
     },
+  );
+}
+
+MemorySearchService _indexedSearchService(List<File> files) {
+  return MemorySearchService(
+    indexedNoteSearch:
+        ({
+          required dailyDirectoryPath,
+          required weeklyDirectoryPath,
+          required monthlyDirectoryPath,
+          required queries,
+          required maxResults,
+        }) async {
+          return NoteSearchResult(
+            ok: true,
+            errorMessage: '',
+            notes: files
+                .map(
+                  (file) => NoteIndexEntry(
+                    path: file.path,
+                    name: file.uri.pathSegments.last,
+                    title: '',
+                    preview: '',
+                    kind: 'daily',
+                    modifiedMillis: 0,
+                    sizeBytes: 0,
+                  ),
+                )
+                .toList(),
+          );
+        },
   );
 }

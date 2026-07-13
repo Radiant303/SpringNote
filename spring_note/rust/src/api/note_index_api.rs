@@ -29,3 +29,19 @@ pub fn search_indexed_notes(
 ) -> NoteSearchResult {
     note_index::search(&directory_path, &kind, &query)
 }
+
+pub fn search_all_indexed_notes(
+    daily_directory_path: String,
+    weekly_directory_path: String,
+    monthly_directory_path: String,
+    queries: Vec<String>,
+    max_results: i32,
+) -> NoteSearchResult {
+    note_index::search_all(
+        &daily_directory_path,
+        &weekly_directory_path,
+        &monthly_directory_path,
+        &queries,
+        max_results,
+    )
+}

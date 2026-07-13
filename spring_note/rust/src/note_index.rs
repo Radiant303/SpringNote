@@ -183,6 +183,33 @@ pub fn search(directory_path: &str, kind: &str, query: &str) -> NoteSearchResult
     }
 }
 
+pub fn search_all(
+    daily_directory_path: &str,
+    weekly_directory_path: &str,
+    monthly_directory_path: &str,
+    queries: &[String],
+    max_results: i32,
+) -> NoteSearchResult {
+    match search_all_internal(
+        daily_directory_path,
+        weekly_directory_path,
+        monthly_directory_path,
+        queries,
+        max_results,
+    ) {
+        Ok(notes) => NoteSearchResult {
+            ok: true,
+            error_message: String::new(),
+            notes,
+        },
+        Err(error) => NoteSearchResult {
+            ok: false,
+            error_message: error.to_string(),
+            notes: Vec::new(),
+        },
+    }
+}
+
 fn list_internal(directory_path: &str, kind: &str) -> Result<Vec<NoteIndexEntry>, IndexError> {
     validate_kind(kind)?;
     let directory = prepare_directory(directory_path)?;
@@ -403,6 +430,48 @@ fn search_internal(
     fts_search_entries(&connection, &scope, kind, query).map_err(IndexError::from)
 }
 
+fn search_all_internal(
+    daily_directory_path: &str,
+    weekly_directory_path: &str,
+    monthly_directory_path: &str,
+    queries: &[String],
+    max_results: i32,
+) -> Result<Vec<NoteIndexEntry>, IndexError> {
+    let Some(expression) = bigram_search_expression(queries) else {
+        return Ok(Vec::new());
+    };
+    let daily = prepare_directory(daily_directory_path)?;
+    let weekly = prepare_directory(weekly_directory_path)?;
+    let monthly = prepare_directory(monthly_directory_path)?;
+    let database_path = index_database_path(&daily)?;
+    if index_database_path(&weekly)? != database_path
+        || index_database_path(&monthly)? != database_path
+    {
+        return Err(IndexError::Validation(
+            "日报、周报和月报目录未共用同一个索引数据库".to_owned(),
+        ));
+    }
+
+    for (directory, kind) in [
+        (&daily, "daily"),
+        (&weekly, "weekly"),
+        (&monthly, "monthly"),
+    ] {
+        refresh_internal(directory.to_string_lossy().as_ref(), kind)?;
+    }
+
+    let connection = open_connection(&daily)?;
+    fts_search_all_entries(
+        &connection,
+        &scope_key(&daily),
+        &scope_key(&weekly),
+        &scope_key(&monthly),
+        &expression,
+        max_results.clamp(1, 200) as usize,
+    )
+    .map_err(IndexError::from)
+}
+
 fn fts_search_entries(
     connection: &Connection,
     scope: &str,
@@ -427,6 +496,54 @@ fn fts_search_entries(
         note_entry_from_row,
     )?;
     rows.collect::<Result<Vec<_>, _>>()
+}
+
+fn fts_search_all_entries(
+    connection: &Connection,
+    daily_scope: &str,
+    weekly_scope: &str,
+    monthly_scope: &str,
+    expression: &str,
+    max_results: usize,
+) -> Result<Vec<NoteIndexEntry>, rusqlite::Error> {
+    let mut statement = connection.prepare(
+        "SELECT note_index.path, note_index.name, note_index.title,
+                note_index.preview, note_index.kind,
+                note_index.modified_millis, note_index.size_bytes
+         FROM note_index_fts
+         JOIN note_index ON note_index.id = note_index_fts.rowid
+         WHERE note_index_fts MATCH ?1
+           AND ((note_index.scope = ?2 AND note_index.kind = 'daily')
+             OR (note_index.scope = ?3 AND note_index.kind = 'weekly')
+             OR (note_index.scope = ?4 AND note_index.kind = 'monthly'))
+         ORDER BY bm25(note_index_fts), note_index.name COLLATE NOCASE DESC
+         LIMIT ?5",
+    )?;
+    let rows = statement.query_map(
+        params![
+            expression,
+            daily_scope,
+            weekly_scope,
+            monthly_scope,
+            max_results as i64,
+        ],
+        note_entry_from_row,
+    )?;
+    rows.collect::<Result<Vec<_>, _>>()
+}
+
+fn bigram_search_expression(queries: &[String]) -> Option<String> {
+    let mut seen = HashSet::new();
+    let phrases = queries
+        .iter()
+        .map(|query| query.trim())
+        .filter(|query| query.chars().count() >= MIN_CONTENT_QUERY_CHARS)
+        .filter_map(|query| {
+            let tokens = bigram_token_stream(query);
+            seen.insert(tokens.clone()).then(|| format!("\"{tokens}\""))
+        })
+        .collect::<Vec<_>>();
+    (!phrases.is_empty()).then(|| phrases.join(" OR "))
 }
 
 fn existing_fingerprints(
@@ -964,6 +1081,41 @@ mod tests {
         assert!(!normalized_fts_schema.contains("tokenize='trigram'"));
 
         drop(connection);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn global_search_queries_daily_weekly_and_monthly_in_one_database() {
+        let root = temp_root();
+        let notes = root.join("notes");
+        let daily = notes.join("daily");
+        let weekly = notes.join("weekly");
+        let monthly = notes.join("monthly");
+        fs::create_dir_all(&daily).unwrap();
+        fs::create_dir_all(&weekly).unwrap();
+        fs::create_dir_all(&monthly).unwrap();
+        fs::write(daily.join("2026-07-12.md"), "# 日报\n\n完成全局检索\n").unwrap();
+        fs::write(weekly.join("2026-W28.md"), "# 周报\n\n复盘全局检索\n").unwrap();
+        fs::write(monthly.join("2026-07.md"), "# 月报\n\n总结全局检索\n").unwrap();
+
+        let result = search_all(
+            daily.to_str().unwrap(),
+            weekly.to_str().unwrap(),
+            monthly.to_str().unwrap(),
+            &["全局".to_owned(), "检索".to_owned(), "单".to_owned()],
+            10,
+        );
+        assert!(result.ok, "{}", result.error_message);
+        assert_eq!(result.notes.len(), 3);
+        assert_eq!(
+            result
+                .notes
+                .iter()
+                .map(|note| note.kind.as_str())
+                .collect::<HashSet<_>>(),
+            HashSet::from(["daily", "weekly", "monthly"]),
+        );
+
         fs::remove_dir_all(root).unwrap();
     }
 
