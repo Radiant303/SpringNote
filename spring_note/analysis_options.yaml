@@ -12,6 +12,9 @@ include: package:flutter_lints/flutter.yaml
 analyzer:
   exclude:
     - rust_builder/cargokit/build_tool/**
+    # Flutter Rust Bridge owns these files. Excluding generated bindings keeps
+    # application analysis focused on code maintained in this repository.
+    - lib/src/rust/frb_generated*.dart
 
 linter:
   # The lint rules applied to this project can be customized in the
