@@ -1637,6 +1637,9 @@ class _ToolAttachmentChip extends StatelessWidget {
     return switch (name) {
       'get_current_date' => '获取当前日期',
       'keyword_search' => '关键词搜索',
+      'search_daily_notes' => '搜索日报',
+      'search_weekly_notes' => '搜索周报',
+      'search_monthly_notes' => '搜索月报',
       'read_daily_note' => '读取日报',
       'read_week_daily_notes' => '读取周内日报',
       'read_month_report' => '读取月报',

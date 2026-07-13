@@ -75,7 +75,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.12.0';
 
   @override
-  int get rustContentHash => 853363048;
+  int get rustContentHash => 1870485155;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -191,6 +191,13 @@ abstract class RustLibApi extends BaseApi {
     required String directoryPath,
     required String kind,
     required String query,
+  });
+
+  Future<NoteSearchResult> crateApiNoteIndexApiSearchIndexedNotesByKind({
+    required String directoryPath,
+    required String kind,
+    required List<String> queries,
+    required int maxResults,
   });
 
   Future<CloudSyncResult> crateApiCloudSyncApiSyncWebDavNotes({
@@ -1009,6 +1016,45 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<NoteSearchResult> crateApiNoteIndexApiSearchIndexedNotesByKind({
+    required String directoryPath,
+    required String kind,
+    required List<String> queries,
+    required int maxResults,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(directoryPath, serializer);
+          sse_encode_String(kind, serializer);
+          sse_encode_list_String(queries, serializer);
+          sse_encode_i_32(maxResults, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 23,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_note_search_result,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiNoteIndexApiSearchIndexedNotesByKindConstMeta,
+        argValues: [directoryPath, kind, queries, maxResults],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiNoteIndexApiSearchIndexedNotesByKindConstMeta =>
+      const TaskConstMeta(
+        debugName: "search_indexed_notes_by_kind",
+        argNames: ["directoryPath", "kind", "queries", "maxResults"],
+      );
+
+  @override
   Future<CloudSyncResult> crateApiCloudSyncApiSyncWebDavNotes({
     required CloudSyncRequest request,
   }) {
@@ -1020,7 +1066,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 23,
+            funcId: 24,
             port: port_,
           );
         },
@@ -1059,7 +1105,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 24,
+            funcId: 25,
             port: port_,
           );
         },
@@ -1092,7 +1138,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 25,
+            funcId: 26,
             port: port_,
           );
         },
@@ -1128,7 +1174,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 26,
+            funcId: 27,
             port: port_,
           );
         },

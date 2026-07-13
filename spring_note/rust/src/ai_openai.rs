@@ -994,13 +994,91 @@ pub fn memory_tools_json() -> Value {
             "function": {
                 "name": "keyword_search",
                 "strict": true,
-                "description": "Run one global indexed search across SpringNote daily, weekly, and monthly Markdown records. When calling keyword_search, submit all distinctive keywords in this single call. Every keyword must contain at least two Unicode characters.",
+                "description": "Run one global indexed search across SpringNote daily, weekly, and monthly Markdown records. Use this only when the record type is unknown or the answer may span multiple types; prefer a scoped search when the user names daily, weekly, or monthly records. When calling keyword_search, submit all distinctive keywords in this single call. Every keyword must contain at least two Unicode characters.",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "keywords": {
                             "type": "array",
                             "description": "All concise keywords or phrases needed for one global search, sorted by importance.",
+                            "minItems": 1,
+                            "maxItems": 8,
+                            "items": {
+                                "type": "string",
+                                "description": "A concise keyword or phrase containing at least two Unicode characters.",
+                                "minLength": 2
+                            }
+                        }
+                    },
+                    "required": ["keywords"],
+                    "additionalProperties": false
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "search_daily_notes",
+                "strict": true,
+                "description": "Search only SpringNote daily Markdown notes. Use this instead of keyword_search when the request is limited to daily notes or day-level records. Submit all distinctive keywords in this single call. Every keyword must contain at least two Unicode characters.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "keywords": {
+                            "type": "array",
+                            "description": "All concise keywords or phrases needed for one daily-note search, sorted by importance.",
+                            "minItems": 1,
+                            "maxItems": 8,
+                            "items": {
+                                "type": "string",
+                                "description": "A concise keyword or phrase containing at least two Unicode characters.",
+                                "minLength": 2
+                            }
+                        }
+                    },
+                    "required": ["keywords"],
+                    "additionalProperties": false
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "search_weekly_notes",
+                "strict": true,
+                "description": "Search only SpringNote weekly Markdown reports. Use this instead of keyword_search when the request is limited to weekly reports. Submit all distinctive keywords in this single call. Every keyword must contain at least two Unicode characters.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "keywords": {
+                            "type": "array",
+                            "description": "All concise keywords or phrases needed for one weekly-report search, sorted by importance.",
+                            "minItems": 1,
+                            "maxItems": 8,
+                            "items": {
+                                "type": "string",
+                                "description": "A concise keyword or phrase containing at least two Unicode characters.",
+                                "minLength": 2
+                            }
+                        }
+                    },
+                    "required": ["keywords"],
+                    "additionalProperties": false
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "search_monthly_notes",
+                "strict": true,
+                "description": "Search only SpringNote monthly Markdown reports. Use this instead of keyword_search when the request is limited to monthly reports. Submit all distinctive keywords in this single call. Every keyword must contain at least two Unicode characters.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "keywords": {
+                            "type": "array",
+                            "description": "All concise keywords or phrases needed for one monthly-report search, sorted by importance.",
                             "minItems": 1,
                             "maxItems": 8,
                             "items": {
@@ -1901,6 +1979,15 @@ mod tests {
                 .as_str()
                 .unwrap()
                 .contains("submit all distinctive keywords in this single call")
+        );
+        assert_eq!(body["tools"][2]["function"]["name"], "search_daily_notes");
+        assert_eq!(body["tools"][3]["function"]["name"], "search_weekly_notes");
+        assert_eq!(body["tools"][4]["function"]["name"], "search_monthly_notes");
+        assert!(
+            body["tools"][1]["function"]["description"]
+                .as_str()
+                .unwrap()
+                .contains("prefer a scoped search")
         );
     }
 

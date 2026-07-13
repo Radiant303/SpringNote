@@ -183,6 +183,26 @@ pub fn search(directory_path: &str, kind: &str, query: &str) -> NoteSearchResult
     }
 }
 
+pub fn search_kind(
+    directory_path: &str,
+    kind: &str,
+    queries: &[String],
+    max_results: i32,
+) -> NoteSearchResult {
+    match search_kind_internal(directory_path, kind, queries, max_results) {
+        Ok(notes) => NoteSearchResult {
+            ok: true,
+            error_message: String::new(),
+            notes,
+        },
+        Err(error) => NoteSearchResult {
+            ok: false,
+            error_message: error.to_string(),
+            notes: Vec::new(),
+        },
+    }
+}
+
 pub fn search_all(
     daily_directory_path: &str,
     weekly_directory_path: &str,
@@ -430,6 +450,30 @@ fn search_internal(
     fts_search_entries(&connection, &scope, kind, query).map_err(IndexError::from)
 }
 
+fn search_kind_internal(
+    directory_path: &str,
+    kind: &str,
+    queries: &[String],
+    max_results: i32,
+) -> Result<Vec<NoteIndexEntry>, IndexError> {
+    validate_kind(kind)?;
+    let Some(expression) = bigram_search_expression(queries) else {
+        return Ok(Vec::new());
+    };
+    let directory = prepare_directory(directory_path)?;
+    refresh_internal(directory.to_string_lossy().as_ref(), kind)?;
+    let scope = scope_key(&directory);
+    let connection = open_connection(&directory)?;
+    fts_search_kind_entries(
+        &connection,
+        &scope,
+        kind,
+        &expression,
+        max_results.clamp(1, 200) as usize,
+    )
+    .map_err(IndexError::from)
+}
+
 fn search_all_internal(
     daily_directory_path: &str,
     weekly_directory_path: &str,
@@ -493,6 +537,32 @@ fn fts_search_entries(
     )?;
     let rows = statement.query_map(
         params![expression, scope, kind, MAX_SEARCH_FILES as i64],
+        note_entry_from_row,
+    )?;
+    rows.collect::<Result<Vec<_>, _>>()
+}
+
+fn fts_search_kind_entries(
+    connection: &Connection,
+    scope: &str,
+    kind: &str,
+    expression: &str,
+    max_results: usize,
+) -> Result<Vec<NoteIndexEntry>, rusqlite::Error> {
+    let mut statement = connection.prepare(
+        "SELECT note_index.path, note_index.name, note_index.title,
+                note_index.preview, note_index.kind,
+                note_index.modified_millis, note_index.size_bytes
+         FROM note_index_fts
+         JOIN note_index ON note_index.id = note_index_fts.rowid
+         WHERE note_index_fts MATCH ?1
+           AND note_index.scope = ?2
+           AND note_index.kind = ?3
+         ORDER BY bm25(note_index_fts), note_index.name COLLATE NOCASE DESC
+         LIMIT ?4",
+    )?;
+    let rows = statement.query_map(
+        params![expression, scope, kind, max_results as i64],
         note_entry_from_row,
     )?;
     rows.collect::<Result<Vec<_>, _>>()
@@ -1114,6 +1184,60 @@ mod tests {
                 .map(|note| note.kind.as_str())
                 .collect::<HashSet<_>>(),
             HashSet::from(["daily", "weekly", "monthly"]),
+        );
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn scoped_search_refreshes_and_queries_only_requested_kind() {
+        let root = temp_root();
+        let notes = root.join("notes");
+        let daily = notes.join("daily");
+        let weekly = notes.join("weekly");
+        let monthly = notes.join("monthly");
+        fs::create_dir_all(&daily).unwrap();
+        fs::create_dir_all(&weekly).unwrap();
+        fs::create_dir_all(&monthly).unwrap();
+        fs::write(daily.join("2026-07-12.md"), "# 日报\n\n完成范围检索\n").unwrap();
+        fs::write(weekly.join("2026-W28.md"), "# 周报\n\n复盘范围检索\n").unwrap();
+        fs::write(monthly.join("2026-07.md"), "# 月报\n\n总结范围检索\n").unwrap();
+
+        let daily_result = search_kind(
+            daily.to_str().unwrap(),
+            "daily",
+            &["范围".to_owned(), "检索".to_owned()],
+            10,
+        );
+        assert!(daily_result.ok, "{}", daily_result.error_message);
+        assert_eq!(daily_result.notes.len(), 1);
+        assert_eq!(daily_result.notes[0].kind, "daily");
+
+        let database = index_database_path(&daily).unwrap();
+        let connection = Connection::open(database).unwrap();
+        let weekly_count = connection
+            .query_row(
+                "SELECT COUNT(*) FROM note_index WHERE kind = 'weekly'",
+                [],
+                |row| row.get::<_, i64>(0),
+            )
+            .unwrap();
+        assert_eq!(weekly_count, 0);
+        drop(connection);
+
+        let weekly_result = search_kind(
+            weekly.to_str().unwrap(),
+            "weekly",
+            &["范围检索".to_owned()],
+            10,
+        );
+        assert!(weekly_result.ok, "{}", weekly_result.error_message);
+        assert_eq!(weekly_result.notes.len(), 1);
+        assert_eq!(weekly_result.notes[0].kind, "weekly");
+        assert!(
+            search_kind(daily.to_str().unwrap(), "daily", &["单".to_owned()], 10)
+                .notes
+                .is_empty()
         );
 
         fs::remove_dir_all(root).unwrap();

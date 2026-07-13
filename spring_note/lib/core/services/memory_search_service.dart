@@ -15,12 +15,22 @@ typedef MemoryIndexedNoteSearch =
       required int maxResults,
     });
 
+typedef MemoryIndexedNoteKindSearch =
+    Future<NoteSearchResult> Function({
+      required String directoryPath,
+      required String kind,
+      required List<String> queries,
+      required int maxResults,
+    });
+
 class MemorySearchService {
   const MemorySearchService({
     this.indexedNoteSearch = rust_note_index.searchAllIndexedNotes,
+    this.indexedNoteKindSearch = rust_note_index.searchIndexedNotesByKind,
   });
 
   final MemoryIndexedNoteSearch indexedNoteSearch;
+  final MemoryIndexedNoteKindSearch indexedNoteKindSearch;
 
   Future<MemoryToolExecution> executeTool({
     required LocalDataState localDataState,
@@ -34,6 +44,24 @@ class MemorySearchService {
         'get_current_date' => <MemorySource>[],
         'keyword_search' => await search(
           localDataState: localDataState,
+          keywords: _readStringList(arguments['keywords']),
+          limit: _keywordSearchResultLimit(localDataState),
+        ),
+        'search_daily_notes' => await searchKind(
+          localDataState: localDataState,
+          kind: 'daily',
+          keywords: _readStringList(arguments['keywords']),
+          limit: _keywordSearchResultLimit(localDataState),
+        ),
+        'search_weekly_notes' => await searchKind(
+          localDataState: localDataState,
+          kind: 'weekly',
+          keywords: _readStringList(arguments['keywords']),
+          limit: _keywordSearchResultLimit(localDataState),
+        ),
+        'search_monthly_notes' => await searchKind(
+          localDataState: localDataState,
+          kind: 'monthly',
           keywords: _readStringList(arguments['keywords']),
           limit: _keywordSearchResultLimit(localDataState),
         ),
@@ -144,11 +172,7 @@ class MemorySearchService {
     required List<String> keywords,
     required int limit,
   }) async {
-    final terms = keywords
-        .map((keyword) => keyword.trim().toLowerCase())
-        .where((keyword) => keyword.runes.length >= 2)
-        .toSet()
-        .toList();
+    final terms = _normalizedSearchTerms(keywords);
     if (terms.isEmpty) {
       return const [];
     }
@@ -173,6 +197,51 @@ class MemorySearchService {
       localDataState,
       limit,
     );
+  }
+
+  Future<List<MemorySource>> searchKind({
+    required LocalDataState localDataState,
+    required String kind,
+    required List<String> keywords,
+    required int limit,
+  }) async {
+    final terms = _normalizedSearchTerms(keywords);
+    if (terms.isEmpty) {
+      return const [];
+    }
+    final directoryPath = switch (kind) {
+      'daily' => localDataState.dailyNotesDirectory,
+      'weekly' => localDataState.weeklyNotesDirectory,
+      'monthly' => localDataState.monthlyNotesDirectory,
+      _ => throw ArgumentError.value(kind, 'kind', 'Unknown note kind'),
+    };
+    final indexed = await indexedNoteKindSearch(
+      directoryPath: directoryPath,
+      kind: kind,
+      queries: terms,
+      maxResults: 200,
+    );
+    if (!indexed.ok) {
+      throw StateError(
+        indexed.errorMessage.isEmpty
+            ? 'Indexed note search failed.'
+            : indexed.errorMessage,
+      );
+    }
+    return _rankFiles(
+      indexed.notes.map((note) => File(note.path)),
+      terms,
+      localDataState,
+      limit,
+    );
+  }
+
+  List<String> _normalizedSearchTerms(List<String> keywords) {
+    return keywords
+        .map((keyword) => keyword.trim().toLowerCase())
+        .where((keyword) => keyword.runes.length >= 2)
+        .toSet()
+        .toList();
   }
 
   Future<List<MemorySource>> _rankFiles(

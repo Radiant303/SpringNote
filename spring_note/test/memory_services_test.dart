@@ -229,6 +229,89 @@ void main() {
     expect(execution.content, isNot(contains('2026-06-20')));
   });
 
+  test('scoped memory tools query only their requested note kind', () async {
+    final temp = await Directory.systemTemp.createTemp(
+      'spring_note_memory_scoped_tools_',
+    );
+    addTearDown(() async {
+      if (await temp.exists()) {
+        await temp.delete(recursive: true);
+      }
+    });
+    final daily = Directory('${temp.path}${Platform.pathSeparator}daily');
+    final weekly = Directory('${temp.path}${Platform.pathSeparator}weekly');
+    final monthly = Directory('${temp.path}${Platform.pathSeparator}monthly');
+    await Future.wait([
+      daily.create(recursive: true),
+      weekly.create(recursive: true),
+      monthly.create(recursive: true),
+    ]);
+    final files = <String, File>{
+      'daily': File('${daily.path}${Platform.pathSeparator}2026-06-20.md'),
+      'weekly': File('${weekly.path}${Platform.pathSeparator}2026-W25.md'),
+      'monthly': File('${monthly.path}${Platform.pathSeparator}2026-06.md'),
+    };
+    await Future.wait(
+      files.entries.map(
+        (entry) => entry.value.writeAsString('# ${entry.key}\n\n范围检索'),
+      ),
+    );
+    final calls = <String>[];
+    final service = MemorySearchService(
+      indexedNoteKindSearch:
+          ({
+            required directoryPath,
+            required kind,
+            required queries,
+            required maxResults,
+          }) async {
+            calls.add('$kind:$directoryPath');
+            return NoteSearchResult(
+              ok: true,
+              errorMessage: '',
+              notes: [_noteIndexEntry(files[kind]!, kind)],
+            );
+          },
+    );
+    final state = LocalDataState(
+      dataDirectory: temp.path,
+      configPath: '${temp.path}${Platform.pathSeparator}config.json',
+      dailyNotesDirectory: daily.path,
+      weeklyNotesDirectory: weekly.path,
+      monthlyNotesDirectory: monthly.path,
+      config: AppConfig.defaults(),
+    );
+
+    final executions = <MemoryToolExecution>[];
+    for (final toolName in const [
+      'search_daily_notes',
+      'search_weekly_notes',
+      'search_monthly_notes',
+    ]) {
+      executions.add(
+        await service.executeTool(
+          localDataState: state,
+          toolName: toolName,
+          arguments: const {
+            'keywords': ['范围检索'],
+          },
+          limit: 10,
+        ),
+      );
+    }
+
+    expect(executions.map((execution) => execution.sources.single.path), [
+      files['daily']!.path,
+      files['weekly']!.path,
+      files['monthly']!.path,
+    ]);
+    expect(calls, [
+      'daily:${daily.path}',
+      'weekly:${weekly.path}',
+      'monthly:${monthly.path}',
+    ]);
+  });
+
   test('memory recall uses daily weekly and monthly tools', () async {
     final temp = await Directory.systemTemp.createTemp(
       'spring_note_memory_tools_',
@@ -400,20 +483,20 @@ MemorySearchService _indexedSearchService(List<File> files) {
           return NoteSearchResult(
             ok: true,
             errorMessage: '',
-            notes: files
-                .map(
-                  (file) => NoteIndexEntry(
-                    path: file.path,
-                    name: file.uri.pathSegments.last,
-                    title: '',
-                    preview: '',
-                    kind: 'daily',
-                    modifiedMillis: 0,
-                    sizeBytes: 0,
-                  ),
-                )
-                .toList(),
+            notes: files.map((file) => _noteIndexEntry(file, 'daily')).toList(),
           );
         },
+  );
+}
+
+NoteIndexEntry _noteIndexEntry(File file, String kind) {
+  return NoteIndexEntry(
+    path: file.path,
+    name: file.uri.pathSegments.last,
+    title: '',
+    preview: '',
+    kind: kind,
+    modifiedMillis: 0,
+    sizeBytes: 0,
   );
 }
