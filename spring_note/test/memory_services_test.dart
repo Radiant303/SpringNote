@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -348,6 +349,83 @@ void main() {
       expect(execution.sources.single.title, '周报 2026-W28');
       expect(execution.sources.single.snippet, contains('读取周报工具'));
       expect(execution.sources.single.path, endsWith('2026-W28.md'));
+    },
+  );
+
+  test('current date tool returns date and ISO week information', () async {
+    final execution = await const MemorySearchService().executeTool(
+      localDataState: LocalDataState(
+        dataDirectory: '',
+        configPath: '',
+        dailyNotesDirectory: '',
+        weeklyNotesDirectory: '',
+        monthlyNotesDirectory: '',
+        config: AppConfig.defaults(),
+      ),
+      toolName: 'get_current_date',
+      arguments: const {},
+      limit: 10,
+    );
+
+    final content = jsonDecode(execution.content) as Map<String, dynamic>;
+    expect(content['date'], matches(r'^20\d{2}-\d{2}-\d{2}$'));
+    expect(content['isoWeek'], matches(r'^20\d{2}-W\d{2}$'));
+    expect(content['weekNumber'], isA<int>());
+    expect(content['weekNumber'], inInclusiveRange(1, 53));
+    expect(
+      content['isoWeek'],
+      endsWith('W${(content['weekNumber'] as int).toString().padLeft(2, '0')}'),
+    );
+  });
+
+  test(
+    'read month weekly notes includes only ISO weeks overlapping month',
+    () async {
+      final temp = await Directory.systemTemp.createTemp(
+        'spring_note_memory_read_month_weekly_',
+      );
+      addTearDown(() async {
+        if (await temp.exists()) {
+          await temp.delete(recursive: true);
+        }
+      });
+      final weekly = Directory('${temp.path}${Platform.pathSeparator}weekly');
+      await weekly.create(recursive: true);
+      for (final week in const [
+        '2020-W53',
+        '2021-W01',
+        '2021-W04',
+        '2021-W05',
+      ]) {
+        await File(
+          '${weekly.path}${Platform.pathSeparator}$week.md',
+        ).writeAsString('# 周报\n\n$week');
+      }
+      final state = LocalDataState(
+        dataDirectory: temp.path,
+        configPath: '${temp.path}${Platform.pathSeparator}config.json',
+        dailyNotesDirectory: '${temp.path}${Platform.pathSeparator}daily',
+        weeklyNotesDirectory: weekly.path,
+        monthlyNotesDirectory: '${temp.path}${Platform.pathSeparator}monthly',
+        config: AppConfig.defaults(),
+      );
+
+      final execution = await const MemorySearchService().executeTool(
+        localDataState: state,
+        toolName: 'read_month_weekly_notes',
+        arguments: const {'month': '2021-01'},
+        limit: 10,
+      );
+
+      expect(execution.sources.map((source) => source.title), [
+        '周报 2020-W53',
+        '周报 2021-W01',
+        '周报 2021-W04',
+      ]);
+      expect(
+        execution.sources.map((source) => source.title),
+        isNot(contains('周报 2021-W05')),
+      );
     },
   );
 

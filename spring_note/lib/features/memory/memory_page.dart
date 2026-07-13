@@ -1643,6 +1643,7 @@ class _ToolAttachmentChip extends StatelessWidget {
       'read_daily_note' => '读取日报',
       'read_week_daily_notes' => '读取周内日报',
       'read_weekly_note' => '读取周报',
+      'read_month_weekly_notes' => '读取月内周报',
       'read_month_report' => '读取月报',
       _ => name,
     };

@@ -78,6 +78,10 @@ class MemorySearchService {
           localDataState,
           arguments['week']?.toString() ?? '',
         ),
+        'read_month_weekly_notes' => await _executeReadMonthWeeklyNotes(
+          localDataState,
+          arguments['month']?.toString() ?? '',
+        ),
         'read_month_report' => await _executeReadMonth(
           localDataState,
           arguments['month']?.toString() ?? '',
@@ -97,7 +101,7 @@ class MemorySearchService {
     }
 
     final content = toolName == 'get_current_date'
-        ? jsonEncode({'date': _formatDate(DateTime.now())})
+        ? _currentDateToolContent()
         : _sourcesToJson(sources);
     return MemoryToolExecution(
       toolName: toolName,
@@ -344,23 +348,55 @@ class MemorySearchService {
     return source == null ? [] : [source];
   }
 
+  Future<List<MemorySource>> _executeReadMonthWeeklyNotes(
+    LocalDataState state,
+    String rawMonth,
+  ) async {
+    final month = _parseMonth(rawMonth);
+    if (month == null) {
+      return [];
+    }
+
+    final nextMonth = DateTime(month.year, month.month + 1);
+    final weeks = <String>{};
+    for (
+      var date = month;
+      date.isBefore(nextMonth);
+      date = date.add(const Duration(days: 1))
+    ) {
+      weeks.add(_formatIsoWeek(date));
+    }
+
+    final sources = await Future.wait(
+      weeks.map(
+        (week) => _readOptionalFile(
+          state,
+          _join(state.weeklyNotesDirectory, '$week.md'),
+          title: '周报 $week',
+          score: 120,
+        ),
+      ),
+    );
+    return sources.whereType<MemorySource>().toList();
+  }
+
   Future<List<MemorySource>> _executeReadMonth(
     LocalDataState state,
     String rawMonth,
   ) async {
-    final match = RegExp(r'^(20\d{2})-(\d{2})$').firstMatch(rawMonth);
-    if (match == null) {
-      return [];
-    }
-    final month = _safeDate(
-      int.parse(match.group(1)!),
-      int.parse(match.group(2)!),
-      1,
-    );
+    final month = _parseMonth(rawMonth);
     if (month == null) {
       return [];
     }
     return _readMonth(state, month);
+  }
+
+  DateTime? _parseMonth(String rawMonth) {
+    final match = RegExp(r'^(20\d{2})-(\d{2})$').firstMatch(rawMonth.trim());
+    if (match == null) {
+      return null;
+    }
+    return _safeDate(int.parse(match.group(1)!), int.parse(match.group(2)!), 1);
   }
 
   List<String> _readStringList(Object? value) {
@@ -377,6 +413,16 @@ class MemorySearchService {
   String _sourcesToJson(List<MemorySource> sources) {
     return jsonEncode({
       'results': sources.map((source) => source.toJson()).toList(),
+    });
+  }
+
+  String _currentDateToolContent() {
+    final now = DateTime.now();
+    final isoWeek = _formatIsoWeek(now);
+    return jsonEncode({
+      'date': _formatDate(now),
+      'isoWeek': isoWeek,
+      'weekNumber': int.parse(isoWeek.substring(6)),
     });
   }
 
@@ -828,9 +874,10 @@ class MemorySearchService {
 
   String _formatIsoWeek(DateTime date) {
     final start = _startOfWeek(date);
-    final first = _startOfWeek(DateTime(start.year, 1, 4));
+    final isoYear = start.add(const Duration(days: 3)).year;
+    final first = _startOfWeek(DateTime(isoYear, 1, 4));
     final week = (start.difference(first).inDays ~/ 7) + 1;
-    return '${start.year.toString().padLeft(4, '0')}-W${week.toString().padLeft(2, '0')}';
+    return '${isoYear.toString().padLeft(4, '0')}-W${week.toString().padLeft(2, '0')}';
   }
 
   String _join(String left, String right) {

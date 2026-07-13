@@ -980,7 +980,7 @@ pub fn memory_tools_json() -> Value {
             "function": {
                 "name": "get_current_date",
                 "strict": true,
-                "description": "Get the current local date. Use this before resolving relative dates such as today, yesterday, this week, this month.",
+                "description": "Get the current local date, ISO week label, and week number. Use this before resolving relative dates such as today, yesterday, this week, this month.",
                 "parameters": {
                     "type": "object",
                     "properties": {},
@@ -1154,6 +1154,26 @@ pub fn memory_tools_json() -> Value {
                         }
                     },
                     "required": ["week"],
+                    "additionalProperties": false
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "read_month_weekly_notes",
+                "strict": true,
+                "description": "Read all available SpringNote weekly report Markdown files whose ISO weeks overlap a specific calendar month. Return weekly reports only, not daily notes or the monthly report.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "month": {
+                            "type": "string",
+                            "description": "The calendar month in YYYY-MM format.",
+                            "pattern": "^20\\d{2}-(0[1-9]|1[0-2])$"
+                        }
+                    },
+                    "required": ["month"],
                     "additionalProperties": false
                 }
             }
@@ -2007,6 +2027,20 @@ mod tests {
         assert_eq!(
             body["tools"][7]["function"]["parameters"]["required"][0],
             "week"
+        );
+        assert_eq!(
+            body["tools"][8]["function"]["name"],
+            "read_month_weekly_notes"
+        );
+        assert_eq!(
+            body["tools"][8]["function"]["parameters"]["required"][0],
+            "month"
+        );
+        assert!(
+            body["tools"][0]["function"]["description"]
+                .as_str()
+                .unwrap()
+                .contains("ISO week")
         );
         assert!(
             body["tools"][1]["function"]["description"]
