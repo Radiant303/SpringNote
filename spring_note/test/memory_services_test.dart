@@ -312,6 +312,45 @@ void main() {
     ]);
   });
 
+  test(
+    'read weekly note tool returns only the requested weekly report',
+    () async {
+      final temp = await Directory.systemTemp.createTemp(
+        'spring_note_memory_read_weekly_',
+      );
+      addTearDown(() async {
+        if (await temp.exists()) {
+          await temp.delete(recursive: true);
+        }
+      });
+      final weekly = Directory('${temp.path}${Platform.pathSeparator}weekly');
+      await weekly.create(recursive: true);
+      await File(
+        '${weekly.path}${Platform.pathSeparator}2026-W28.md',
+      ).writeAsString('# 周报\n\n本周完成读取周报工具。');
+      final state = LocalDataState(
+        dataDirectory: temp.path,
+        configPath: '${temp.path}${Platform.pathSeparator}config.json',
+        dailyNotesDirectory: '${temp.path}${Platform.pathSeparator}daily',
+        weeklyNotesDirectory: weekly.path,
+        monthlyNotesDirectory: '${temp.path}${Platform.pathSeparator}monthly',
+        config: AppConfig.defaults(),
+      );
+
+      final execution = await const MemorySearchService().executeTool(
+        localDataState: state,
+        toolName: 'read_weekly_note',
+        arguments: const {'week': '2026-W28'},
+        limit: 10,
+      );
+
+      expect(execution.sources, hasLength(1));
+      expect(execution.sources.single.title, '周报 2026-W28');
+      expect(execution.sources.single.snippet, contains('读取周报工具'));
+      expect(execution.sources.single.path, endsWith('2026-W28.md'));
+    },
+  );
+
   test('memory recall uses daily weekly and monthly tools', () async {
     final temp = await Directory.systemTemp.createTemp(
       'spring_note_memory_tools_',

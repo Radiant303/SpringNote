@@ -74,6 +74,10 @@ class MemorySearchService {
           arguments['startDate']?.toString() ?? '',
           arguments['endDate']?.toString() ?? '',
         ),
+        'read_weekly_note' => await _executeReadWeeklyNote(
+          localDataState,
+          arguments['week']?.toString() ?? '',
+        ),
         'read_month_report' => await _executeReadMonth(
           localDataState,
           arguments['month']?.toString() ?? '',
@@ -321,6 +325,23 @@ class MemorySearchService {
       }
     }
     return sources;
+  }
+
+  Future<List<MemorySource>> _executeReadWeeklyNote(
+    LocalDataState state,
+    String rawWeek,
+  ) async {
+    final week = rawWeek.trim().toUpperCase();
+    if (!RegExp(r'^20\d{2}-W(?:0[1-9]|[1-4]\d|5[0-3])$').hasMatch(week)) {
+      return [];
+    }
+    final source = await _readOptionalFile(
+      state,
+      _join(state.weeklyNotesDirectory, '$week.md'),
+      title: '周报 $week',
+      score: 120,
+    );
+    return source == null ? [] : [source];
   }
 
   Future<List<MemorySource>> _executeReadMonth(

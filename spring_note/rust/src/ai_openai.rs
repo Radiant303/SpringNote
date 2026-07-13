@@ -1141,6 +1141,26 @@ pub fn memory_tools_json() -> Value {
         {
             "type": "function",
             "function": {
+                "name": "read_weekly_note",
+                "strict": true,
+                "description": "Read only the full SpringNote weekly report Markdown for a specific ISO week. Do not return daily notes.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "week": {
+                            "type": "string",
+                            "description": "The ISO week in YYYY-Www format, for example 2026-W28.",
+                            "pattern": "^20\\d{2}-W(0[1-9]|[1-4]\\d|5[0-3])$"
+                        }
+                    },
+                    "required": ["week"],
+                    "additionalProperties": false
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
                 "name": "read_month_report",
                 "strict": true,
                 "description": "Read only the monthly report Markdown for a specific month. Do not return daily notes.",
@@ -1983,6 +2003,11 @@ mod tests {
         assert_eq!(body["tools"][2]["function"]["name"], "search_daily_notes");
         assert_eq!(body["tools"][3]["function"]["name"], "search_weekly_notes");
         assert_eq!(body["tools"][4]["function"]["name"], "search_monthly_notes");
+        assert_eq!(body["tools"][7]["function"]["name"], "read_weekly_note");
+        assert_eq!(
+            body["tools"][7]["function"]["parameters"]["required"][0],
+            "week"
+        );
         assert!(
             body["tools"][1]["function"]["description"]
                 .as_str()
