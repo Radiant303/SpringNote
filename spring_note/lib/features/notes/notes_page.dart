@@ -118,7 +118,7 @@ class _NotesPageState extends State<NotesPage> {
   NoteUploadQueue? _ownedNoteUploadQueue;
 
   static const Duration _autoCloudSyncInterval = Duration(seconds: 3);
-  static const int _minimumSearchQueryCharacters = 3;
+  static const int _minimumSearchQueryCharacters = 2;
 
   @override
   void initState() {
@@ -1569,10 +1569,10 @@ class _FilteredNoteList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (query.runes.length < 3) {
+    if (query.runes.length < 2) {
       return Center(
         child: Text(
-          '至少输入 3 个字符',
+          '至少输入 2 个字符',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
       );

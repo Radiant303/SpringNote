@@ -384,7 +384,7 @@ final value = 1;
     expect(selection.extentOffset, matchingContent.length);
   });
 
-  testWidgets('notes content filter requires at least three characters', (
+  testWidgets('notes content filter requires at least two characters', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(1440, 900);
@@ -406,10 +406,10 @@ final value = 1;
     );
     await tester.pump();
 
-    await tester.enterText(find.byType(TextField).first, '搜索');
+    await tester.enterText(find.byType(TextField).first, '搜');
     await tester.pump();
 
-    expect(find.text('至少输入 3 个字符'), findsOneWidget);
+    expect(find.text('至少输入 2 个字符'), findsOneWidget);
   });
 
   testWidgets('notes search stays within the selected note kind', (

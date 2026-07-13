@@ -8,9 +8,9 @@ use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const INDEX_DB_FILENAME: &str = ".springnote-note-index.db";
-const INDEX_SCHEMA_VERSION: i32 = 2;
+const INDEX_SCHEMA_VERSION: i32 = 3;
 const DB_BUSY_TIMEOUT: Duration = Duration::from_secs(5);
-const MIN_CONTENT_QUERY_CHARS: usize = 3;
+const MIN_CONTENT_QUERY_CHARS: usize = 2;
 const MAX_SEARCH_FILES: usize = 100;
 const LARGE_REMOVAL_MIN_FILES: usize = 64;
 
@@ -409,7 +409,7 @@ fn fts_search_entries(
     kind: &str,
     query: &str,
 ) -> Result<Vec<NoteIndexEntry>, rusqlite::Error> {
-    let expression = format!("\"{}\"", query.replace('"', "\"\""));
+    let expression = format!("\"{}\"", bigram_token_stream(query));
     let mut statement = connection.prepare(
         "SELECT note_index.path, note_index.name, note_index.title,
                 note_index.preview, note_index.kind,
@@ -491,16 +491,45 @@ fn upsert_document(
         params![row_id],
     )?;
     transaction.execute(
-        "INSERT INTO note_index_fts(rowid, name, title, content)
+        "INSERT INTO note_index_fts(rowid, name_bigrams, title_bigrams, content_bigrams)
          VALUES (?1, ?2, ?3, ?4)",
         params![
             row_id,
-            document.entry.name,
-            document.entry.title,
-            document.content,
+            bigram_token_stream(&document.entry.name),
+            bigram_token_stream(&document.entry.title),
+            bigram_token_stream(&document.content),
         ],
     )?;
     Ok(true)
+}
+
+fn bigram_token_stream(value: &str) -> String {
+    let normalized = value.to_lowercase();
+    let pair_count = normalized.chars().count().saturating_sub(1);
+    let mut characters = normalized.chars();
+    let Some(mut previous) = characters.next() else {
+        return String::new();
+    };
+    let mut tokens = String::with_capacity(pair_count.saturating_mul(13));
+    for current in characters {
+        if !tokens.is_empty() {
+            tokens.push(' ');
+        }
+        let pair = ((previous as u64) << 21) | current as u64;
+        push_hex_bigram_token(&mut tokens, pair);
+        previous = current;
+    }
+    tokens
+}
+
+fn push_hex_bigram_token(output: &mut String, pair: u64) {
+    const HEX_DIGITS: &[u8; 16] = b"0123456789abcdef";
+    output.push('b');
+    let digit_count = ((u64::BITS - pair.leading_zeros()).max(1) as usize).div_ceil(4);
+    for index in (0..digit_count).rev() {
+        let digit = ((pair >> (index * 4)) & 0x0f) as usize;
+        output.push(HEX_DIGITS[digit] as char);
+    }
 }
 
 fn read_indexed_document(
@@ -622,17 +651,17 @@ fn create_schema(connection: &Connection) -> Result<(), IndexError> {
             value INTEGER NOT NULL
          );
          CREATE VIRTUAL TABLE IF NOT EXISTS note_index_fts USING fts5(
-            name,
-            title,
-            content,
+            name_bigrams,
+            title_bigrams,
+            content_bigrams,
             content = '',
             contentless_delete = 1,
-            tokenize = 'trigram'
+            tokenize = 'unicode61'
          );
          CREATE TRIGGER IF NOT EXISTS note_index_ad AFTER DELETE ON note_index BEGIN
             DELETE FROM note_index_fts WHERE rowid = old.id;
          END;
-         PRAGMA user_version = 2;",
+         PRAGMA user_version = 3;",
     )?;
     Ok(())
 }
@@ -878,7 +907,19 @@ mod tests {
         assert_eq!(search_result.notes.len(), 1);
         assert_eq!(search_result.notes[0].path, path_key(&first));
 
-        let short_query = search(daily.to_str().unwrap(), "daily", "搜索");
+        let bigram_query = search(daily.to_str().unwrap(), "daily", "搜索");
+        assert!(bigram_query.ok, "{}", bigram_query.error_message);
+        assert_eq!(bigram_query.notes.len(), 1);
+
+        let case_insensitive_query = search(daily.to_str().unwrap(), "daily", "RUST");
+        assert!(
+            case_insensitive_query.ok,
+            "{}",
+            case_insensitive_query.error_message
+        );
+        assert_eq!(case_insensitive_query.notes.len(), 1);
+
+        let short_query = search(daily.to_str().unwrap(), "daily", "搜");
         assert!(short_query.ok, "{}", short_query.error_message);
         assert!(short_query.notes.is_empty());
 
@@ -919,6 +960,8 @@ mod tests {
             .unwrap();
         let normalized_fts_schema = fts_schema.split_whitespace().collect::<String>();
         assert!(normalized_fts_schema.contains("contentless_delete=1"));
+        assert!(normalized_fts_schema.contains("name_bigrams"));
+        assert!(!normalized_fts_schema.contains("tokenize='trigram'"));
 
         drop(connection);
         fs::remove_dir_all(root).unwrap();

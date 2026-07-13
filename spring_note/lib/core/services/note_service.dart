@@ -130,7 +130,7 @@ class NoteService {
     required String query,
   }) async {
     final normalizedQuery = query.trim().toLowerCase();
-    if (normalizedQuery.runes.length < 3) {
+    if (normalizedQuery.runes.length < 2) {
       return const [];
     }
 
