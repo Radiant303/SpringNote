@@ -30,7 +30,7 @@ Instead of static records, we model a living system:
 
 ## 核心功能
 
-- **首页工作台**：独创等级、收益、活跃热力图、快速输入框和今日摘要卡片。
+- **首页工作台**：牛马等级、收益、活跃热力图、快速输入框和今日摘要卡片。
 
   ![SpringNote 首页](./snapshots/index.png)
 
