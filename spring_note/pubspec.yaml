@@ -36,7 +36,7 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  flutter_rust_bridge: 2.12.0
+  flutter_rust_bridge: ^2.12.0
   rust:
     path: rust_builder
   gpt_markdown: ^1.1.7
@@ -48,6 +48,7 @@ dependencies:
   file_selector: ^1.0.4
   flutter_svg: ^2.3.0
   path: ^1.9.1
+  flutter_secure_storage: ^10.3.1
 
 dependency_overrides:
   # syntax_highlight's CodeEditor depends on super_clipboard, which pulls in a

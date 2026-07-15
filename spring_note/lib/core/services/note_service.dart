@@ -1,10 +1,17 @@
 import 'dart:io';
 
 import '../models/note_file.dart';
+import '../utils/path_validator.dart';
+import 'note_service_interface.dart';
 import 'note_storage_coordinator.dart';
 
-class NoteService {
+class NoteService implements INoteService {
   const NoteService();
+
+  /// 允许的 Markdown 文件扩展名
+  static const Set<String> _allowedExtensions = {'md', 'markdown'};
+
+  @override
 
   Future<List<NoteFile>> listMarkdownFiles({
     required String directoryPath,
@@ -24,28 +31,28 @@ class NoteService {
         .cast<File>()
         .toList();
 
-    final noteFiles = <NoteFile>[];
-    for (final file in files) {
+    // 优化：并行读取文件内容和元数据，提升性能
+    final futures = files.map((file) async {
       final stat = await file.stat();
       final content = await readMarkdown(file.path);
       final name = _fileName(file.path);
-      noteFiles.add(
-        NoteFile(
-          path: file.path,
-          name: name,
-          title: _titleFromContent(content, name),
-          modifiedAt: stat.modified,
-          kind: kind,
-          preview: _previewFromContent(content),
-          searchText: _searchTextFromContent(content),
-        ),
+      return NoteFile(
+        path: file.path,
+        name: name,
+        title: _titleFromContent(content, name),
+        modifiedAt: stat.modified,
+        kind: kind,
+        preview: _previewFromContent(content),
+        searchText: _searchTextFromContent(content),
       );
-    }
+    });
 
+    final noteFiles = await Future.wait(futures);
     noteFiles.sort((a, b) => b.name.compareTo(a.name));
     return noteFiles;
   }
 
+  @override
   Future<NoteFile> ensureCurrentMarkdownFile({
     required String directoryPath,
     required NoteKind kind,
@@ -76,7 +83,13 @@ class NoteService {
     );
   }
 
+  @override
   Future<String> readMarkdown(String path) async {
+    // 安全检查：验证文件扩展名
+    if (!PathValidator.hasAllowedExtension(path, _allowedExtensions)) {
+      throw ArgumentError('不支持的文件类型: $path');
+    }
+
     final file = File(path);
     if (!await file.exists()) {
       return '';
@@ -84,7 +97,18 @@ class NoteService {
     return file.readAsString();
   }
 
+  @override
   Future<void> writeMarkdown(String path, String content) async {
+    // 安全检查：验证文件扩展名
+    if (!PathValidator.hasAllowedExtension(path, _allowedExtensions)) {
+      throw ArgumentError('不支持的文件类型: $path');
+    }
+
+    // 安全检查：防止路径遍历
+    if (PathValidator.containsPathTraversal(path)) {
+      throw ArgumentError('非法路径: $path');
+    }
+
     await NoteStorageCoordinator.runForManagedNotePath(path, () async {
       final file = File(path);
       final parent = file.parent;
@@ -95,6 +119,7 @@ class NoteService {
     });
   }
 
+  @override
   Future<bool> refreshMarkdownIndex({
     required String directoryPath,
     required NoteKind kind,
@@ -102,12 +127,14 @@ class NoteService {
     return false;
   }
 
+  @override
   Future<void> indexMarkdownFile({
     required String directoryPath,
     required NoteKind kind,
     required String notePath,
   }) async {}
 
+  @override
   NoteFile describeMarkdown({
     required NoteFile note,
     required String content,
@@ -124,6 +151,7 @@ class NoteService {
     );
   }
 
+  @override
   Future<List<NoteFile>> searchMarkdownFiles({
     required String directoryPath,
     required NoteKind kind,
@@ -153,6 +181,7 @@ class NoteService {
     return results;
   }
 
+  @override
   Future<File> ensureMarkdownFile(
     String path, {
     String defaultContent = '',
