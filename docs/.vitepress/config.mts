@@ -129,6 +129,7 @@ export default defineConfig({
       themeConfig: {
         nav: [
           { text: 'Home', link: '/en/' },
+          { text: 'Guide', link: '/en/guide/quick-start' },
           { text: 'Features', link: '/en/features' },
           { text: 'Models', link: '/en/models' },
           { text: 'Desktop', link: '/en/desktop' },
@@ -136,11 +137,65 @@ export default defineConfig({
         ],
         sidebar: [
           {
-            text: 'Product Docs',
+            text: 'Getting Started',
             items: [
-              { text: 'Features', link: '/en/features' },
-              { text: 'Model Setup', link: '/en/models' },
-              { text: 'Desktop Experience', link: '/en/desktop' }
+              { text: 'Quick Start', link: '/en/guide/quick-start' },
+              { text: 'System Requirements', link: '/en/guide/system' },
+              { text: 'Privacy & Security', link: '/en/guide/privacy' },
+              { text: 'Updates & Versions', link: '/en/guide/updates' }
+            ]
+          },
+          {
+            text: 'Usage Guide',
+            items: [
+              {
+                text: 'Home',
+                items: [
+                  { text: 'Data Overview', link: '/en/guide/home-data' },
+                  { text: 'Quick Input', link: '/en/guide/home-input' },
+                  { text: 'Home Columns', link: '/en/guide/home-columns' }
+                ]
+              },
+              {
+                text: 'Notebook',
+                items: [
+                  { text: 'Daily Notes', link: '/en/guide/daily' },
+                  { text: 'Weekly Notes', link: '/en/guide/weekly' },
+                  { text: 'Monthly Notes', link: '/en/guide/monthly' },
+                  { text: 'Search Notes', link: '/en/guide/note-search' },
+                  { text: 'AI Completion', link: '/en/guide/note-completion' },
+                  { text: 'Markdown Rendering', link: '/en/guide/markdown' },
+                  { text: 'Workspace Mode', link: '/en/guide/workspace' }
+                ]
+              },
+              {
+                text: 'Memory Book',
+                items: [
+                  { text: 'AI Capabilities', link: '/en/guide/memory-ai' },
+                  { text: 'Thinking Mode', link: '/en/guide/memory-thinking' },
+                  { text: 'New Conversation', link: '/en/guide/memory-conversation' }
+                ]
+              },
+              {
+                text: 'Widget',
+                items: [
+                  { text: 'Widget Settings', link: '/en/guide/widget-settings' },
+                  { text: 'Widget Wallpaper', link: '/en/guide/widget-wallpaper' }
+                ]
+              },
+              {
+                text: 'Settings',
+                items: [
+                  { text: 'Preferences', link: '/en/guide/settings' },
+                  { text: 'Providers', link: '/en/guide/providers' },
+                  { text: 'Default Models', link: '/en/guide/ai' },
+                  { text: 'Shortcuts', link: '/en/guide/shortcuts' },
+                  { text: 'Cloud Sync', link: '/en/guide/data' },
+                  { text: 'Storage Management', link: '/en/guide/attachments' },
+                  { text: 'Statistics', link: '/en/guide/statistics' },
+                  { text: 'About', link: '/en/guide/about' }
+                ]
+              }
             ]
           }
         ],
