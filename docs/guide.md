@@ -11,9 +11,9 @@
 
 ## 使用指南
 
-- [首页](/guide/home)
-- [笔记本](/guide/notes)
-- [回忆书](/guide/memory)
+- [首页](./guide/home-data)
+- [笔记本](./guide/daily)
+- [回忆书](./guide/memory-ai)
 - [设置](/guide/settings)
 
 设置中的各个功能分组有独立说明页，更细的功能条目写在页面正文和本页目录中。
