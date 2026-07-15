@@ -19,18 +19,91 @@ export default defineConfig({
       themeConfig: {
         nav: [
           { text: '首页', link: '/' },
-          { text: '功能', link: '/features' },
-          { text: '模型配置', link: '/models' },
-          { text: '桌面体验', link: '/desktop' },
+          { text: '文档', link: '/guide/quick-start' },
           { text: 'GitHub', link: 'https://github.com/Radiant303/SpringNote' }
         ],
         sidebar: [
           {
-            text: '产品文档',
+            text: '基础指南',
             items: [
-              { text: '功能概览', link: '/features' },
-              { text: '模型配置', link: '/models' },
-              { text: '桌面体验', link: '/desktop' }
+              { text: '快速入门', link: '/guide/quick-start' },
+              { text: '系统要求', link: '/guide/system' },
+              { text: '隐私与安全', link: '/guide/privacy' },
+              { text: '更新与版本', link: '/guide/updates' }
+            ]
+          },
+          {
+            text: '使用指南',
+            items: [
+              {
+                text: '首页',
+                items: [
+                  { text: '数据概览', link: '/guide/home-data' },
+                  { text: '快速输入框', link: '/guide/home-input' },
+                  { text: '首页三栏', link: '/guide/home-columns' }
+                ]
+              },
+              {
+                text: '笔记本',
+                items: [
+                  { text: '日报', link: '/guide/daily' },
+                  { text: '周报', link: '/guide/weekly' },
+                  { text: '月报', link: '/guide/monthly' },
+                  { text: '搜索笔记', link: '/guide/note-search' },
+                  { text: 'AI 实时补全', link: '/guide/note-completion' },
+                  { text: 'Markdown 渲染', link: '/guide/markdown' },
+                  { text: '工作区模式', link: '/guide/workspace' }
+                ]
+              },
+              {
+                text: '回忆书',
+                items: [
+                  { text: 'AI 能力介绍', link: '/guide/memory-ai' },
+                  { text: 'AI 思考模式', link: '/guide/memory-thinking' },
+                  { text: '开启新对话', link: '/guide/memory-conversation' }
+                ]
+              },
+              {
+                text: '组件',
+                items: [
+                  { text: '组件设置', link: '/guide/widget-settings' },
+                  { text: '组件壁纸', link: '/guide/widget-wallpaper' }
+                ]
+              },
+              {
+                text: '设置',
+                items: [
+                  {
+                    text: '偏好设置',
+                    link: '/guide/settings'
+                  },
+                  {
+                    text: '供应商',
+                    link: '/guide/providers'
+                  },
+                  {
+                    text: '默认模型',
+                    link: '/guide/ai'
+                  },
+                  {
+                    text: '快捷键',
+                    link: '/guide/shortcuts'
+                  },
+                  {
+                    text: '云同步',
+                    link: '/guide/data'
+                  },
+                  {
+                    text: '存储管理',
+                    link: '/guide/attachments'
+                  },
+                  {
+                    text: '统计',
+                    link: '/guide/statistics'
+                  },
+                  { text: '关于', link: '/guide/about' }
+                ]
+              }
             ]
           }
         ],

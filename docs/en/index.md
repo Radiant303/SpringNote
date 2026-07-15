@@ -34,7 +34,7 @@ hero:
 <div class="zed-feature-strip">
   <section>
     <h3>Fast</h3>
-    <p>Local-first Rust keeps capture instant, with notes and widgets close to your workflow.</p>
+    <p>Local-first storage keeps capture instant, with notes and widgets close to your workflow.</p>
   </section>
   <section>
     <h3>Intelligent</h3>

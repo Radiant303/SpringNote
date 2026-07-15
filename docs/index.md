@@ -34,7 +34,7 @@ hero:
 <div class="zed-feature-strip">
   <section>
     <h3>快速</h3>
-    <p>本地优先的 Rust 架构，毫秒级启动响应，便签和桌面组件始终跟得上工作节奏。</p>
+    <p>记录保存在本地，打开和输入都很快，便签和桌面组件始终跟得上工作节奏。</p>
   </section>
   <section>
     <h3>智能</h3>
