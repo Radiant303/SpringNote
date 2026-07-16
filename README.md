@@ -51,7 +51,7 @@ Instead of static records, we model a living system:
   ![SpringNote 统计面板](./snapshots/setting.png)
 
 - **牛马时钟**：支持自定义日薪和工作时长,自动计算时薪并作为组件展示在页面上。
- 
+
   ![SpringNote 组件](./snapshots/components.png)
 
 - **桌面端极致体验**：支持自定义 Windows 标题栏、托盘、开机自启动、全局快捷键、桌面状态组件和系统字体切换。
@@ -64,31 +64,103 @@ Instead of static records, we model a living system:
 
 请前往 [Release 页](https://github.com/Radiant303/SpringNote/releases/latest) 下载SpringNote
 
-### 供应商配置
+#### 第一步：确认数据位置
+
+首次使用时先确认数据保存目录。日报、周报、月报、图片和相关配置都会围绕这个目录保存；
+
+![数据目录](./snapshots/datadir.png)
+
+
+#### 第二步：配置 AI
+
 
 以 **DeepSeek** 为例进行配置说明：
 
-#### ① 添加供应商 BaseURL请填写 https://api.deepseek.com/beta
+##### ① 添加供应商 BaseURL请填写 https://api.deepseek.com/beta
 
-  ![第一步](./snapshots/configone.png)
 
-#### ② 手动添加模型 deepseek-v4-flash
+>
+> 此处填写`beta`原因是Deepseek的[FIM接口要求](https://api-docs.deepseek.com/zh-cn/guides/fim_completion)
+>
+>其他的OpenAI兼容接口请依据实际情况填写
+>
 
-  ![第二步](./snapshots/configtwo.png)
+![第一步](./snapshots/configone.png)
 
-#### ③ 编辑模型
+##### ② 手动添加模型 deepseek-v4-flash
 
-  ![第三步](./snapshots/configthree.png)
+>
+>因为Deepseek的`beta`接口不支持模型列表查询，所以需要手动添加模型
+>
 
-#### ④ 选择默认模型
+![第二步](./snapshots/configtwo.png)
 
-  ![第四步](./snapshots/configfour.png)
+##### ③ 编辑模型
 
-## 🌍 社区
+>
+>请手动勾选补全类型
+>
 
-### QQ 群组
+![第三步](./snapshots/configthree.png)
 
-- 1 群：463423961
+##### ④ 选择默认模型
+
+>
+>如果你的模型不支持补全类型，则在编辑补全模型列表中不会出现该模型
+>
+
+![第四步](./snapshots/configfour.png)
+
+#### 第三步：完成第一次记录
+
+![首页](./snapshots/index.png)
+
+
+#### 第四步：在笔记本中查看和编辑
+
+![笔记本](./snapshots/note.png)
+
+笔记本搜索只搜索当前选择的日报、周报或月报类型。搜索至少输入两个字符，点击结果后可以打开对应的完整正文。
+
+#### 第五步：使用回忆书
+
+![回忆书](./snapshots/memories.png)
+
+进入“回忆书”后，可以直接询问已经保存的工作记录。
+
+#### 第六步：使用牛马时钟
+
+![牛马时钟](./snapshots/components.png)
+
+组件用于查看当前计时、当天工作时长和收益，并在主窗口之外控制计时。
+
+- 左键单击组件：开始或暂停计时；
+- 右键单击组件：打开主窗口并进入首页；
+- 左键拖动组件：移动窗口位置；
+
+#### 继续探索
+
+完成基本记录后，可以在设置中继续配置。更多使用说明请查看 [文档](https://radiant303.github.io/SpringNote/)
+
+## 社区
+
+无论你是在使用过程中遇到问题，还是有新的想法与建议，都欢迎与我们交流。
+
+我们会认真聆听每一条反馈，持续优化 SpringNote，让它变得更好。
+
+**加入 [SpringNote 官方交流群](https://qm.qq.com/q/c6QiowtYSA)，一起交流使用体验、分享想法。**
+
+>QQ群号：**463423961**
+
+>[!TIP]
+>反馈问题时，请同时提供：
+>- 当前版本号
+>- 操作步骤
+>- 是否能够稳定复现
+>- 相关截图或错误信息
+>
+>这些信息可以帮助快速定位问题。
+
 
 ## ❤️ Special Thanks
 
