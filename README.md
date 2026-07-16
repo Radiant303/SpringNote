@@ -64,19 +64,19 @@ Instead of static records, we model a living system:
 
 请前往 [Release 页](https://github.com/Radiant303/SpringNote/releases/latest) 下载SpringNote
 
-#### 第一步：确认数据位置
+### 第一步：确认数据位置
 
 首次使用时先确认数据保存目录。日报、周报、月报、图片和相关配置都会围绕这个目录保存；
 
 ![数据目录](./snapshots/datadir.png)
 
 
-#### 第二步：配置 AI
+### 第二步：配置 AI
 
 
 以 **DeepSeek** 为例进行配置说明：
 
-##### ① 添加供应商 BaseURL请填写 https://api.deepseek.com/beta
+#### ① 添加供应商 BaseURL请填写 https://api.deepseek.com/beta
 
 
 >
@@ -87,7 +87,7 @@ Instead of static records, we model a living system:
 
 ![第一步](./snapshots/configone.png)
 
-##### ② 手动添加模型 deepseek-v4-flash
+#### ② 手动添加模型 deepseek-v4-flash
 
 >
 >因为Deepseek的`beta`接口不支持模型列表查询，所以需要手动添加模型
@@ -95,7 +95,7 @@ Instead of static records, we model a living system:
 
 ![第二步](./snapshots/configtwo.png)
 
-##### ③ 编辑模型
+#### ③ 编辑模型
 
 >
 >请手动勾选补全类型
@@ -103,7 +103,7 @@ Instead of static records, we model a living system:
 
 ![第三步](./snapshots/configthree.png)
 
-##### ④ 选择默认模型
+#### ④ 选择默认模型
 
 >
 >如果你的模型不支持补全类型，则在编辑补全模型列表中不会出现该模型
@@ -111,24 +111,24 @@ Instead of static records, we model a living system:
 
 ![第四步](./snapshots/configfour.png)
 
-#### 第三步：完成第一次记录
+### 第三步：完成第一次记录
 
 ![首页](./snapshots/index.png)
 
 
-#### 第四步：在笔记本中查看和编辑
+### 第四步：在笔记本中查看和编辑
 
 ![笔记本](./snapshots/note.png)
 
 笔记本搜索只搜索当前选择的日报、周报或月报类型。搜索至少输入两个字符，点击结果后可以打开对应的完整正文。
 
-#### 第五步：使用回忆书
+### 第五步：使用回忆书
 
 ![回忆书](./snapshots/memories.png)
 
 进入“回忆书”后，可以直接询问已经保存的工作记录。
 
-#### 第六步：使用牛马时钟
+### 第六步：使用牛马时钟
 
 ![牛马时钟](./snapshots/components.png)
 
@@ -138,7 +138,7 @@ Instead of static records, we model a living system:
 - 右键单击组件：打开主窗口并进入首页；
 - 左键拖动组件：移动窗口位置；
 
-#### 继续探索
+### 继续探索
 
 完成基本记录后，可以在设置中继续配置。更多使用说明请查看 [文档](https://radiant303.github.io/SpringNote/)
 
