@@ -142,7 +142,7 @@ Instead of static records, we model a living system:
 
 完成基本记录后，可以在设置中继续配置。更多使用说明请查看 [文档](https://radiant303.github.io/SpringNote/)
 
-## 社区
+## 🌍 社区
 
 无论你是在使用过程中遇到问题，还是有新的想法与建议，都欢迎与我们交流。
 
