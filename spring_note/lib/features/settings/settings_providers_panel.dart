@@ -276,6 +276,7 @@ class _ProvidersPanel extends StatelessWidget {
           child: selectedProvider == null
               ? const _EmptyProviderDetails()
               : _ProviderDetails(
+                  key: ValueKey('provider-details-${selectedProvider!.id}'),
                   appDataDir: appDataDir,
                   apiLogEnabled: apiLogEnabled,
                   aiClientService: aiClientService,
@@ -293,6 +294,7 @@ class _ProvidersPanel extends StatelessWidget {
 
 class _ProviderDetails extends StatefulWidget {
   const _ProviderDetails({
+    super.key,
     required this.appDataDir,
     required this.apiLogEnabled,
     required this.aiClientService,

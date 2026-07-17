@@ -1248,6 +1248,78 @@ void main() {
     );
   });
 
+  testWidgets('provider model action message does not leak across providers', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const providerA = ProviderConfig(
+      id: 'openai-test',
+      enabled: true,
+      name: 'OpenAI',
+      protocol: 'openaiCompatible',
+      apiKey: 'test-key',
+      baseUrl: 'https://api.openai.com/v1',
+      apiPath: '/chat/completions',
+      models: [],
+    );
+    const providerB = ProviderConfig(
+      id: 'deepseek-test',
+      enabled: true,
+      name: 'DeepSeek',
+      protocol: 'openaiCompatible',
+      apiKey: 'test-key',
+      baseUrl: 'https://api.deepseek.com/v1',
+      apiPath: '/chat/completions',
+      models: [],
+    );
+    final service = _MemoryLocalDataService(
+      AppConfig.defaults().copyWith(providers: const [providerA, providerB]),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: SettingsPage(
+          localDataState: _state(service.savedConfig),
+          localDataService: service,
+          aiClientService: const _FakeAiClientService(),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('供应商').first);
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const ValueKey('fetch-provider-models-button')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 360));
+
+    final dialog = find.byKey(const ValueKey('provider-model-fetch-dialog'));
+    await tester.tap(
+      find.descendant(of: dialog, matching: find.text('qwen3-coder')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 220));
+
+    await tester.tap(
+      find.descendant(of: dialog, matching: find.byTooltip('关闭')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 220));
+
+    expect(find.text('已添加 qwen3-coder'), findsOneWidget);
+
+    await tester.tap(find.text('DeepSeek'));
+    await tester.pump();
+
+    expect(find.text('已添加 qwen3-coder'), findsNothing);
+  });
+
   testWidgets('provider connection test dialog selects model and stream mode', (
     WidgetTester tester,
   ) async {
