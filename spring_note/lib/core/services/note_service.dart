@@ -146,9 +146,6 @@ class NoteService {
           note.title.toLowerCase().contains(normalizedQuery)) {
         results.add(note);
       }
-      if (results.length >= 100) {
-        break;
-      }
     }
     return results;
   }

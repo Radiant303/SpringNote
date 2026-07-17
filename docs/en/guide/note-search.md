@@ -14,7 +14,7 @@ Matching covers the document body, file name, and document title. The body index
 
 ## Result Rules
 
-Results are capped at 100 entries. Notebook search results are sorted in descending order by document name; document names typically correspond to dates, ISO weeks, or months, so newer records appear first.
+Search returns all matching documents within the current note type. Notebook search results are sorted in descending order by document name; document names typically correspond to dates, ISO weeks, or months, so newer records appear first.
 
 Search results display the document title, file name, and preview information. Previews help identify items in the list; longer content is truncated. Clicking a result loads the full body in the editor on the right.
 

@@ -11,7 +11,6 @@ const INDEX_DB_FILENAME: &str = ".springnote-note-index.db";
 const INDEX_SCHEMA_VERSION: i32 = 3;
 const DB_BUSY_TIMEOUT: Duration = Duration::from_secs(5);
 const MIN_CONTENT_QUERY_CHARS: usize = 2;
-const MAX_SEARCH_FILES: usize = 100;
 const LARGE_REMOVAL_MIN_FILES: usize = 64;
 
 static INITIALIZED_DATABASES: OnceLock<Mutex<HashSet<PathBuf>>> = OnceLock::new();
@@ -532,13 +531,9 @@ fn fts_search_entries(
          WHERE note_index_fts MATCH ?1
            AND note_index.scope = ?2
            AND note_index.kind = ?3
-         ORDER BY note_index.name COLLATE NOCASE DESC
-         LIMIT ?4",
+         ORDER BY note_index.name COLLATE NOCASE DESC",
     )?;
-    let rows = statement.query_map(
-        params![expression, scope, kind, MAX_SEARCH_FILES as i64],
-        note_entry_from_row,
-    )?;
+    let rows = statement.query_map(params![expression, scope, kind], note_entry_from_row)?;
     rows.collect::<Result<Vec<_>, _>>()
 }
 
@@ -1113,6 +1108,29 @@ mod tests {
         let loaded = load_content(daily.to_str().unwrap(), first.to_str().unwrap());
         assert!(loaded.ok, "{}", loaded.error_message);
         assert!(loaded.content.contains("Rust 全文搜索"));
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn notebook_search_returns_all_matching_notes() {
+        let root = temp_root();
+        let daily = root.join("notes").join("daily");
+        fs::create_dir_all(&daily).unwrap();
+        for index in 0..125 {
+            fs::write(
+                daily.join(format!("2026-{index:04}.md")),
+                format!("# 第 {index} 篇日报\n\n无限搜索结果\n"),
+            )
+            .unwrap();
+        }
+
+        let refreshed = refresh(daily.to_str().unwrap(), "daily");
+        assert!(refreshed.ok, "{}", refreshed.error_message);
+
+        let result = search(daily.to_str().unwrap(), "daily", "搜索结果");
+        assert!(result.ok, "{}", result.error_message);
+        assert_eq!(result.notes.len(), 125);
 
         fs::remove_dir_all(root).unwrap();
     }

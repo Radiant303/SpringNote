@@ -70,7 +70,7 @@ After selecting a note, the editor loads the raw Markdown. Edits are saved autom
 - **Split**: View the Markdown source and rendered result side by side;
 - **Preview**: View only the rendered content.
 
-Notebook search only searches within the currently selected note type (Daily, Weekly, or Monthly). Search requires at least two characters, returns up to 100 results; clicking a result opens the full note content.
+Notebook search only searches within the currently selected note type (Daily, Weekly, or Monthly). Search requires at least two characters and returns all matching documents in that type; clicking a result opens the full note content.
 
 ## Step 5: Use the Memory Book
 
