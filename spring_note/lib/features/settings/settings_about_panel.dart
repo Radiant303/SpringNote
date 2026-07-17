@@ -409,22 +409,24 @@ class _AboutRowIconPainter extends CustomPainter {
         canvas.drawLine(p(12, 16), p(12, 20), paint);
         break;
       case _AboutRowIconType.update:
-        canvas.drawArc(
-          Rect.fromCenter(center: p(12, 12), width: 14 * sx, height: 14 * sy),
-          -1.25,
-          4.6,
-          false,
-          paint,
+        // 刷新双箭头：上弧自 (4,12) 经顶部至 (19,9) 附近，下弧自 (20,12) 经底部至 (5,15) 附近
+        final refreshBounds = Rect.fromCenter(
+          center: p(12, 12),
+          width: 16 * sx,
+          height: 16 * sy,
         );
-        final arrow = Path()
-          ..moveTo(17.4 * sx, 7.1 * sy)
-          ..lineTo(19.4 * sx, 7.2 * sy)
-          ..lineTo(18.6 * sx, 5.3 * sy);
-        canvas.drawPath(arrow, paint);
-        canvas.drawLine(p(12, 7), p(12, 14), paint);
-        canvas.drawLine(p(9.2, 11.2), p(12, 14), paint);
-        canvas.drawLine(p(14.8, 11.2), p(12, 14), paint);
-        canvas.drawLine(p(8.5, 17.5), p(15.5, 17.5), paint);
+        canvas.drawArc(refreshBounds, 3.1416, 2.7227, false, paint);
+        canvas.drawArc(refreshBounds, 0, 2.7227, false, paint);
+        final topArrow = Path()
+          ..moveTo(15.5 * sx, 8.5 * sy)
+          ..lineTo(19.5 * sx, 8.5 * sy)
+          ..lineTo(19.5 * sx, 4.5 * sy);
+        canvas.drawPath(topArrow, paint);
+        final bottomArrow = Path()
+          ..moveTo(8.5 * sx, 15.5 * sy)
+          ..lineTo(4.5 * sx, 15.5 * sy)
+          ..lineTo(4.5 * sx, 19.5 * sy);
+        canvas.drawPath(bottomArrow, paint);
         break;
       case _AboutRowIconType.globe:
         canvas.drawCircle(p(12, 12), 8 * strokeScale, paint);
