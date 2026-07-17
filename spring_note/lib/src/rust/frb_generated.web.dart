@@ -83,9 +83,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   FimCompleteRequest dco_decode_box_autoadd_fim_complete_request(dynamic raw);
 
   @protected
-  MemoryChatRequest dco_decode_box_autoadd_memory_chat_request(dynamic raw);
-
-  @protected
   MemoryToolChatRequest dco_decode_box_autoadd_memory_tool_chat_request(
     dynamic raw,
   );
@@ -184,9 +181,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   List<StructuredNoteSectionDefinition>
   dco_decode_list_structured_note_section_definition(dynamic raw);
-
-  @protected
-  MemoryChatRequest dco_decode_memory_chat_request(dynamic raw);
 
   @protected
   MemoryToolChatRequest dco_decode_memory_tool_chat_request(dynamic raw);
@@ -333,11 +327,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  MemoryChatRequest sse_decode_box_autoadd_memory_chat_request(
-    SseDeserializer deserializer,
-  );
-
-  @protected
   MemoryToolChatRequest sse_decode_box_autoadd_memory_tool_chat_request(
     SseDeserializer deserializer,
   );
@@ -456,11 +445,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   List<StructuredNoteSectionDefinition>
   sse_decode_list_structured_note_section_definition(
-    SseDeserializer deserializer,
-  );
-
-  @protected
-  MemoryChatRequest sse_decode_memory_chat_request(
     SseDeserializer deserializer,
   );
 
@@ -642,12 +626,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void sse_encode_box_autoadd_memory_chat_request(
-    MemoryChatRequest self,
-    SseSerializer serializer,
-  );
-
-  @protected
   void sse_encode_box_autoadd_memory_tool_chat_request(
     MemoryToolChatRequest self,
     SseSerializer serializer,
@@ -800,12 +778,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_structured_note_section_definition(
     List<StructuredNoteSectionDefinition> self,
-    SseSerializer serializer,
-  );
-
-  @protected
-  void sse_encode_memory_chat_request(
-    MemoryChatRequest self,
     SseSerializer serializer,
   );
 

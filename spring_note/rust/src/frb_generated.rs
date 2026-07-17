@@ -38,7 +38,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.12.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1870485155;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1179150630;
 
 // Section: executor
 
@@ -474,44 +474,6 @@ fn wire__crate__api__note_index_api__load_note_content_impl(
                         ))?;
                     Ok(output_ok)
                 })())
-            }
-        },
-    )
-}
-fn wire__crate__api__ai_api__memory_chat_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "memory_chat",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_request = <crate::ai::MemoryChatRequest>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| async move {
-                transform_result_sse::<_, ()>(
-                    (move || async move {
-                        let output_ok = Result::<_, ()>::Ok(
-                            crate::api::ai_api::memory_chat(api_request).await,
-                        )?;
-                        Ok(output_ok)
-                    })()
-                    .await,
-                )
             }
         },
     )
@@ -1631,26 +1593,6 @@ impl SseDecode for Vec<crate::ai::StructuredNoteSectionDefinition> {
     }
 }
 
-impl SseDecode for crate::ai::MemoryChatRequest {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_appDataDir = <String>::sse_decode(deserializer);
-        let mut var_provider = <crate::ai::AiProvider>::sse_decode(deserializer);
-        let mut var_model = <crate::ai::AiModel>::sse_decode(deserializer);
-        let mut var_question = <String>::sse_decode(deserializer);
-        let mut var_contextMarkdown = <String>::sse_decode(deserializer);
-        let mut var_apiLogEnabled = <bool>::sse_decode(deserializer);
-        return crate::ai::MemoryChatRequest {
-            app_data_dir: var_appDataDir,
-            provider: var_provider,
-            model: var_model,
-            question: var_question,
-            context_markdown: var_contextMarkdown,
-            api_log_enabled: var_apiLogEnabled,
-        };
-    }
-}
-
 impl SseDecode for crate::ai::MemoryToolChatRequest {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -2126,74 +2068,73 @@ fn pde_ffi_dispatcher_primary_impl(
             rust_vec_len,
             data_len,
         ),
-        12 => wire__crate__api__ai_api__memory_chat_impl(port, ptr, rust_vec_len, data_len),
-        13 => wire__crate__api__ai_api__memory_tool_chat_impl(port, ptr, rust_vec_len, data_len),
-        14 => wire__crate__api__ai_api__memory_tool_chat_stream_impl(
+        12 => wire__crate__api__ai_api__memory_tool_chat_impl(port, ptr, rust_vec_len, data_len),
+        13 => wire__crate__api__ai_api__memory_tool_chat_stream_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        15 => wire__crate__api__ai_api__merge_daily_note_impl(port, ptr, rust_vec_len, data_len),
-        16 => {
+        14 => wire__crate__api__ai_api__merge_daily_note_impl(port, ptr, rust_vec_len, data_len),
+        15 => {
             wire__crate__api__stats_api__record_app_startup_impl(port, ptr, rust_vec_len, data_len)
         }
-        17 => wire__crate__api__stats_api__record_home_generation_impl(
+        16 => wire__crate__api__stats_api__record_home_generation_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        18 => wire__crate__api__stats_api__record_work_time_impl(port, ptr, rust_vec_len, data_len),
-        19 => wire__crate__api__note_index_api__refresh_note_index_impl(
+        17 => wire__crate__api__stats_api__record_work_time_impl(port, ptr, rust_vec_len, data_len),
+        18 => wire__crate__api__note_index_api__refresh_note_index_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        20 => wire__crate__api__note_image_cleanup_api__scan_note_images_impl(
+        19 => wire__crate__api__note_image_cleanup_api__scan_note_images_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        21 => wire__crate__api__note_index_api__search_all_indexed_notes_impl(
+        20 => wire__crate__api__note_index_api__search_all_indexed_notes_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        22 => wire__crate__api__note_index_api__search_indexed_notes_impl(
+        21 => wire__crate__api__note_index_api__search_indexed_notes_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        23 => wire__crate__api__note_index_api__search_indexed_notes_by_kind_impl(
+        22 => wire__crate__api__note_index_api__search_indexed_notes_by_kind_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        24 => wire__crate__api__cloud_sync_api__sync_web_dav_notes_impl(
+        23 => wire__crate__api__cloud_sync_api__sync_web_dav_notes_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        25 => wire__crate__api__ai_api__test_provider_connection_impl(
+        24 => wire__crate__api__ai_api__test_provider_connection_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        26 => wire__crate__api__cloud_sync_api__test_web_dav_connection_impl(
+        25 => wire__crate__api__cloud_sync_api__test_web_dav_connection_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        27 => wire__crate__api__cloud_sync_api__upload_web_dav_note_impl(
+        26 => wire__crate__api__cloud_sync_api__upload_web_dav_note_impl(
             port,
             ptr,
             rust_vec_len,
@@ -2550,28 +2491,6 @@ impl flutter_rust_bridge::IntoIntoDart<crate::ai::FimCompleteRequest>
     for crate::ai::FimCompleteRequest
 {
     fn into_into_dart(self) -> crate::ai::FimCompleteRequest {
-        self
-    }
-}
-// Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::ai::MemoryChatRequest {
-    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        [
-            self.app_data_dir.into_into_dart().into_dart(),
-            self.provider.into_into_dart().into_dart(),
-            self.model.into_into_dart().into_dart(),
-            self.question.into_into_dart().into_dart(),
-            self.context_markdown.into_into_dart().into_dart(),
-            self.api_log_enabled.into_into_dart().into_dart(),
-        ]
-        .into_dart()
-    }
-}
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::ai::MemoryChatRequest {}
-impl flutter_rust_bridge::IntoIntoDart<crate::ai::MemoryChatRequest>
-    for crate::ai::MemoryChatRequest
-{
-    fn into_into_dart(self) -> crate::ai::MemoryChatRequest {
         self
     }
 }
@@ -3440,18 +3359,6 @@ impl SseEncode for Vec<crate::ai::StructuredNoteSectionDefinition> {
         for item in self {
             <crate::ai::StructuredNoteSectionDefinition>::sse_encode(item, serializer);
         }
-    }
-}
-
-impl SseEncode for crate::ai::MemoryChatRequest {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <String>::sse_encode(self.app_data_dir, serializer);
-        <crate::ai::AiProvider>::sse_encode(self.provider, serializer);
-        <crate::ai::AiModel>::sse_encode(self.model, serializer);
-        <String>::sse_encode(self.question, serializer);
-        <String>::sse_encode(self.context_markdown, serializer);
-        <bool>::sse_encode(self.api_log_enabled, serializer);
     }
 }
 

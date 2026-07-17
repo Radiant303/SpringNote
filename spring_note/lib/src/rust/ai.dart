@@ -287,45 +287,6 @@ class FimCompleteRequest {
           apiLogEnabled == other.apiLogEnabled;
 }
 
-class MemoryChatRequest {
-  final String appDataDir;
-  final AiProvider provider;
-  final AiModel model;
-  final String question;
-  final String contextMarkdown;
-  final bool apiLogEnabled;
-
-  const MemoryChatRequest({
-    required this.appDataDir,
-    required this.provider,
-    required this.model,
-    required this.question,
-    required this.contextMarkdown,
-    required this.apiLogEnabled,
-  });
-
-  @override
-  int get hashCode =>
-      appDataDir.hashCode ^
-      provider.hashCode ^
-      model.hashCode ^
-      question.hashCode ^
-      contextMarkdown.hashCode ^
-      apiLogEnabled.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is MemoryChatRequest &&
-          runtimeType == other.runtimeType &&
-          appDataDir == other.appDataDir &&
-          provider == other.provider &&
-          model == other.model &&
-          question == other.question &&
-          contextMarkdown == other.contextMarkdown &&
-          apiLogEnabled == other.apiLogEnabled;
-}
-
 class MemoryToolChatRequest {
   final String appDataDir;
   final AiProvider provider;

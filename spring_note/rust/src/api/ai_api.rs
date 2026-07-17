@@ -1,8 +1,7 @@
 use crate::ai::{
     self, AiModel, AiProvider, AiTextResult, DailyMergeRequest, FimCompleteRequest,
-    MemoryChatRequest, MemoryToolChatRequest, MemoryToolChatResult, MemoryToolChatStreamEvent,
-    ModelListResult, ProviderTestResult, ReportRequest, StructuredNoteRequest,
-    StructuredNoteResult,
+    MemoryToolChatRequest, MemoryToolChatResult, MemoryToolChatStreamEvent, ModelListResult,
+    ProviderTestResult, ReportRequest, StructuredNoteRequest, StructuredNoteResult,
 };
 use crate::frb_generated::StreamSink;
 
@@ -25,10 +24,6 @@ pub async fn generate_weekly_report(request: ReportRequest) -> AiTextResult {
 
 pub async fn generate_monthly_report(request: ReportRequest) -> AiTextResult {
     ai::generate_monthly_report(request).await
-}
-
-pub async fn memory_chat(request: MemoryChatRequest) -> AiTextResult {
-    ai::memory_chat(request).await
 }
 
 pub async fn memory_tool_chat(request: MemoryToolChatRequest) -> MemoryToolChatResult {

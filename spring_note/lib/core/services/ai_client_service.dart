@@ -611,35 +611,6 @@ class AiClientService {
     return (content: response.content, error: null);
   }
 
-  Future<String?> memoryChat({
-    required String appDataDir,
-    required AppConfig config,
-    required String question,
-    required String contextMarkdown,
-  }) async {
-    final selection = _selectModel(config, 'memoryBookModel');
-    if (selection == null) {
-      return null;
-    }
-
-    final response = await rust_api.memoryChat(
-      request: rust_ai.MemoryChatRequest(
-        appDataDir: appDataDir,
-        provider: _toRustProvider(selection.provider),
-        model: _toRustModel(selection.model),
-        question: question,
-        contextMarkdown: contextMarkdown,
-        apiLogEnabled: config.apiLogEnabled,
-      ),
-    );
-
-    if (!response.ok || response.content.trim().isEmpty) {
-      return null;
-    }
-
-    return response.content.trim();
-  }
-
   Future<rust_ai.MemoryToolChatResult?> memoryToolChat({
     required String appDataDir,
     required AppConfig config,
