@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -355,6 +357,167 @@ void main() {
 
     expect(service.fimUnavailableReason(config), isNull);
   });
+
+  test(
+    'gemini stream connection test posts streamGenerateContent request',
+    () async {
+      final (:server, :captured) = await _startStreamServer(
+        statusCode: 200,
+        frames: [
+          'data: {"candidates": [{"content": {"role": "model", "parts": [{"text": "OK"}]}}]}\n\n',
+          'data: {"usageMetadata": {"promptTokenCount": 4, "candidatesTokenCount": 1, "totalTokenCount": 5}}\n\n',
+        ],
+      );
+      addTearDown(() => server.close(force: true));
+
+      final result = await service.testProviderConnectionStream(
+        appDataDir: '.',
+        apiLogEnabled: false,
+        provider: ProviderConfig(
+          id: 'google',
+          enabled: true,
+          name: 'Google',
+          protocol: 'gemini',
+          apiKey: 'gemini-key',
+          baseUrl: 'http://127.0.0.1:${server.port}',
+          apiPath: '',
+          models: const [],
+        ),
+        model: const ModelConfig(
+          modelId: 'gemini-test',
+          displayName: 'Gemini Test',
+        ),
+      );
+
+      expect(result.ok, isTrue);
+      expect(result.message, '流式连接成功');
+      expect(
+        captured.path,
+        '/v1beta/models/gemini-test:streamGenerateContent?alt=sse',
+      );
+      expect(captured.apiKey, 'gemini-key');
+      expect(captured.authorization, isNull);
+      final body = jsonDecode(captured.body!) as Map<String, Object?>;
+      expect(body['systemInstruction'], isNotNull);
+      expect((body['contents'] as List).single['role'], 'user');
+    },
+  );
+
+  test('gemini stream connection test surfaces upstream http error', () async {
+    final (:server, :captured) = await _startStreamServer(
+      statusCode: 400,
+      contentType: 'application/json',
+      frames: ['{"error": {"message": "API key not valid", "code": 400}}'],
+    );
+    addTearDown(() => server.close(force: true));
+
+    final result = await service.testProviderConnectionStream(
+      appDataDir: '.',
+      apiLogEnabled: false,
+      provider: ProviderConfig(
+        id: 'google',
+        enabled: true,
+        name: 'Google',
+        protocol: 'gemini',
+        apiKey: 'bad-key',
+        baseUrl: 'http://127.0.0.1:${server.port}',
+        apiPath: '',
+        models: const [],
+      ),
+      model: const ModelConfig(
+        modelId: 'gemini-test',
+        displayName: 'Gemini Test',
+      ),
+    );
+
+    expect(result.ok, isFalse);
+    expect(result.errorCode, 'stream_http_error');
+    expect(result.message, contains('API key not valid'));
+    expect(captured.path, contains('streamGenerateContent'));
+  });
+
+  test('gemini stream connection test fails on stream error event', () async {
+    final (:server, :captured) = await _startStreamServer(
+      statusCode: 200,
+      frames: ['data: {"error": {"message": "quota exceeded"}}\n\n'],
+    );
+    addTearDown(() => server.close(force: true));
+
+    final result = await service.testProviderConnectionStream(
+      appDataDir: '.',
+      apiLogEnabled: false,
+      provider: ProviderConfig(
+        id: 'google',
+        enabled: true,
+        name: 'Google',
+        protocol: 'gemini',
+        apiKey: 'gemini-key',
+        baseUrl: 'http://127.0.0.1:${server.port}',
+        apiPath: '',
+        models: const [],
+      ),
+      model: const ModelConfig(
+        modelId: 'gemini-test',
+        displayName: 'Gemini Test',
+      ),
+    );
+
+    expect(result.ok, isFalse);
+    expect(result.errorCode, 'stream_error');
+    expect(result.message, 'quota exceeded');
+    expect(captured.path, isNotNull);
+  });
+
+  test(
+    'openai stream connection test keeps chat completions behavior',
+    () async {
+      final (:server, :captured) = await _startStreamServer(
+        statusCode: 200,
+        frames: [
+          'data: {"choices": [{"delta": {"content": "OK"}}]}\n\n',
+          'data: [DONE]\n\n',
+        ],
+      );
+      addTearDown(() => server.close(force: true));
+
+      final result = await service.testProviderConnectionStream(
+        appDataDir: '.',
+        apiLogEnabled: false,
+        provider: ProviderConfig(
+          id: 'openai',
+          enabled: true,
+          name: 'OpenAI',
+          protocol: 'openaiCompatible',
+          apiKey: 'openai-key',
+          baseUrl: 'http://127.0.0.1:${server.port}/v1',
+          apiPath: '/chat/completions',
+          models: const [],
+        ),
+        model: const ModelConfig(modelId: 'gpt-test', displayName: 'GPT Test'),
+      );
+
+      expect(result.ok, isTrue);
+      expect(result.message, '流式连接成功');
+      expect(captured.path, '/v1/chat/completions');
+      expect(captured.authorization, 'Bearer openai-key');
+      expect(captured.apiKey, isNull);
+    },
+  );
+
+  test('stream connection test rejects unsupported protocols', () async {
+    final result = await service.testProviderConnectionStream(
+      appDataDir: '.',
+      apiLogEnabled: false,
+      provider: ProviderConfig.template('Claude').copyWith(apiKey: 'key'),
+      model: const ModelConfig(
+        modelId: 'claude-sonnet-4',
+        displayName: 'Claude Sonnet 4',
+      ),
+    );
+
+    expect(result.ok, isFalse);
+    expect(result.errorCode, 'unsupported_stream_protocol');
+  });
 }
 
 AppConfig _duplicateModelConfig() {
@@ -410,4 +573,37 @@ AppConfig _duplicateModelConfig() {
       ),
     ],
   );
+}
+
+class _CapturedStreamRequest {
+  String? path;
+  String? apiKey;
+  String? authorization;
+  String? body;
+}
+
+/// 本地 SSE mock server:记录请求并按给定帧响应,用于流式连接测试。
+Future<({HttpServer server, _CapturedStreamRequest captured})>
+_startStreamServer({
+  required int statusCode,
+  required List<String> frames,
+  String contentType = 'text/event-stream',
+}) async {
+  final captured = _CapturedStreamRequest();
+  final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+  server.listen((request) async {
+    captured.path = request.uri.toString();
+    captured.apiKey = request.headers.value('x-goog-api-key');
+    captured.authorization = request.headers.value(
+      HttpHeaders.authorizationHeader,
+    );
+    captured.body = await utf8.decoder.bind(request).join();
+    request.response.statusCode = statusCode;
+    request.response.headers.contentType = ContentType.parse(contentType);
+    for (final frame in frames) {
+      request.response.write(frame);
+    }
+    await request.response.close();
+  });
+  return (server: server, captured: captured);
 }

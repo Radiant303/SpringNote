@@ -387,10 +387,11 @@ class AiClientService {
     required ProviderConfig provider,
     required ModelConfig model,
   }) async {
-    if (provider.protocol != 'openaiCompatible') {
+    final isGemini = provider.protocol == 'gemini';
+    if (provider.protocol != 'openaiCompatible' && !isGemini) {
       return const rust_ai.ProviderTestResult(
         ok: false,
-        message: '流式连接测试目前仅支持 OpenAI-compatible 供应商。',
+        message: '流式连接测试目前仅支持 OpenAI-compatible 或 Gemini 供应商。',
         errorCode: 'unsupported_stream_protocol',
       );
     }
@@ -404,13 +405,45 @@ class AiClientService {
 
     final client = HttpClient();
     try {
+      final url = isGemini
+          ? _geminiStreamGenerateContentUrl(provider, model.modelId)
+          : _joinUrl(provider.baseUrl, provider.apiPath);
       final request = await client
-          .postUrl(Uri.parse(_joinUrl(provider.baseUrl, provider.apiPath)))
+          .postUrl(Uri.parse(url))
           .timeout(const Duration(seconds: 15));
-      request.headers
-        ..set(HttpHeaders.authorizationHeader, 'Bearer ${provider.apiKey}')
-        ..set(HttpHeaders.contentTypeHeader, ContentType.json.mimeType);
-      final body = _isResponsesEndpoint(provider)
+      if (isGemini) {
+        request.headers.set('x-goog-api-key', provider.apiKey);
+      } else {
+        request.headers.set(
+          HttpHeaders.authorizationHeader,
+          'Bearer ${provider.apiKey}',
+        );
+      }
+      request.headers.set(
+        HttpHeaders.contentTypeHeader,
+        ContentType.json.mimeType,
+      );
+      final body = isGemini
+          ? {
+              'systemInstruction': {
+                'parts': [
+                  {
+                    'text':
+                        'You are a connection test endpoint. Reply with OK only.',
+                  },
+                ],
+              },
+              'contents': [
+                {
+                  'role': 'user',
+                  'parts': [
+                    {'text': 'Say OK.'},
+                  ],
+                },
+              ],
+              'generationConfig': {'temperature': 0.2},
+            }
+          : _isResponsesEndpoint(provider)
           ? {
               'model': model.modelId,
               'instructions':
@@ -869,6 +902,14 @@ class AiClientService {
       provider.baseUrl,
       provider.apiPath,
     ).replaceAll(RegExp(r'/+$'), '').endsWith('/responses');
+  }
+
+  String _geminiStreamGenerateContentUrl(
+    ProviderConfig provider,
+    String modelId,
+  ) {
+    final base = provider.baseUrl.trim().replaceAll(RegExp(r'/+$'), '');
+    return '$base/v1beta/models/$modelId:streamGenerateContent?alt=sse';
   }
 
   String? _readStreamErrorMessage(String payload) {
