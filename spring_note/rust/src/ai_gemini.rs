@@ -70,11 +70,8 @@ pub async fn chat(request: &AiChatRequest) -> Result<AiTextResult, String> {
     }
     let value = serde_json::from_str::<Value>(&response_body).map_err(|error| error.to_string())?;
 
-    let content = extract_text(
-        &value,
-        &[&["candidates", "0", "content", "parts", "0", "text"]],
-    )
-    .ok_or_else(|| "Gemini response missing candidates[0].content.parts[0].text".to_string())?;
+    let content = extract_chat_text(&value)
+        .ok_or_else(|| "Gemini response missing candidates[0].content.parts text".to_string())?;
     let (input, output, cached) = usage_from_value(&value);
     Ok(AiTextResult::success(
         request, content, input, output, cached,
@@ -638,6 +635,21 @@ fn candidate_parts(value: &Value) -> Vec<Value> {
         .unwrap_or_default()
 }
 
+/// 从 generateContent 响应中取正式回答:跳过 thought = true 的思考 parts,
+/// 拼接其余文本 parts(思考模型的正式回答可能不在 parts[0]);
+/// 全部缺失时兜底取首个文本 part,兼容旧行为。
+fn extract_chat_text(value: &Value) -> Option<String> {
+    let parts = candidate_parts(value);
+    let content = parts_text(&parts, false);
+    if !content.is_empty() {
+        return Some(content);
+    }
+    extract_text(
+        value,
+        &[&["candidates", "0", "content", "parts", "0", "text"]],
+    )
+}
+
 /// 拼接 parts 中的文本;thought = true 取思考摘要,否则取正式回答。
 fn parts_text(parts: &[Value], thought: bool) -> String {
     let separator = if thought { "\n" } else { "" };
@@ -891,14 +903,23 @@ pub async fn fetch_models(
 }
 
 pub fn build_generate_content_body(request: &AiChatRequest) -> Value {
-    let mut parts = vec![json!({"text": request.user_prompt})];
+    let mut parts = Vec::new();
+    if !request.user_prompt.trim().is_empty() {
+        parts.push(json!({"text": request.user_prompt}));
+    }
     parts.extend(request.images.iter().map(gemini_image_part));
+    if parts.is_empty() {
+        // Gemini 不允许空 text part(oneof data 必须有值);空输入时补占位空格。
+        parts.push(json!({"text": " "}));
+    }
 
     let mut generation_config = json!({"temperature": 0.2});
     if request.purpose == STRUCTURED_NOTE_PURPOSE {
-        // 结构化日报:约束输出为栏目 JSON,并关闭思考降低成本。
+        // 结构化日报:约束输出为栏目 JSON。
         generation_config["responseMimeType"] = json!("application/json");
         generation_config["responseSchema"] = structured_note_schema();
+    }
+    if disables_thinking(&request.purpose) {
         generation_config["thinkingConfig"] = thinking_config(&request.model.model_id, false, "");
     }
 
@@ -912,6 +933,11 @@ pub fn build_generate_content_body(request: &AiChatRequest) -> Value {
         }],
         "generationConfig": generation_config
     })
+}
+
+/// 与 OpenAI 侧一致:结构化日报与日报合并关闭思考,降低成本并避免思考 parts 干扰解析。
+fn disables_thinking(purpose: &str) -> bool {
+    matches!(purpose, "home_structured_note" | "daily_note_merge")
 }
 
 fn gemini_image_part(image: &AiImageAttachment) -> Value {
@@ -1061,6 +1087,45 @@ mod tests {
         assert_eq!(parts[0]["text"], "user");
         assert_eq!(parts[1]["inline_data"]["mime_type"], "image/webp");
         assert_eq!(parts[1]["inline_data"]["data"], "aW1hZ2U=");
+    }
+
+    #[test]
+    fn builds_gemini_payload_with_empty_user_prompt() {
+        // 日报合并的 user prompt 为空;Gemini 拒绝空 text part,必须补占位。
+        let request = AiChatRequest {
+            user_prompt: String::new(),
+            purpose: "daily_note_merge".to_string(),
+            ..request()
+        };
+
+        let body = build_generate_content_body(&request);
+        let parts = body["contents"][0]["parts"].as_array().unwrap();
+        assert_eq!(parts.len(), 1);
+        assert_eq!(parts[0]["text"], " ");
+        // 日报合并关闭思考,但不携带结构化输出配置。
+        assert_eq!(
+            body["generationConfig"]["thinkingConfig"]["includeThoughts"],
+            false
+        );
+        assert!(body["generationConfig"].get("responseMimeType").is_none());
+    }
+
+    #[test]
+    fn extracts_answer_text_after_thought_parts() {
+        // 思考模型的响应里 parts[0] 是 thought = true 的摘要,正式回答在后面的 part。
+        let value = json!({
+            "candidates": [{
+                "content": {
+                    "role": "model",
+                    "parts": [
+                        {"thought": true, "text": "让我思考一下"},
+                        {"thoughtSignature": "sig", "text": "{\"sections\":[]}"}
+                    ]
+                }
+            }]
+        });
+
+        assert_eq!(extract_chat_text(&value).unwrap(), "{\"sections\":[]}");
     }
 
     #[test]
