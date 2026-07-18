@@ -465,18 +465,20 @@ pub async fn memory_tool_chat(request: MemoryToolChatRequest) -> MemoryToolChatR
         );
     }
 
-    if request.provider.protocol != "openaiCompatible" {
+    if request.provider.protocol != "openaiCompatible" && request.provider.protocol != "gemini" {
         return MemoryToolChatResult::error(
             &chat_request,
             "unsupported_tool_protocol",
-            "回忆书工具调用目前仅支持 OpenAI-compatible Chat Completions 或 Responses API。",
+            "回忆书工具调用目前仅支持 OpenAI-compatible(Chat Completions / Responses)或 Gemini 供应商。",
             0,
             0,
             0,
         );
     }
 
-    let response = if ai_openai::is_responses_endpoint(&request.provider) {
+    let response = if request.provider.protocol == "gemini" {
+        ai_gemini::memory_tool_chat(&request, MEMORY_TOOL_SYSTEM_PROMPT).await
+    } else if ai_openai::is_responses_endpoint(&request.provider) {
         ai_openai::memory_tool_responses(&request, MEMORY_TOOL_SYSTEM_PROMPT).await
     } else {
         ai_openai::memory_tool_chat(&request, MEMORY_TOOL_SYSTEM_PROMPT).await
@@ -526,15 +528,18 @@ pub async fn memory_tool_chat_stream(
         api_log_enabled: request.api_log_enabled,
     };
 
-    if request.provider.protocol != "openaiCompatible" {
+    if request.provider.protocol != "openaiCompatible" && request.provider.protocol != "gemini" {
         let _ = sink.add(MemoryToolChatStreamEvent::error(
             "unsupported_tool_protocol",
-            "回忆书流式工具调用目前仅支持 OpenAI-compatible Chat Completions 或 Responses API。",
+            "回忆书流式工具调用目前仅支持 OpenAI-compatible(Chat Completions / Responses)或 Gemini 供应商。",
         ));
         return;
     }
 
-    let response = if ai_openai::is_responses_endpoint(&request.provider) {
+    let response = if request.provider.protocol == "gemini" {
+        ai_gemini::memory_tool_chat_stream(request.clone(), MEMORY_TOOL_SYSTEM_PROMPT, sink.clone())
+            .await
+    } else if ai_openai::is_responses_endpoint(&request.provider) {
         ai_openai::memory_tool_responses_stream(
             request.clone(),
             MEMORY_TOOL_SYSTEM_PROMPT,
