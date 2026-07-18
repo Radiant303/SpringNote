@@ -84,8 +84,8 @@ pub async fn chat(request: &AiChatRequest) -> Result<AiTextResult, String> {
 // 以下能力基于 generateContent / streamGenerateContent 实现:
 // - 函数调用:tools.functionDeclarations 声明;candidates parts 中的 functionCall,
 //   历史以 functionResponse parts 回传;流式时函数调用随块完整到达
-// - 思考模式:generationConfig.thinkingConfig(Gemini 3 用 thinkingLevel,
-//   2.5 及更早模型用 thinkingBudget),parts 中 thought = true 的文本映射为推理内容
+// - 思考模式:generationConfig.thinkingConfig(Gemini 3 及之后用 thinkingLevel,
+//   更早模型用 thinkingBudget),parts 中 thought = true 的文本映射为推理内容
 // - 结构化输出:generationConfig.responseMimeType + responseSchema
 // ---------------------------------------------------------------------------
 
@@ -358,12 +358,12 @@ fn memory_generation_config(request: &MemoryToolChatRequest) -> Value {
 
 fn thinking_config(model_id: &str, enabled: bool, effort: &str) -> Value {
     let mut config = json!({"includeThoughts": enabled});
-    if is_gemini_3_model(model_id) {
-        // thinkingLevel 各模型支持档位不一,LOW / HIGH 全系列可用,关闭时取 LOW。
+    if uses_thinking_level(model_id) {
+        // thinkingLevel 各模型支持档位不一,关闭时取该模型的最低档。
         let level = if enabled {
-            normalize_thinking_level(effort)
+            normalize_thinking_level(model_id, effort)
         } else {
-            "LOW"
+            min_thinking_level(model_id)
         };
         config["thinkingLevel"] = json!(level);
     } else {
@@ -380,9 +380,32 @@ fn thinking_config(model_id: &str, enabled: bool, effort: &str) -> Value {
     config
 }
 
-fn is_gemini_3_model(model_id: &str) -> bool {
+/// thinkingLevel 适用于 Gemini 3 及之后的主版本(更早版本传了会报错);
+/// 更早模型用 thinkingBudget。
+fn uses_thinking_level(model_id: &str) -> bool {
+    gemini_major_version(model_id).is_some_and(|major| major >= 3)
+}
+
+/// 从模型 id 解析主版本号:gemini-3.5-pro → 3,gemini-4.0-flash → 4;
+/// 无法解析(如 *-latest 别名)时返回 None,按更早模型处理。
+fn gemini_major_version(model_id: &str) -> Option<u32> {
     let id = model_id.to_ascii_lowercase();
-    id.contains("gemini-3") || id.contains("gemini3")
+    let id = id.trim_start_matches("models/");
+    let rest = id
+        .strip_prefix("gemini-")
+        .or_else(|| id.strip_prefix("gemini"))?;
+    let major: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
+    major.parse().ok()
+}
+
+/// 各 Gemini 3 模型的最低 thinkingLevel;Gemini 3 无法完全关闭思考,禁用思考时取最低档。
+/// flash-lite 系列仅支持 MINIMAL / HIGH,其余(3 Pro、3 Flash)最低 LOW。
+fn min_thinking_level(model_id: &str) -> &str {
+    if model_id.to_ascii_lowercase().contains("flash-lite") {
+        "MINIMAL"
+    } else {
+        "LOW"
+    }
 }
 
 /// thinkingBudget 档位:high / max 交给模型动态分配(-1),其余给固定预算。
@@ -394,12 +417,27 @@ fn thinking_budget(effort: &str) -> i32 {
     }
 }
 
-/// thinkingLevel 仅支持 MINIMAL / LOW / MEDIUM / HIGH,超出档位按 HIGH 处理。
-fn normalize_thinking_level(effort: &str) -> &str {
-    match effort {
-        "low" => "LOW",
-        "medium" => "MEDIUM",
-        _ => "HIGH",
+/// 按模型支持的档位映射思考等级:flash-lite 系列仅 MINIMAL / HIGH;
+/// 3 Pro 仅 LOW / HIGH;3 Flash 等支持 MINIMAL / LOW / MEDIUM / HIGH 全部四档。
+fn normalize_thinking_level(model_id: &str, effort: &str) -> &'static str {
+    let id = model_id.to_ascii_lowercase();
+    if id.contains("flash-lite") {
+        match effort {
+            "minimal" | "none" | "low" => "MINIMAL",
+            _ => "HIGH",
+        }
+    } else if id.contains("-pro") {
+        match effort {
+            "minimal" | "none" | "low" => "LOW",
+            _ => "HIGH",
+        }
+    } else {
+        match effort {
+            "minimal" | "none" => "MINIMAL",
+            "low" => "LOW",
+            "medium" => "MEDIUM",
+            _ => "HIGH",
+        }
     }
 }
 
@@ -1283,6 +1321,88 @@ mod tests {
         let thinking = &body["generationConfig"]["thinkingConfig"];
         assert_eq!(thinking["includeThoughts"], false);
         assert_eq!(thinking["thinkingLevel"], "LOW");
+    }
+
+    #[test]
+    fn maps_thinking_config_for_gemini_3_flash_lite() {
+        // flash-lite 系列仅支持 MINIMAL / HIGH 两档。
+        let mut request = memory_request();
+        request.model.model_id = "gemini-3.1-flash-lite".to_string();
+        let body = build_memory_tool_body(&request, "system");
+        assert_eq!(
+            body["generationConfig"]["thinkingConfig"]["thinkingLevel"],
+            "HIGH"
+        );
+
+        request.reasoning_effort = "low".to_string();
+        let body = build_memory_tool_body(&request, "system");
+        assert_eq!(
+            body["generationConfig"]["thinkingConfig"]["thinkingLevel"],
+            "MINIMAL"
+        );
+
+        request.thinking_enabled = false;
+        let body = build_memory_tool_body(&request, "system");
+        let thinking = &body["generationConfig"]["thinkingConfig"];
+        assert_eq!(thinking["includeThoughts"], false);
+        assert_eq!(thinking["thinkingLevel"], "MINIMAL");
+    }
+
+    #[test]
+    fn maps_thinking_config_for_gemini_3_pro() {
+        // 3 Pro 仅支持 LOW / HIGH,medium 映射到 HIGH。
+        let mut request = memory_request();
+        request.model.model_id = "gemini-3-pro-preview".to_string();
+        request.reasoning_effort = "medium".to_string();
+        let body = build_memory_tool_body(&request, "system");
+        assert_eq!(
+            body["generationConfig"]["thinkingConfig"]["thinkingLevel"],
+            "HIGH"
+        );
+
+        request.reasoning_effort = "low".to_string();
+        let body = build_memory_tool_body(&request, "system");
+        assert_eq!(
+            body["generationConfig"]["thinkingConfig"]["thinkingLevel"],
+            "LOW"
+        );
+    }
+
+    #[test]
+    fn maps_thinking_config_for_future_gemini_versions() {
+        // Gemini 3 之后的主版本同样走 thinkingLevel。
+        let mut request = memory_request();
+        request.model.model_id = "gemini-4.0-flash".to_string();
+        let body = build_memory_tool_body(&request, "system");
+        let thinking = &body["generationConfig"]["thinkingConfig"];
+        assert_eq!(thinking["thinkingLevel"], "HIGH");
+        assert!(thinking.get("thinkingBudget").is_none());
+
+        request.thinking_enabled = false;
+        let body = build_memory_tool_body(&request, "system");
+        assert_eq!(
+            body["generationConfig"]["thinkingConfig"]["thinkingLevel"],
+            "LOW"
+        );
+
+        // 3.5 Pro 命中 -pro 分支:仅 LOW / HIGH。
+        let mut request = memory_request();
+        request.model.model_id = "gemini-3.5-pro".to_string();
+        request.reasoning_effort = "medium".to_string();
+        let body = build_memory_tool_body(&request, "system");
+        assert_eq!(
+            body["generationConfig"]["thinkingConfig"]["thinkingLevel"],
+            "HIGH"
+        );
+    }
+
+    #[test]
+    fn parses_gemini_major_version() {
+        assert_eq!(gemini_major_version("gemini-2.5-flash"), Some(2));
+        assert_eq!(gemini_major_version("gemini-3.1-flash-lite"), Some(3));
+        assert_eq!(gemini_major_version("gemini-4.0-flash"), Some(4));
+        assert_eq!(gemini_major_version("models/gemini-3-flash"), Some(3));
+        assert_eq!(gemini_major_version("gemini-flash-latest"), None);
     }
 
     #[test]
