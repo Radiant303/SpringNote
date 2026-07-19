@@ -2925,11 +2925,19 @@ class _CompletionProtocolGroup extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: _DropdownSelectField(
-              key: const ValueKey('edit-model-completion-protocol-dropdown'),
-              value: current,
-              options: _protocols,
-              onChanged: onChanged,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: SizedBox(
+                width: 240,
+                child: _DropdownSelectField(
+                  key: const ValueKey(
+                    'edit-model-completion-protocol-dropdown',
+                  ),
+                  value: current,
+                  options: _protocols,
+                  onChanged: onChanged,
+                ),
+              ),
             ),
           ),
         ],
