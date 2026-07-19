@@ -5,6 +5,7 @@ class ModelConfig {
     this.modelTypes = const ['chat'],
     this.inputModes = const ['text'],
     this.capabilities = const [],
+    this.completionProtocol = 'deepseek_coder',
   });
 
   final String modelId;
@@ -12,6 +13,7 @@ class ModelConfig {
   final List<String> modelTypes;
   final List<String> inputModes;
   final List<String> capabilities;
+  final String completionProtocol;
 
   String get fimMode =>
       modelTypes.contains('completion') ? 'completions' : 'none';
@@ -24,6 +26,7 @@ class ModelConfig {
       modelTypes: _readModelTypes(json),
       inputModes: _readStringList(json['inputModes'], const ['text']),
       capabilities: _readStringList(json['capabilities'], const []),
+      completionProtocol: _readCompletionProtocol(json),
     );
   }
 
@@ -34,6 +37,7 @@ class ModelConfig {
       'modelTypes': modelTypes,
       'inputModes': inputModes,
       'capabilities': capabilities,
+      'completionProtocol': completionProtocol,
     };
   }
 
@@ -43,6 +47,7 @@ class ModelConfig {
     List<String>? modelTypes,
     List<String>? inputModes,
     List<String>? capabilities,
+    String? completionProtocol,
   }) {
     return ModelConfig(
       modelId: modelId ?? this.modelId,
@@ -50,6 +55,7 @@ class ModelConfig {
       modelTypes: modelTypes ?? this.modelTypes,
       inputModes: inputModes ?? this.inputModes,
       capabilities: capabilities ?? this.capabilities,
+      completionProtocol: completionProtocol ?? this.completionProtocol,
     );
   }
 
@@ -58,6 +64,11 @@ class ModelConfig {
       return fallback;
     }
     return value.map((item) => item.toString()).toList();
+  }
+
+  static String _readCompletionProtocol(Map<String, Object?> json) {
+    final value = json['completionProtocol']?.toString().trim() ?? '';
+    return value.isEmpty ? 'deepseek_coder' : value;
   }
 
   static List<String> _readModelTypes(Map<String, Object?> json) {

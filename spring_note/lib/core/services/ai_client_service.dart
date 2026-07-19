@@ -630,6 +630,7 @@ class AiClientService {
         model: _toRustModel(selection.model),
         prompt: prompt,
         suffix: suffix,
+        completionProtocol: selection.model.completionProtocol,
         apiLogEnabled: config.apiLogEnabled,
       ),
     );

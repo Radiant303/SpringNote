@@ -1484,15 +1484,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   FimCompleteRequest dco_decode_fim_complete_request(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 6)
-      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    if (arr.length != 7)
+      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
     return FimCompleteRequest(
       appDataDir: dco_decode_String(arr[0]),
       provider: dco_decode_ai_provider(arr[1]),
       model: dco_decode_ai_model(arr[2]),
       prompt: dco_decode_String(arr[3]),
       suffix: dco_decode_String(arr[4]),
-      apiLogEnabled: dco_decode_bool(arr[5]),
+      completionProtocol: dco_decode_String(arr[5]),
+      apiLogEnabled: dco_decode_bool(arr[6]),
     );
   }
 
@@ -2331,6 +2332,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_model = sse_decode_ai_model(deserializer);
     var var_prompt = sse_decode_String(deserializer);
     var var_suffix = sse_decode_String(deserializer);
+    var var_completionProtocol = sse_decode_String(deserializer);
     var var_apiLogEnabled = sse_decode_bool(deserializer);
     return FimCompleteRequest(
       appDataDir: var_appDataDir,
@@ -2338,6 +2340,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       model: var_model,
       prompt: var_prompt,
       suffix: var_suffix,
+      completionProtocol: var_completionProtocol,
       apiLogEnabled: var_apiLogEnabled,
     );
   }
@@ -3286,6 +3289,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_ai_model(self.model, serializer);
     sse_encode_String(self.prompt, serializer);
     sse_encode_String(self.suffix, serializer);
+    sse_encode_String(self.completionProtocol, serializer);
     sse_encode_bool(self.apiLogEnabled, serializer);
   }
 

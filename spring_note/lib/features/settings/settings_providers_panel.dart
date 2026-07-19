@@ -2630,6 +2630,7 @@ class _EditModelDialogState extends State<_EditModelDialog> {
   late List<String> _modelTypes = [...widget.model.modelTypes];
   late List<String> _inputModes = [...widget.model.inputModes];
   late List<String> _capabilities = [...widget.model.capabilities];
+  late String _completionProtocol = widget.model.completionProtocol;
 
   @override
   void dispose() {
@@ -2657,6 +2658,11 @@ class _EditModelDialogState extends State<_EditModelDialog> {
                 values: const {'chat': '聊天', 'completion': '补全'},
                 selected: _modelTypes,
                 onChanged: (value) => setState(() => _modelTypes = value),
+              ),
+              _CompletionProtocolGroup(
+                selected: _completionProtocol,
+                onChanged: (value) =>
+                    setState(() => _completionProtocol = value),
               ),
               _OptionGroup(
                 label: '输入模式',
@@ -2695,6 +2701,7 @@ class _EditModelDialogState extends State<_EditModelDialog> {
                       modelTypes: _modelTypes,
                       inputModes: _inputModes,
                       capabilities: _capabilities,
+                      completionProtocol: _completionProtocol,
                     ),
                   );
                 },
@@ -2875,6 +2882,110 @@ class _OptionGroup extends StatelessWidget {
                     },
                   ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompletionProtocolGroup extends StatelessWidget {
+  const _CompletionProtocolGroup({
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final String selected;
+  final ValueChanged<String> onChanged;
+
+  static const Map<String, String> _protocols = {
+    'deepseek_coder': 'deepseek_coder',
+    'qwen': 'qwen',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    final entryStyle = ButtonStyle(
+      foregroundColor: WidgetStatePropertyAll(colors.text),
+      textStyle: WidgetStatePropertyAll(Theme.of(context).textTheme.bodyMedium),
+    );
+    final entries = [
+      if (!_protocols.containsKey(selected))
+        DropdownMenuEntry<String>(
+          value: selected,
+          label: selected,
+          style: entryStyle,
+        ),
+      for (final entry in _protocols.entries)
+        DropdownMenuEntry<String>(
+          value: entry.key,
+          label: entry.value,
+          style: entryStyle,
+        ),
+    ];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 86,
+            child: Text(
+              '补全协议',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: colors.text,
+                fontWeight: FontWeight.w700,
+                height: 1.2,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: DropdownMenu<String>(
+                key: const ValueKey('edit-model-completion-protocol-dropdown'),
+                initialSelection: selected,
+                onSelected: (value) {
+                  if (value != null) {
+                    onChanged(value);
+                  }
+                },
+                dropdownMenuEntries: entries,
+                width: 200,
+                textStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: colors.text,
+                  fontWeight: FontWeight.w700,
+                ),
+                inputDecorationTheme: InputDecorationTheme(
+                  isDense: true,
+                  filled: true,
+                  fillColor: colors.surface,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                  constraints: const BoxConstraints(maxHeight: 36),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: colors.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: colors.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: colors.textSubtle),
+                  ),
+                ),
+                menuStyle: MenuStyle(
+                  backgroundColor: WidgetStatePropertyAll(colors.surface),
+                  shape: WidgetStatePropertyAll(
+                    RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ],

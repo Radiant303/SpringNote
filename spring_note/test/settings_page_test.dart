@@ -863,6 +863,25 @@ void main() {
     expect(edited.displayName, 'Custom Chat Edited');
     expect(edited.modelTypes, contains('completion'));
     expect(edited.fimMode, 'completions');
+    expect(edited.completionProtocol, 'deepseek_coder');
+
+    await tester.tap(
+      find.byKey(const ValueKey('edit-model-custom-chat-model')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('补全协议'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const ValueKey('edit-model-completion-protocol-dropdown')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('qwen').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('confirm-edit-model-button')));
+    await tester.pumpAndSettle();
+
+    final protocolEdited = service.savedConfig.providers.first.models
+        .firstWhere((model) => model.modelId == 'custom-chat-model');
+    expect(protocolEdited.completionProtocol, 'qwen');
 
     await tester.tap(find.text('默认模型').first);
     await tester.pump();

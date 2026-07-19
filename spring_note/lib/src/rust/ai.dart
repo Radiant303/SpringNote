@@ -254,6 +254,7 @@ class FimCompleteRequest {
   final AiModel model;
   final String prompt;
   final String suffix;
+  final String completionProtocol;
   final bool apiLogEnabled;
 
   const FimCompleteRequest({
@@ -262,6 +263,7 @@ class FimCompleteRequest {
     required this.model,
     required this.prompt,
     required this.suffix,
+    required this.completionProtocol,
     required this.apiLogEnabled,
   });
 
@@ -272,6 +274,7 @@ class FimCompleteRequest {
       model.hashCode ^
       prompt.hashCode ^
       suffix.hashCode ^
+      completionProtocol.hashCode ^
       apiLogEnabled.hashCode;
 
   @override
@@ -284,6 +287,7 @@ class FimCompleteRequest {
           model == other.model &&
           prompt == other.prompt &&
           suffix == other.suffix &&
+          completionProtocol == other.completionProtocol &&
           apiLogEnabled == other.apiLogEnabled;
 }
 

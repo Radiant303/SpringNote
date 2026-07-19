@@ -827,6 +827,17 @@ pub fn build_memory_tool_responses_stream_body(
 }
 
 pub fn build_fim_body(request: &FimCompleteRequest) -> Value {
+    if request.completion_protocol == "qwen" {
+        return json!({
+            "model": request.model.model_id,
+            "prompt": format!(
+                "<|fim_prefix|>{}<|fim_suffix|>{}<|fim_middle|>",
+                request.prompt, request.suffix
+            ),
+            "max_tokens": 128,
+            "temperature": 0.2
+        });
+    }
     json!({
         "model": request.model.model_id,
         "prompt": request.prompt,
@@ -1954,6 +1965,7 @@ mod tests {
             },
             prompt: "prefix".to_string(),
             suffix: "suffix".to_string(),
+            completion_protocol: "deepseek_coder".to_string(),
             api_log_enabled: false,
         };
 
@@ -1961,6 +1973,39 @@ mod tests {
         assert_eq!(body["model"], "fim-test");
         assert_eq!(body["prompt"], "prefix");
         assert_eq!(body["suffix"], "suffix");
+        assert_eq!(body["max_tokens"], 128);
+        assert!(body.get("messages").is_none());
+    }
+
+    #[test]
+    fn builds_qwen_fim_payload_with_fim_tokens() {
+        let request = FimCompleteRequest {
+            app_data_dir: ".".to_string(),
+            provider: AiProvider {
+                id: "p".to_string(),
+                name: "OpenAI Compatible".to_string(),
+                protocol: "openaiCompatible".to_string(),
+                api_key: "key".to_string(),
+                base_url: "https://api.example.com/v1".to_string(),
+                api_path: "/completions".to_string(),
+            },
+            model: AiModel {
+                model_id: "qwen-coder-turbo".to_string(),
+                display_name: "Qwen Coder".to_string(),
+            },
+            prompt: "prefix".to_string(),
+            suffix: "suffix".to_string(),
+            completion_protocol: "qwen".to_string(),
+            api_log_enabled: false,
+        };
+
+        let body = build_fim_body(&request);
+        assert_eq!(body["model"], "qwen-coder-turbo");
+        assert_eq!(
+            body["prompt"],
+            "<|fim_prefix|>prefix<|fim_suffix|>suffix<|fim_middle|>"
+        );
+        assert!(body.get("suffix").is_none());
         assert_eq!(body["max_tokens"], 128);
         assert!(body.get("messages").is_none());
     }

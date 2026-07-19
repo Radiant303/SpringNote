@@ -165,6 +165,7 @@ pub struct FimCompleteRequest {
     pub model: AiModel,
     pub prompt: String,
     pub suffix: String,
+    pub completion_protocol: String,
     pub api_log_enabled: bool,
 }
 
