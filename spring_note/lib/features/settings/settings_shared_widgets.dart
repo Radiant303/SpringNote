@@ -897,10 +897,6 @@ class _ProtocolField extends StatefulWidget {
 }
 
 class _ProtocolFieldState extends State<_ProtocolField> {
-  final MenuController _controller = MenuController();
-  bool _hovered = false;
-  bool _menuOpen = false;
-
   static const Map<String, String> _protocols = {
     'openaiCompatible': 'OpenAI-compatible',
     'gemini': 'Gemini',
@@ -912,11 +908,52 @@ class _ProtocolFieldState extends State<_ProtocolField> {
     return trimmedValue.isEmpty ? 'openaiCompatible' : trimmedValue;
   }
 
-  List<MapEntry<String, String>> get _options {
-    final current = _current;
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('协议', style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 4),
+          _DropdownSelectField(
+            value: _current,
+            options: _protocols,
+            onChanged: widget.onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DropdownSelectField extends StatefulWidget {
+  const _DropdownSelectField({
+    super.key,
+    required this.value,
+    required this.options,
+    required this.onChanged,
+  });
+
+  final String value;
+  final Map<String, String> options;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<_DropdownSelectField> createState() => _DropdownSelectFieldState();
+}
+
+class _DropdownSelectFieldState extends State<_DropdownSelectField> {
+  final MenuController _controller = MenuController();
+  bool _hovered = false;
+  bool _menuOpen = false;
+
+  List<MapEntry<String, String>> get _entries {
+    final current = widget.value;
     return [
-      if (!_protocols.containsKey(current)) MapEntry(current, current),
-      ..._protocols.entries,
+      if (!widget.options.containsKey(current)) MapEntry(current, current),
+      ...widget.options.entries,
     ];
   }
 
@@ -930,147 +967,129 @@ class _ProtocolFieldState extends State<_ProtocolField> {
 
   @override
   Widget build(BuildContext context) {
-    final current = _current;
-    final currentLabel = _protocols[current] ?? current;
-    final options = _options;
+    final current = widget.value;
+    final currentLabel = widget.options[current] ?? current;
+    final options = _entries;
     final colors = AppTheme.colors(context);
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('协议', style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 4),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final menuWidth = constraints.hasBoundedWidth
-                  ? constraints.maxWidth
-                  : 280.0;
-              final menuHeight =
-                  _ProtocolMenuSurface.verticalPadding * 2 +
-                  _ProtocolMenuOption.itemHeight * options.length;
-              return MenuAnchor(
-                controller: _controller,
-                alignmentOffset: const Offset(0, 6),
-                style: MenuStyle(
-                  backgroundColor: const WidgetStatePropertyAll(
-                    Colors.transparent,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final menuWidth = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : 280.0;
+        final menuHeight =
+            _ProtocolMenuSurface.verticalPadding * 2 +
+            _ProtocolMenuOption.itemHeight * options.length;
+        return MenuAnchor(
+          controller: _controller,
+          alignmentOffset: const Offset(0, 6),
+          style: MenuStyle(
+            backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
+            elevation: const WidgetStatePropertyAll(0),
+            minimumSize: const WidgetStatePropertyAll(Size.zero),
+            padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+            shape: WidgetStatePropertyAll(
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+          ),
+          onOpen: () => setState(() => _menuOpen = true),
+          onClose: () => setState(() => _menuOpen = false),
+          menuChildren: [
+            TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, child) {
+                final devicePixelRatio = MediaQuery.of(
+                  context,
+                ).devicePixelRatio;
+                final rawOffset = (1 - value) * menuHeight * -0.06;
+                final physicalPixel = 1 / devicePixelRatio;
+                final dy = rawOffset.abs() <= physicalPixel
+                    ? 0.0
+                    : (rawOffset * devicePixelRatio).roundToDouble() /
+                          devicePixelRatio;
+                return Opacity(
+                  opacity: value,
+                  child: Transform.translate(
+                    offset: Offset(0, dy),
+                    child: child,
                   ),
-                  elevation: const WidgetStatePropertyAll(0),
-                  minimumSize: const WidgetStatePropertyAll(Size.zero),
-                  padding: const WidgetStatePropertyAll(EdgeInsets.zero),
-                  shape: WidgetStatePropertyAll(
-                    RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                );
+              },
+              child: _ProtocolMenuSurface(
+                width: menuWidth,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final option in options)
+                      _ProtocolMenuOption(
+                        width: menuWidth,
+                        label: option.value,
+                        selected: option.key == current,
+                        onTap: () {
+                          _controller.close();
+                          widget.onChanged(option.key);
+                        },
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          builder: (context, controller, child) {
+            final active = _hovered || _menuOpen;
+            return MouseRegion(
+              cursor: SystemMouseCursors.click,
+              onEnter: (_) => setState(() => _hovered = true),
+              onExit: (_) => setState(() => _hovered = false),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _toggleMenu,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 130),
+                  curve: Curves.easeOutCubic,
+                  height: 36,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: active ? colors.surfaceHover : colors.inputFill,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: _menuOpen ? colors.textSubtle : colors.border,
                     ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          currentLabel,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: colors.text,
+                                fontWeight: FontWeight.w400,
+                                height: 1.2,
+                              ),
+                        ),
+                      ),
+                      AnimatedRotation(
+                        turns: _menuOpen ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOutCubic,
+                        child: Icon(
+                          Icons.expand_more_rounded,
+                          size: 19,
+                          color: colors.textMuted,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                onOpen: () => setState(() => _menuOpen = true),
-                onClose: () => setState(() => _menuOpen = false),
-                menuChildren: [
-                  TweenAnimationBuilder<double>(
-                    tween: Tween<double>(begin: 0, end: 1),
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeOutCubic,
-                    builder: (context, value, child) {
-                      final devicePixelRatio = MediaQuery.of(
-                        context,
-                      ).devicePixelRatio;
-                      final rawOffset = (1 - value) * menuHeight * -0.06;
-                      final physicalPixel = 1 / devicePixelRatio;
-                      final dy = rawOffset.abs() <= physicalPixel
-                          ? 0.0
-                          : (rawOffset * devicePixelRatio).roundToDouble() /
-                                devicePixelRatio;
-                      return Opacity(
-                        opacity: value,
-                        child: Transform.translate(
-                          offset: Offset(0, dy),
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: _ProtocolMenuSurface(
-                      width: menuWidth,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          for (final option in options)
-                            _ProtocolMenuOption(
-                              width: menuWidth,
-                              label: option.value,
-                              selected: option.key == current,
-                              onTap: () {
-                                _controller.close();
-                                widget.onChanged(option.key);
-                              },
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-                builder: (context, controller, child) {
-                  final active = _hovered || _menuOpen;
-                  return MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    onEnter: (_) => setState(() => _hovered = true),
-                    onExit: (_) => setState(() => _hovered = false),
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: _toggleMenu,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 130),
-                        curve: Curves.easeOutCubic,
-                        height: 36,
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        decoration: BoxDecoration(
-                          color: active
-                              ? colors.surfaceHover
-                              : colors.inputFill,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: _menuOpen
-                                ? colors.textSubtle
-                                : colors.border,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                currentLabel,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(
-                                      color: colors.text,
-                                      fontWeight: FontWeight.w400,
-                                      height: 1.2,
-                                    ),
-                              ),
-                            ),
-                            AnimatedRotation(
-                              turns: _menuOpen ? 0.5 : 0,
-                              duration: const Duration(milliseconds: 180),
-                              curve: Curves.easeOutCubic,
-                              child: Icon(
-                                Icons.expand_more_rounded,
-                                size: 19,
-                                color: colors.textMuted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ],
-      ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

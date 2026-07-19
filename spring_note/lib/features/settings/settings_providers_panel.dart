@@ -2907,24 +2907,7 @@ class _CompletionProtocolGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
-    final entryStyle = ButtonStyle(
-      foregroundColor: WidgetStatePropertyAll(colors.text),
-      textStyle: WidgetStatePropertyAll(Theme.of(context).textTheme.bodyMedium),
-    );
-    final entries = [
-      if (!_protocols.containsKey(selected))
-        DropdownMenuEntry<String>(
-          value: selected,
-          label: selected,
-          style: entryStyle,
-        ),
-      for (final entry in _protocols.entries)
-        DropdownMenuEntry<String>(
-          value: entry.key,
-          label: entry.value,
-          style: entryStyle,
-        ),
-    ];
+    final current = selected.trim().isEmpty ? 'deepseek_coder' : selected;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
@@ -2942,50 +2925,11 @@ class _CompletionProtocolGroup extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: DropdownMenu<String>(
-                key: const ValueKey('edit-model-completion-protocol-dropdown'),
-                initialSelection: selected,
-                onSelected: (value) {
-                  if (value != null) {
-                    onChanged(value);
-                  }
-                },
-                dropdownMenuEntries: entries,
-                width: 200,
-                textStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colors.text,
-                  fontWeight: FontWeight.w700,
-                ),
-                inputDecorationTheme: InputDecorationTheme(
-                  isDense: true,
-                  filled: true,
-                  fillColor: colors.surface,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                  constraints: const BoxConstraints(maxHeight: 36),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.border),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.border),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSubtle),
-                  ),
-                ),
-                menuStyle: MenuStyle(
-                  backgroundColor: WidgetStatePropertyAll(colors.surface),
-                  shape: WidgetStatePropertyAll(
-                    RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
+            child: _DropdownSelectField(
+              key: const ValueKey('edit-model-completion-protocol-dropdown'),
+              value: current,
+              options: _protocols,
+              onChanged: onChanged,
             ),
           ),
         ],
