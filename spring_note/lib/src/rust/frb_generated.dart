@@ -8,6 +8,7 @@ import 'api/ai_api.dart';
 import 'api/cloud_sync_api.dart';
 import 'api/note_image_cleanup_api.dart';
 import 'api/note_index_api.dart';
+import 'api/report_api.dart';
 import 'api/stats_api.dart';
 import 'cloud_sync.dart';
 import 'dart:async';
@@ -18,6 +19,7 @@ import 'frb_generated.io.dart'
 import 'note_image_cleanup.dart';
 import 'note_index.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+import 'report_regeneration.dart';
 import 'stats.dart';
 
 /// Main entrypoint of the Rust API
@@ -75,7 +77,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.12.0';
 
   @override
-  int get rustContentHash => 1179150630;
+  int get rustContentHash => 161729378;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -169,6 +171,10 @@ abstract class RustLibApi extends BaseApi {
   Future<NoteIndexRefreshResult> crateApiNoteIndexApiRefreshNoteIndex({
     required String directoryPath,
     required String kind,
+  });
+
+  Future<RegenerateReportResult> crateApiReportApiRegenerateReport({
+    required RegenerateReportRequest request,
   });
 
   Future<NoteImageCleanupScanResult> crateApiNoteImageCleanupApiScanNoteImages({
@@ -859,6 +865,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<RegenerateReportResult> crateApiReportApiRegenerateReport({
+    required RegenerateReportRequest request,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_regenerate_report_request(request, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 19,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_regenerate_report_result,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiReportApiRegenerateReportConstMeta,
+        argValues: [request],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiReportApiRegenerateReportConstMeta =>
+      const TaskConstMeta(
+        debugName: "regenerate_report",
+        argNames: ["request"],
+      );
+
+  @override
   Future<NoteImageCleanupScanResult> crateApiNoteImageCleanupApiScanNoteImages({
     required String dataDirectory,
   }) {
@@ -870,7 +909,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 20,
             port: port_,
           );
         },
@@ -911,7 +950,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 21,
             port: port_,
           );
         },
@@ -960,7 +999,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 22,
             port: port_,
           );
         },
@@ -999,7 +1038,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 22,
+            funcId: 23,
             port: port_,
           );
         },
@@ -1032,7 +1071,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 23,
+            funcId: 24,
             port: port_,
           );
         },
@@ -1071,7 +1110,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 24,
+            funcId: 25,
             port: port_,
           );
         },
@@ -1104,7 +1143,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 25,
+            funcId: 26,
             port: port_,
           );
         },
@@ -1140,7 +1179,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 26,
+            funcId: 27,
             port: port_,
           );
         },
@@ -1323,6 +1362,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_memory_tool_chat_request(raw);
+  }
+
+  @protected
+  RegenerateReportRequest dco_decode_box_autoadd_regenerate_report_request(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_regenerate_report_request(raw);
   }
 
   @protected
@@ -1828,6 +1875,40 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  RegenerateReportRequest dco_decode_regenerate_report_request(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 10)
+      throw Exception('unexpected arr length: expect 10 but see ${arr.length}');
+    return RegenerateReportRequest(
+      appDataDir: dco_decode_String(arr[0]),
+      provider: dco_decode_ai_provider(arr[1]),
+      model: dco_decode_ai_model(arr[2]),
+      kind: dco_decode_String(arr[3]),
+      targetPath: dco_decode_String(arr[4]),
+      dailyNotesDirectory: dco_decode_String(arr[5]),
+      weeklyNotesDirectory: dco_decode_String(arr[6]),
+      industry: dco_decode_String(arr[7]),
+      dailyMergePrompt: dco_decode_String(arr[8]),
+      apiLogEnabled: dco_decode_bool(arr[9]),
+    );
+  }
+
+  @protected
+  RegenerateReportResult dco_decode_regenerate_report_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return RegenerateReportResult(
+      ok: dco_decode_bool(arr[0]),
+      path: dco_decode_String(arr[1]),
+      errorCode: dco_decode_String(arr[2]),
+      errorMessage: dco_decode_String(arr[3]),
+    );
+  }
+
+  @protected
   ReportRequest dco_decode_report_request(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -2136,6 +2217,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_memory_tool_chat_request(deserializer));
+  }
+
+  @protected
+  RegenerateReportRequest sse_decode_box_autoadd_regenerate_report_request(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_regenerate_report_request(deserializer));
   }
 
   @protected
@@ -2814,6 +2903,52 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  RegenerateReportRequest sse_decode_regenerate_report_request(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_appDataDir = sse_decode_String(deserializer);
+    var var_provider = sse_decode_ai_provider(deserializer);
+    var var_model = sse_decode_ai_model(deserializer);
+    var var_kind = sse_decode_String(deserializer);
+    var var_targetPath = sse_decode_String(deserializer);
+    var var_dailyNotesDirectory = sse_decode_String(deserializer);
+    var var_weeklyNotesDirectory = sse_decode_String(deserializer);
+    var var_industry = sse_decode_String(deserializer);
+    var var_dailyMergePrompt = sse_decode_String(deserializer);
+    var var_apiLogEnabled = sse_decode_bool(deserializer);
+    return RegenerateReportRequest(
+      appDataDir: var_appDataDir,
+      provider: var_provider,
+      model: var_model,
+      kind: var_kind,
+      targetPath: var_targetPath,
+      dailyNotesDirectory: var_dailyNotesDirectory,
+      weeklyNotesDirectory: var_weeklyNotesDirectory,
+      industry: var_industry,
+      dailyMergePrompt: var_dailyMergePrompt,
+      apiLogEnabled: var_apiLogEnabled,
+    );
+  }
+
+  @protected
+  RegenerateReportResult sse_decode_regenerate_report_result(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_ok = sse_decode_bool(deserializer);
+    var var_path = sse_decode_String(deserializer);
+    var var_errorCode = sse_decode_String(deserializer);
+    var var_errorMessage = sse_decode_String(deserializer);
+    return RegenerateReportResult(
+      ok: var_ok,
+      path: var_path,
+      errorCode: var_errorCode,
+      errorMessage: var_errorMessage,
+    );
+  }
+
+  @protected
   ReportRequest sse_decode_report_request(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_appDataDir = sse_decode_String(deserializer);
@@ -3137,6 +3272,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_memory_tool_chat_request(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_regenerate_report_request(
+    RegenerateReportRequest self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_regenerate_report_request(self, serializer);
   }
 
   @protected
@@ -3648,6 +3792,36 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.providerName, serializer);
     sse_encode_String(self.modelId, serializer);
     sse_encode_i_32(self.tokens, serializer);
+  }
+
+  @protected
+  void sse_encode_regenerate_report_request(
+    RegenerateReportRequest self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.appDataDir, serializer);
+    sse_encode_ai_provider(self.provider, serializer);
+    sse_encode_ai_model(self.model, serializer);
+    sse_encode_String(self.kind, serializer);
+    sse_encode_String(self.targetPath, serializer);
+    sse_encode_String(self.dailyNotesDirectory, serializer);
+    sse_encode_String(self.weeklyNotesDirectory, serializer);
+    sse_encode_String(self.industry, serializer);
+    sse_encode_String(self.dailyMergePrompt, serializer);
+    sse_encode_bool(self.apiLogEnabled, serializer);
+  }
+
+  @protected
+  void sse_encode_regenerate_report_result(
+    RegenerateReportResult self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_bool(self.ok, serializer);
+    sse_encode_String(self.path, serializer);
+    sse_encode_String(self.errorCode, serializer);
+    sse_encode_String(self.errorMessage, serializer);
   }
 
   @protected

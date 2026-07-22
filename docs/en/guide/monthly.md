@@ -14,6 +14,8 @@ Monthly notes can be created through the AI report generation flow or by saving 
 
 A missing monthly note is only created if source content exists, the target monthly note has no valid content, and AI report generation succeeds. The current month is not treated as a completed month during startup checks. If generation fails, empty content is returned, or no model is available, existing monthly notes are not overwritten with empty results.
 
+The Regenerate button in the editor header re-reads the source weekly notes for the target month, calls the report model, and overwrites the current monthly note file, regardless of the startup flow's "no overwrite of existing content" rule. During generation, the button shows progress and the editor is temporarily disabled; on failure, the error is shown in the status pill on the left side of the header. Nothing happens if the month has no valid weekly note content.
+
 ## File Name
 
 Monthly note files use the following naming format:

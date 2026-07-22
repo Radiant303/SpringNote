@@ -104,6 +104,7 @@ class _NotesPageState extends State<NotesPage> {
   bool _consumingFimPrediction = false;
   bool _insertingImage = false;
   bool _pastingClipboard = false;
+  bool _regeneratingReport = false;
   int _notesLoadGeneration = 0;
   int _noteSelectionGeneration = 0;
   int _saveGeneration = 0;
@@ -926,6 +927,55 @@ class _NotesPageState extends State<NotesPage> {
     );
   }
 
+  Future<void> _regenerateSelectedReport() async {
+    final selected = _selectedNote;
+    if (_loading || _regeneratingReport || selected == null) {
+      return;
+    }
+    final kind = _kind;
+    setState(() {
+      _regeneratingReport = true;
+      _editorMessage = null;
+    });
+
+    try {
+      final result = await widget.aiClientService.regenerateReport(
+        appDataDir: widget.localDataState.dataDirectory,
+        config: widget.localDataState.config,
+        kind: kind,
+        targetPath: selected.path,
+        dailyNotesDirectory: widget.localDataState.dailyNotesDirectory,
+        weeklyNotesDirectory: widget.localDataState.weeklyNotesDirectory,
+      );
+      if (!mounted) {
+        return;
+      }
+      if (result.ok) {
+        final stillSelected =
+            _kind == kind &&
+            _samePath(_selectedNote?.path ?? '', selected.path);
+        if (stillSelected) {
+          await _loadNotes(kind: kind, selectedPath: selected.path);
+          if (!mounted) {
+            return;
+          }
+          setState(() => _editorMessage = '已重新生成');
+        }
+      } else {
+        setState(() => _editorMessage = '重新生成失败：${result.errorMessage}');
+      }
+    } catch (error, stackTrace) {
+      debugPrint('Failed to regenerate report: $error\n$stackTrace');
+      if (mounted) {
+        setState(() => _editorMessage = '重新生成失败，请稍后重试。');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _regeneratingReport = false);
+      }
+    }
+  }
+
   Future<void> _insertImageFromPicker() async {
     final selected = _selectedNote;
     if (_loading || selected == null || _insertingImage) {
@@ -1322,13 +1372,15 @@ class _NotesPageState extends State<NotesPage> {
               undoController: _editorUndoController,
               focusNode: _editorFocusNode,
               statusText: _editorStatusText,
-              enabled: selected != null && !_loading,
+              enabled: selected != null && !_loading && !_regeneratingReport,
               predicting: _predicting,
               markdown: _editorController.text,
               localImageBasePath: selected == null
                   ? null
                   : _parentDirectoryPath(selected.path),
               onInsertImage: _insertImageFromPicker,
+              regenerating: _regeneratingReport,
+              onRegenerate: _regenerateSelectedReport,
               onPointerFocus: _handleEditorPointerFocus,
               onModeChanged: _handleWorkspaceModeChanged,
             ),
@@ -2216,6 +2268,8 @@ class _EditorWorkspace extends StatefulWidget {
     required this.markdown,
     required this.localImageBasePath,
     required this.onInsertImage,
+    required this.regenerating,
+    required this.onRegenerate,
     required this.onPointerFocus,
     required this.onModeChanged,
   });
@@ -2231,6 +2285,8 @@ class _EditorWorkspace extends StatefulWidget {
   final String markdown;
   final String? localImageBasePath;
   final VoidCallback onInsertImage;
+  final bool regenerating;
+  final VoidCallback onRegenerate;
   final VoidCallback onPointerFocus;
   final ValueChanged<_EditorWorkspaceMode> onModeChanged;
 
@@ -2259,6 +2315,9 @@ class _EditorWorkspaceState extends State<_EditorWorkspace> {
         statusText: widget.statusText,
         insertImageEnabled: widget.enabled,
         onInsertImage: widget.onInsertImage,
+        regenerateEnabled: widget.enabled,
+        regenerating: widget.regenerating,
+        onRegenerate: widget.onRegenerate,
         mode: widget.mode,
         onModeChanged: widget.onModeChanged,
       ),
@@ -2305,6 +2364,9 @@ class _EditorWorkspaceHeader extends StatelessWidget {
     required this.statusText,
     required this.insertImageEnabled,
     required this.onInsertImage,
+    required this.regenerateEnabled,
+    required this.regenerating,
+    required this.onRegenerate,
     required this.mode,
     required this.onModeChanged,
   });
@@ -2312,6 +2374,9 @@ class _EditorWorkspaceHeader extends StatelessWidget {
   final String? statusText;
   final bool insertImageEnabled;
   final VoidCallback onInsertImage;
+  final bool regenerateEnabled;
+  final bool regenerating;
+  final VoidCallback onRegenerate;
   final _EditorWorkspaceMode mode;
   final ValueChanged<_EditorWorkspaceMode> onModeChanged;
 
@@ -2332,6 +2397,13 @@ class _EditorWorkspaceHeader extends StatelessWidget {
           onPressed: insertImageEnabled ? onInsertImage : null,
         ),
         const SizedBox(width: 8),
+        _EditorHeaderIconButton(
+          tooltip: '重新生成',
+          icon: Icons.auto_awesome_outlined,
+          loading: regenerating,
+          onPressed: regenerateEnabled && !regenerating ? onRegenerate : null,
+        ),
+        const SizedBox(width: 8),
         _WorkspaceModeSegmentedControl(value: mode, onChanged: onModeChanged),
       ],
     );
@@ -2343,11 +2415,13 @@ class _EditorHeaderIconButton extends StatelessWidget {
     required this.icon,
     required this.tooltip,
     required this.onPressed,
+    this.loading = false,
   });
 
   final IconData icon;
   final String tooltip;
   final VoidCallback? onPressed;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -2356,8 +2430,17 @@ class _EditorHeaderIconButton extends StatelessWidget {
       message: tooltip,
       waitDuration: const Duration(milliseconds: 450),
       child: IconButton(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 16),
+        onPressed: loading ? null : onPressed,
+        icon: loading
+            ? SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: colors.textSubtle,
+                ),
+              )
+            : Icon(icon, size: 16),
         color: colors.textSubtle,
         style: IconButton.styleFrom(
           fixedSize: const Size(30, 30),

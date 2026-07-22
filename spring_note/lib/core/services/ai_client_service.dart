@@ -5,10 +5,13 @@ import 'dart:typed_data';
 
 import '../../src/rust/ai.dart' as rust_ai;
 import '../../src/rust/api/ai_api.dart' as rust_api;
+import '../../src/rust/api/report_api.dart' as rust_report_api;
+import '../../src/rust/report_regeneration.dart' as rust_report;
 import '../models/app_config.dart';
 import '../models/memory_message.dart';
 import '../models/model_config.dart';
 import '../models/model_reference.dart';
+import '../models/note_file.dart';
 import '../models/provider_config.dart';
 import '../models/structured_work_note.dart';
 import 'image_file_types.dart';
@@ -333,6 +336,47 @@ class AiClientService {
       sourceMarkdown: sourceMarkdown,
       periodLabel: periodLabel,
       monthly: true,
+    );
+  }
+
+  Future<ReportRegenerationResult> regenerateReport({
+    required String appDataDir,
+    required AppConfig config,
+    required NoteKind kind,
+    required String targetPath,
+    required String dailyNotesDirectory,
+    required String weeklyNotesDirectory,
+  }) async {
+    final selection = _selectModel(config, 'intelligentGenerationModel');
+    if (selection == null) {
+      return const ReportRegenerationResult(
+        ok: false,
+        path: '',
+        errorMessage: '未配置智能生成模型。',
+      );
+    }
+
+    final response = await rust_report_api.regenerateReport(
+      request: rust_report.RegenerateReportRequest(
+        appDataDir: appDataDir,
+        provider: _toRustProvider(selection.provider),
+        model: _toRustModel(selection.model),
+        kind: kind.directoryName,
+        targetPath: targetPath,
+        dailyNotesDirectory: dailyNotesDirectory,
+        weeklyNotesDirectory: weeklyNotesDirectory,
+        industry: config.industry,
+        dailyMergePrompt: config.dailyMergePrompt.trim().isEmpty
+            ? defaultDailyMergePrompt
+            : config.dailyMergePrompt,
+        apiLogEnabled: config.apiLogEnabled,
+      ),
+    );
+
+    return ReportRegenerationResult(
+      ok: response.ok,
+      path: response.path,
+      errorMessage: response.errorMessage,
     );
   }
 
@@ -964,6 +1008,18 @@ bool isSupportedAiImageInput(AiImageInput image) {
 bool isSupportedAiImageExtension(String extension) {
   final normalized = extension.trim().toLowerCase().replaceFirst('.', '');
   return supportedAiImageExtensions.contains(normalized);
+}
+
+class ReportRegenerationResult {
+  const ReportRegenerationResult({
+    required this.ok,
+    required this.path,
+    required this.errorMessage,
+  });
+
+  final bool ok;
+  final String path;
+  final String errorMessage;
 }
 
 class _ModelSelection {

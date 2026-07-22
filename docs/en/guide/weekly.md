@@ -16,6 +16,8 @@ On startup, the application checks historical weeks that have ended and contain 
 
 If generation fails, no model is available, the source is empty, or empty content is returned, existing weekly notes are not overwritten with empty results.
 
+The Regenerate button in the editor header re-reads the source daily notes for the target week, calls the report model, and overwrites the current weekly note file, regardless of the startup flow's "no overwrite of existing content" rule. During generation, the button shows progress and the editor is temporarily disabled; on failure, the error is shown in the status pill on the left side of the header. Nothing happens if the week has no valid daily note content.
+
 ## File Name
 
 Weekly note files use ISO week numbering:

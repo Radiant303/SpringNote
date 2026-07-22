@@ -1312,6 +1312,164 @@ final value = 1;
 
     expect(find.textContaining('FIM 未触发：未选择编辑补全模型'), findsOneWidget);
   });
+
+  testWidgets('notes page regenerates current report from header button', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const notePath = 'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-18.md';
+    final noteService = _MemoryNoteService({
+      notePath: '# 2026-06-18 日报\n\n- 初始内容',
+    });
+    final aiService = _FakeRegenerateAiClientService()
+      ..beforeReturn = () {
+        noteService.contents[notePath] = '# 2026-06-18 日报\n\n重新生成后的正文';
+      };
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: NotesPage(
+          localDataState: _localDataState,
+          noteService: noteService,
+          aiClientService: aiService,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('重新生成'));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+
+    expect(aiService.calls, 1);
+    expect(aiService.lastKind, NoteKind.daily);
+    expect(aiService.lastTargetPath, notePath);
+    expect(
+      aiService.lastDailyNotesDirectory,
+      _localDataState.dailyNotesDirectory,
+    );
+    expect(
+      aiService.lastWeeklyNotesDirectory,
+      _localDataState.weeklyNotesDirectory,
+    );
+    expect(find.text('已重新生成'), findsOneWidget);
+    expect(_editablePlainText(tester), contains('重新生成后的正文'));
+    expect(find.text('重新生成后的正文', findRichText: true), findsWidgets);
+  });
+
+  testWidgets(
+    'notes page shows progress and disables editor while regenerating',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      const notePath = 'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-18.md';
+      final noteService = _MemoryNoteService({
+        notePath: '# 2026-06-18 日报\n\n- 初始内容',
+      });
+      final gate = Completer<ReportRegenerationResult>();
+      final aiService = _FakeRegenerateAiClientService()..gate = gate;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: NotesPage(
+            localDataState: _localDataState,
+            noteService: noteService,
+            aiClientService: aiService,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.byTooltip('重新生成'));
+      await tester.pump();
+
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      final regenerateButton = tester.widget<IconButton>(
+        find.descendant(
+          of: find.byTooltip('重新生成'),
+          matching: find.byType(IconButton),
+        ),
+      );
+      expect(regenerateButton.onPressed, isNull);
+      expect(
+        tester.widget<TextField>(find.byType(TextField).last).enabled,
+        isFalse,
+      );
+
+      aiService.beforeReturn = () {
+        noteService.contents[notePath] = '# 2026-06-18 日报\n\n重新生成后的正文';
+      };
+      gate.complete(
+        const ReportRegenerationResult(
+          ok: true,
+          path: notePath,
+          errorMessage: '',
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.text('已重新生成'), findsOneWidget);
+      expect(_editablePlainText(tester), contains('重新生成后的正文'));
+    },
+  );
+
+  testWidgets('notes page shows error message when regeneration fails', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const notePath = 'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-18.md';
+    final noteService = _MemoryNoteService({
+      notePath: '# 2026-06-18 日报\n\n- 初始内容',
+    });
+    final aiService = _FakeRegenerateAiClientService()
+      ..result = const ReportRegenerationResult(
+        ok: false,
+        path: '',
+        errorMessage: '该周没有可用的日报内容。',
+      );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: NotesPage(
+          localDataState: _localDataState,
+          noteService: noteService,
+          aiClientService: aiService,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('重新生成'));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+
+    expect(aiService.calls, 1);
+    expect(find.text('重新生成失败：该周没有可用的日报内容。'), findsOneWidget);
+    expect(_editablePlainText(tester), contains('初始内容'));
+    expect(noteService.contents[notePath], '# 2026-06-18 日报\n\n- 初始内容');
+  });
 }
 
 String _editablePlainText(WidgetTester tester) {
@@ -1571,6 +1729,46 @@ class _FakeAiClientService extends AiClientService {
     _calls++;
     _lastPrompt = prompt;
     return (content: prediction, error: null);
+  }
+}
+
+class _FakeRegenerateAiClientService extends AiClientService {
+  int calls = 0;
+  NoteKind? lastKind;
+  String? lastTargetPath;
+  String? lastDailyNotesDirectory;
+  String? lastWeeklyNotesDirectory;
+  Completer<ReportRegenerationResult>? gate;
+  ReportRegenerationResult result = const ReportRegenerationResult(
+    ok: true,
+    path: '',
+    errorMessage: '',
+  );
+  void Function()? beforeReturn;
+
+  @override
+  Future<ReportRegenerationResult> regenerateReport({
+    required String appDataDir,
+    required AppConfig config,
+    required NoteKind kind,
+    required String targetPath,
+    required String dailyNotesDirectory,
+    required String weeklyNotesDirectory,
+  }) {
+    calls++;
+    lastKind = kind;
+    lastTargetPath = targetPath;
+    lastDailyNotesDirectory = dailyNotesDirectory;
+    lastWeeklyNotesDirectory = weeklyNotesDirectory;
+    final pending = gate;
+    if (pending != null) {
+      return pending.future.then((value) {
+        beforeReturn?.call();
+        return value;
+      });
+    }
+    beforeReturn?.call();
+    return Future.value(result);
   }
 }
 

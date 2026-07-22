@@ -11,6 +11,7 @@ import 'api/ai_api.dart';
 import 'api/cloud_sync_api.dart';
 import 'api/note_image_cleanup_api.dart';
 import 'api/note_index_api.dart';
+import 'api/report_api.dart';
 import 'api/stats_api.dart';
 import 'cloud_sync.dart';
 import 'dart:async';
@@ -19,6 +20,7 @@ import 'frb_generated.dart';
 import 'note_image_cleanup.dart';
 import 'note_index.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_web.dart';
+import 'report_regeneration.dart';
 import 'stats.dart';
 
 abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
@@ -84,6 +86,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   MemoryToolChatRequest dco_decode_box_autoadd_memory_tool_chat_request(
+    dynamic raw,
+  );
+
+  @protected
+  RegenerateReportRequest dco_decode_box_autoadd_regenerate_report_request(
     dynamic raw,
   );
 
@@ -231,6 +238,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ProviderTokenUsage dco_decode_provider_token_usage(dynamic raw);
 
   @protected
+  RegenerateReportRequest dco_decode_regenerate_report_request(dynamic raw);
+
+  @protected
+  RegenerateReportResult dco_decode_regenerate_report_result(dynamic raw);
+
+  @protected
   ReportRequest dco_decode_report_request(dynamic raw);
 
   @protected
@@ -328,6 +341,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   MemoryToolChatRequest sse_decode_box_autoadd_memory_tool_chat_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RegenerateReportRequest sse_decode_box_autoadd_regenerate_report_request(
     SseDeserializer deserializer,
   );
 
@@ -513,6 +531,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  RegenerateReportRequest sse_decode_regenerate_report_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RegenerateReportResult sse_decode_regenerate_report_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   ReportRequest sse_decode_report_request(SseDeserializer deserializer);
 
   @protected
@@ -628,6 +656,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_memory_tool_chat_request(
     MemoryToolChatRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_regenerate_report_request(
+    RegenerateReportRequest self,
     SseSerializer serializer,
   );
 
@@ -862,6 +896,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_provider_token_usage(
     ProviderTokenUsage self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_regenerate_report_request(
+    RegenerateReportRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_regenerate_report_result(
+    RegenerateReportResult self,
     SseSerializer serializer,
   );
 

@@ -24,6 +24,8 @@ When content is submitted again for an existing daily note, the application read
 
 When opening the Daily note type in the notebook, if the file for the current day does not exist, the page ensures the file is created and selected. Daily notes for other dates are not automatically created by browsing the list.
 
+The Regenerate button in the editor header re-runs AI organization based on the current daily note body and overwrites the current file. During generation, the button shows progress and the editor is temporarily disabled; on failure, the error is shown in the status pill on the left side of the header. Nothing happens if the body has no actual content. If the daily note is written by another flow (such as a home page submission) during generation, the overwrite is abandoned and a notice is shown in the status pill, so newer content is not replaced by a stale result.
+
 ## File Name
 
 Daily note files use the following naming format:

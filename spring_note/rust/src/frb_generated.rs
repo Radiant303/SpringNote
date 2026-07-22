@@ -38,7 +38,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.12.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1179150630;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 161729378;
 
 // Section: executor
 
@@ -740,6 +740,46 @@ fn wire__crate__api__note_index_api__refresh_note_index_impl(
                         ))?;
                     Ok(output_ok)
                 })())
+            }
+        },
+    )
+}
+fn wire__crate__api__report_api__regenerate_report_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "regenerate_report",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_request = <crate::report_regeneration::RegenerateReportRequest>::sse_decode(
+                &mut deserializer,
+            );
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, ()>(
+                    (move || async move {
+                        let output_ok = Result::<_, ()>::Ok(
+                            crate::api::report_api::regenerate_report(api_request).await,
+                        )?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
             }
         },
     )
@@ -1856,6 +1896,50 @@ impl SseDecode for crate::stats::ProviderTokenUsage {
     }
 }
 
+impl SseDecode for crate::report_regeneration::RegenerateReportRequest {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_appDataDir = <String>::sse_decode(deserializer);
+        let mut var_provider = <crate::ai::AiProvider>::sse_decode(deserializer);
+        let mut var_model = <crate::ai::AiModel>::sse_decode(deserializer);
+        let mut var_kind = <String>::sse_decode(deserializer);
+        let mut var_targetPath = <String>::sse_decode(deserializer);
+        let mut var_dailyNotesDirectory = <String>::sse_decode(deserializer);
+        let mut var_weeklyNotesDirectory = <String>::sse_decode(deserializer);
+        let mut var_industry = <String>::sse_decode(deserializer);
+        let mut var_dailyMergePrompt = <String>::sse_decode(deserializer);
+        let mut var_apiLogEnabled = <bool>::sse_decode(deserializer);
+        return crate::report_regeneration::RegenerateReportRequest {
+            app_data_dir: var_appDataDir,
+            provider: var_provider,
+            model: var_model,
+            kind: var_kind,
+            target_path: var_targetPath,
+            daily_notes_directory: var_dailyNotesDirectory,
+            weekly_notes_directory: var_weeklyNotesDirectory,
+            industry: var_industry,
+            daily_merge_prompt: var_dailyMergePrompt,
+            api_log_enabled: var_apiLogEnabled,
+        };
+    }
+}
+
+impl SseDecode for crate::report_regeneration::RegenerateReportResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_ok = <bool>::sse_decode(deserializer);
+        let mut var_path = <String>::sse_decode(deserializer);
+        let mut var_errorCode = <String>::sse_decode(deserializer);
+        let mut var_errorMessage = <String>::sse_decode(deserializer);
+        return crate::report_regeneration::RegenerateReportResult {
+            ok: var_ok,
+            path: var_path,
+            error_code: var_errorCode,
+            error_message: var_errorMessage,
+        };
+    }
+}
+
 impl SseDecode for crate::ai::ReportRequest {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -2094,49 +2178,52 @@ fn pde_ffi_dispatcher_primary_impl(
             rust_vec_len,
             data_len,
         ),
-        19 => wire__crate__api__note_image_cleanup_api__scan_note_images_impl(
+        19 => {
+            wire__crate__api__report_api__regenerate_report_impl(port, ptr, rust_vec_len, data_len)
+        }
+        20 => wire__crate__api__note_image_cleanup_api__scan_note_images_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        20 => wire__crate__api__note_index_api__search_all_indexed_notes_impl(
+        21 => wire__crate__api__note_index_api__search_all_indexed_notes_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        21 => wire__crate__api__note_index_api__search_indexed_notes_impl(
+        22 => wire__crate__api__note_index_api__search_indexed_notes_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        22 => wire__crate__api__note_index_api__search_indexed_notes_by_kind_impl(
+        23 => wire__crate__api__note_index_api__search_indexed_notes_by_kind_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        23 => wire__crate__api__cloud_sync_api__sync_web_dav_notes_impl(
+        24 => wire__crate__api__cloud_sync_api__sync_web_dav_notes_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        24 => wire__crate__api__ai_api__test_provider_connection_impl(
+        25 => wire__crate__api__ai_api__test_provider_connection_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        25 => wire__crate__api__cloud_sync_api__test_web_dav_connection_impl(
+        26 => wire__crate__api__cloud_sync_api__test_web_dav_connection_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        26 => wire__crate__api__cloud_sync_api__upload_web_dav_note_impl(
+        27 => wire__crate__api__cloud_sync_api__upload_web_dav_note_impl(
             port,
             ptr,
             rust_vec_len,
@@ -2825,6 +2912,58 @@ impl flutter_rust_bridge::IntoIntoDart<crate::stats::ProviderTokenUsage>
     for crate::stats::ProviderTokenUsage
 {
     fn into_into_dart(self) -> crate::stats::ProviderTokenUsage {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::report_regeneration::RegenerateReportRequest {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.app_data_dir.into_into_dart().into_dart(),
+            self.provider.into_into_dart().into_dart(),
+            self.model.into_into_dart().into_dart(),
+            self.kind.into_into_dart().into_dart(),
+            self.target_path.into_into_dart().into_dart(),
+            self.daily_notes_directory.into_into_dart().into_dart(),
+            self.weekly_notes_directory.into_into_dart().into_dart(),
+            self.industry.into_into_dart().into_dart(),
+            self.daily_merge_prompt.into_into_dart().into_dart(),
+            self.api_log_enabled.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::report_regeneration::RegenerateReportRequest
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::report_regeneration::RegenerateReportRequest>
+    for crate::report_regeneration::RegenerateReportRequest
+{
+    fn into_into_dart(self) -> crate::report_regeneration::RegenerateReportRequest {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::report_regeneration::RegenerateReportResult {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.ok.into_into_dart().into_dart(),
+            self.path.into_into_dart().into_dart(),
+            self.error_code.into_into_dart().into_dart(),
+            self.error_message.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::report_regeneration::RegenerateReportResult
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::report_regeneration::RegenerateReportResult>
+    for crate::report_regeneration::RegenerateReportResult
+{
+    fn into_into_dart(self) -> crate::report_regeneration::RegenerateReportResult {
         self
     }
 }
@@ -3529,6 +3668,32 @@ impl SseEncode for crate::stats::ProviderTokenUsage {
         <String>::sse_encode(self.provider_name, serializer);
         <String>::sse_encode(self.model_id, serializer);
         <i32>::sse_encode(self.tokens, serializer);
+    }
+}
+
+impl SseEncode for crate::report_regeneration::RegenerateReportRequest {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.app_data_dir, serializer);
+        <crate::ai::AiProvider>::sse_encode(self.provider, serializer);
+        <crate::ai::AiModel>::sse_encode(self.model, serializer);
+        <String>::sse_encode(self.kind, serializer);
+        <String>::sse_encode(self.target_path, serializer);
+        <String>::sse_encode(self.daily_notes_directory, serializer);
+        <String>::sse_encode(self.weekly_notes_directory, serializer);
+        <String>::sse_encode(self.industry, serializer);
+        <String>::sse_encode(self.daily_merge_prompt, serializer);
+        <bool>::sse_encode(self.api_log_enabled, serializer);
+    }
+}
+
+impl SseEncode for crate::report_regeneration::RegenerateReportResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.ok, serializer);
+        <String>::sse_encode(self.path, serializer);
+        <String>::sse_encode(self.error_code, serializer);
+        <String>::sse_encode(self.error_message, serializer);
     }
 }
 
