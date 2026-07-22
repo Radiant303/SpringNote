@@ -2400,6 +2400,7 @@ class _EditorWorkspaceHeader extends StatelessWidget {
         _EditorHeaderIconButton(
           tooltip: '重新生成',
           icon: Icons.auto_awesome_outlined,
+          iconSize: 14,
           loading: regenerating,
           onPressed: regenerateEnabled && !regenerating ? onRegenerate : null,
         ),
@@ -2415,12 +2416,14 @@ class _EditorHeaderIconButton extends StatelessWidget {
     required this.icon,
     required this.tooltip,
     required this.onPressed,
+    this.iconSize = 16,
     this.loading = false,
   });
 
   final IconData icon;
   final String tooltip;
   final VoidCallback? onPressed;
+  final double iconSize;
   final bool loading;
 
   @override
@@ -2440,7 +2443,7 @@ class _EditorHeaderIconButton extends StatelessWidget {
                   color: colors.textSubtle,
                 ),
               )
-            : Icon(icon, size: 16),
+            : Icon(icon, size: iconSize),
         color: colors.textSubtle,
         style: IconButton.styleFrom(
           fixedSize: const Size(30, 30),
