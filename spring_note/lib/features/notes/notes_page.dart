@@ -2396,14 +2396,14 @@ class _EditorWorkspaceHeader extends StatelessWidget {
           icon: Icons.add_photo_alternate_outlined,
           onPressed: insertImageEnabled ? onInsertImage : null,
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 4),
         _EditorHeaderIconButton(
           tooltip: '重新生成',
           icon: Icons.auto_awesome_outlined,
           loading: regenerating,
           onPressed: regenerateEnabled && !regenerating ? onRegenerate : null,
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 12),
         _WorkspaceModeSegmentedControl(value: mode, onChanged: onModeChanged),
       ],
     );
