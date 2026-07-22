@@ -2591,14 +2591,15 @@ class _EditorStatusPill extends StatelessWidget {
     final displayText = switch (statusText) {
       _ => statusText,
     };
-    final active =
+    final highlighted =
+        statusText == '已重新生成' ||
         statusText == 'AI 实时补全已就绪' ||
         statusText == 'AI 编辑预测中' ||
         statusText.startsWith('Tab ');
-    final foreground = active
+    final foreground = highlighted
         ? (dark ? const Color(0xFF34D399) : const Color(0xFF10B981))
         : colors.textSubtle;
-    final background = active
+    final background = highlighted
         ? (dark ? const Color(0xFF0B3024) : const Color(0xFFECFDF5))
         : colors.surfaceMuted;
 
