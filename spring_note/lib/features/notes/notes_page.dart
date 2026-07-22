@@ -2410,7 +2410,7 @@ class _EditorWorkspaceHeader extends StatelessWidget {
   }
 }
 
-class _EditorHeaderIconButton extends StatefulWidget {
+class _EditorHeaderIconButton extends StatelessWidget {
   const _EditorHeaderIconButton({
     required this.icon,
     required this.tooltip,
@@ -2424,56 +2424,33 @@ class _EditorHeaderIconButton extends StatefulWidget {
   final bool loading;
 
   @override
-  State<_EditorHeaderIconButton> createState() =>
-      _EditorHeaderIconButtonState();
-}
-
-class _EditorHeaderIconButtonState extends State<_EditorHeaderIconButton> {
-  bool _hovered = false;
-
-  @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
-    final enabled = widget.onPressed != null && !widget.loading;
-    final iconColor = _hovered && enabled ? colors.text : colors.textSubtle;
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: Tooltip(
-        message: widget.tooltip,
-        waitDuration: const Duration(milliseconds: 450),
-        child: TweenAnimationBuilder<Color?>(
-          tween: ColorTween(end: iconColor),
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOutCubic,
-          builder: (context, color, _) {
-            final effectiveColor = color ?? iconColor;
-            return IconButton(
-              onPressed: widget.loading ? null : widget.onPressed,
-              icon: widget.loading
-                  ? SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: effectiveColor,
-                      ),
-                    )
-                  : Icon(widget.icon, size: 16),
-              color: effectiveColor,
-              style: IconButton.styleFrom(
-                fixedSize: const Size(30, 30),
-                minimumSize: const Size(30, 30),
-                maximumSize: const Size(30, 30),
-                padding: EdgeInsets.zero,
-                backgroundColor: Colors.transparent,
-                hoverColor: colors.surfaceMuted,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(9),
+    final iconColor = colors.textSubtle.withValues(alpha: 0.8);
+    return Tooltip(
+      message: tooltip,
+      waitDuration: const Duration(milliseconds: 450),
+      child: IconButton(
+        onPressed: loading ? null : onPressed,
+        icon: loading
+            ? SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: iconColor,
                 ),
-              ),
-            );
-          },
+              )
+            : Icon(icon, size: 16),
+        color: iconColor,
+        style: IconButton.styleFrom(
+          fixedSize: const Size(30, 30),
+          minimumSize: const Size(30, 30),
+          maximumSize: const Size(30, 30),
+          padding: EdgeInsets.zero,
+          backgroundColor: Colors.transparent,
+          hoverColor: colors.surfaceMuted,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
         ),
       ),
     );
