@@ -283,7 +283,10 @@ void main() {
     expect(markdown.style?.color, const Color(0xFF333333));
     expect(markdownTheme.gptThemeData.h1?.height, 0.92);
     expect(markdownTheme.gptThemeData.hrLineThickness, 1);
-    expect(markdownTheme.gptThemeData.hrLineColor, const Color(0xFFEEEEEE));
+    expect(
+      markdownTheme.gptThemeData.hrLineColor,
+      const Color(0xFFEEEEEE).withValues(alpha: 0.5),
+    );
     expect(
       markdownTheme.gptThemeData.hrLinePadding,
       const EdgeInsets.only(bottom: 16),
@@ -336,7 +339,17 @@ void main() {
                 divider.height == 1 && divider.color == const Color(0xFFEEEEEE),
           )
           .length,
-      2,
+      1,
+    );
+    expect(
+      dividers
+          .where(
+            (divider) =>
+                divider.height == 1 &&
+                divider.color == const Color(0xFFEEEEEE).withValues(alpha: 0.5),
+          )
+          .length,
+      1,
     );
     expect(
       dividers.every(

@@ -52,7 +52,10 @@ void main() {
     expect(markdownTheme.gptThemeData.h1?.color, const Color(0xFF333333));
     expect(markdownTheme.gptThemeData.h1?.height, 0.92);
     expect(markdownTheme.gptThemeData.hrLineThickness, 1);
-    expect(markdownTheme.gptThemeData.hrLineColor, const Color(0xFFEEEEEE));
+    expect(
+      markdownTheme.gptThemeData.hrLineColor,
+      const Color(0xFFEEEEEE).withValues(alpha: 0.5),
+    );
     expect(
       dividers.any(
         (divider) =>
