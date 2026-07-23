@@ -2352,7 +2352,7 @@ class _EditorWorkspaceState extends State<_EditorWorkspace> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(child: editor),
-          Container(width: 1, color: colors.divider),
+          Container(width: 1, color: colors.divider.withValues(alpha: 0.5)),
           Expanded(child: preview),
         ],
       ),

@@ -97,7 +97,8 @@ GptMarkdownThemeData springMarkdownThemeData(
       height: 1.38,
     ),
     hrLineThickness: 1,
-    hrLineColor: isLight ? _githubHeadingLineColor : colors.divider,
+    hrLineColor: (isLight ? _githubHeadingLineColor : colors.divider)
+        .withValues(alpha: 0.5),
     hrLinePadding: const EdgeInsets.only(bottom: 16),
     linkColor: isLight ? _githubLinkColor : base.linkColor,
   );
