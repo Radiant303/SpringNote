@@ -2614,6 +2614,9 @@ class _EditorStatusPill extends StatelessWidget {
     };
     final highlighted =
         statusText == '已重新生成' ||
+        statusText == '已插入图片' ||
+        statusText == '已粘贴图片' ||
+        statusText == '已保存' ||
         statusText == 'AI 实时补全已就绪' ||
         statusText == 'AI 编辑预测中' ||
         statusText.startsWith('Tab ');
