@@ -2900,10 +2900,7 @@ class _PaneFrame extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
     return Container(
-      decoration: BoxDecoration(
-        color: colors.background,
-        border: Border(left: BorderSide(color: colors.divider)),
-      ),
+      color: colors.background,
       child: Column(
         children: [
           Container(
