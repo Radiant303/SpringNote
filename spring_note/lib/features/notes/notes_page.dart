@@ -936,6 +936,7 @@ class _NotesPageState extends State<NotesPage> {
     setState(() {
       _regeneratingReport = true;
       _editorMessage = null;
+      _fimMessage = null;
     });
 
     try {
