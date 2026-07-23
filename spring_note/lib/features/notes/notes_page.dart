@@ -2410,7 +2410,7 @@ class _EditorWorkspaceHeader extends StatelessWidget {
   }
 }
 
-class _EditorHeaderIconButton extends StatelessWidget {
+class _EditorHeaderIconButton extends StatefulWidget {
   const _EditorHeaderIconButton({
     required this.icon,
     required this.tooltip,
@@ -2424,33 +2424,52 @@ class _EditorHeaderIconButton extends StatelessWidget {
   final bool loading;
 
   @override
+  State<_EditorHeaderIconButton> createState() =>
+      _EditorHeaderIconButtonState();
+}
+
+class _EditorHeaderIconButtonState extends State<_EditorHeaderIconButton> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
-    final iconColor = colors.textSubtle.withValues(alpha: 0.8);
+    final enabled = widget.onPressed != null && !widget.loading;
+    final iconColor = enabled && _hovered
+        ? colors.text
+        : colors.textSubtle.withValues(alpha: 0.8);
+
     return Tooltip(
-      message: tooltip,
+      message: widget.tooltip,
       waitDuration: const Duration(milliseconds: 450),
-      child: IconButton(
-        onPressed: loading ? null : onPressed,
-        icon: loading
-            ? SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: iconColor,
-                ),
-              )
-            : Icon(icon, size: 16),
-        color: iconColor,
-        style: IconButton.styleFrom(
-          fixedSize: const Size(30, 30),
-          minimumSize: const Size(30, 30),
-          maximumSize: const Size(30, 30),
-          padding: EdgeInsets.zero,
-          backgroundColor: Colors.transparent,
-          hoverColor: colors.surfaceMuted,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+      child: MouseRegion(
+        cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+        onEnter: enabled ? (_) => setState(() => _hovered = true) : null,
+        onExit: enabled ? (_) => setState(() => _hovered = false) : null,
+        child: IconButton(
+          onPressed: widget.loading ? null : widget.onPressed,
+          icon: widget.loading
+              ? SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: iconColor,
+                  ),
+                )
+              : Icon(widget.icon, size: 16),
+          color: iconColor,
+          style: IconButton.styleFrom(
+            fixedSize: const Size(30, 30),
+            minimumSize: const Size(30, 30),
+            maximumSize: const Size(30, 30),
+            padding: EdgeInsets.zero,
+            backgroundColor: Colors.transparent,
+            hoverColor: colors.surfaceMuted,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(9),
+            ),
+          ),
         ),
       ),
     );
