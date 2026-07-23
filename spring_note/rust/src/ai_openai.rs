@@ -1005,7 +1005,7 @@ pub fn memory_tools_json() -> Value {
             "function": {
                 "name": "keyword_search",
                 "strict": true,
-                "description": "Run one global indexed search across SpringNote daily, weekly, and monthly Markdown records. Use this only when the record type is unknown or the answer may span multiple types; prefer a scoped search when the user names daily, weekly, or monthly records. When calling keyword_search, submit all distinctive keywords in this single call. Every keyword must contain at least two Unicode characters.",
+                "description": "Run one global indexed search across SpringNote daily, weekly, and monthly Markdown records. Use this only when the record type is unknown or the answer may span multiple types; prefer a scoped search when the user names daily, weekly, or monthly records. When calling keyword_search, submit all distinctive keywords in this single call. Every keyword must contain at least two Unicode characters. Each result includes truncated and totalCharacters fields: truncated is true when the snippet is clipped to a character limit (clipped parts are marked with '...'), and totalCharacters is the record's full length.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -1031,7 +1031,7 @@ pub fn memory_tools_json() -> Value {
             "function": {
                 "name": "search_daily_notes",
                 "strict": true,
-                "description": "Search only SpringNote daily Markdown notes. Use this instead of keyword_search when the request is limited to daily notes or day-level records. Submit all distinctive keywords in this single call. Every keyword must contain at least two Unicode characters.",
+                "description": "Search only SpringNote daily Markdown notes. Use this instead of keyword_search when the request is limited to daily notes or day-level records. Submit all distinctive keywords in this single call. Every keyword must contain at least two Unicode characters. Each result includes truncated and totalCharacters fields: truncated is true when the snippet is clipped to a character limit (clipped parts are marked with '...'), and totalCharacters is the record's full length.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -1057,7 +1057,7 @@ pub fn memory_tools_json() -> Value {
             "function": {
                 "name": "search_weekly_notes",
                 "strict": true,
-                "description": "Search only SpringNote weekly Markdown reports. Use this instead of keyword_search when the request is limited to weekly reports. Submit all distinctive keywords in this single call. Every keyword must contain at least two Unicode characters.",
+                "description": "Search only SpringNote weekly Markdown reports. Use this instead of keyword_search when the request is limited to weekly reports. Submit all distinctive keywords in this single call. Every keyword must contain at least two Unicode characters. Each result includes truncated and totalCharacters fields: truncated is true when the snippet is clipped to a character limit (clipped parts are marked with '...'), and totalCharacters is the record's full length.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -1083,7 +1083,7 @@ pub fn memory_tools_json() -> Value {
             "function": {
                 "name": "search_monthly_notes",
                 "strict": true,
-                "description": "Search only SpringNote monthly Markdown reports. Use this instead of keyword_search when the request is limited to monthly reports. Submit all distinctive keywords in this single call. Every keyword must contain at least two Unicode characters.",
+                "description": "Search only SpringNote monthly Markdown reports. Use this instead of keyword_search when the request is limited to monthly reports. Submit all distinctive keywords in this single call. Every keyword must contain at least two Unicode characters. Each result includes truncated and totalCharacters fields: truncated is true when the snippet is clipped to a character limit (clipped parts are marked with '...'), and totalCharacters is the record's full length.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -1109,7 +1109,7 @@ pub fn memory_tools_json() -> Value {
             "function": {
                 "name": "read_daily_note",
                 "strict": true,
-                "description": "Read the full daily Markdown note for a specific date.",
+                "description": "Read the daily Markdown note for a specific date. The result includes truncated and totalCharacters fields: truncated is true when the snippet is clipped to a character limit (clipped parts are marked with '...'), and totalCharacters is the record's full length.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -1129,7 +1129,7 @@ pub fn memory_tools_json() -> Value {
             "function": {
                 "name": "read_week_daily_notes",
                 "strict": true,
-                "description": "Read all available daily notes in a date range, typically one week.",
+                "description": "Read all available daily notes in a date range, typically one week. Each result includes truncated and totalCharacters fields: truncated is true when the snippet is clipped to a character limit (clipped parts are marked with '...'), and totalCharacters is the record's full length.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -1154,7 +1154,7 @@ pub fn memory_tools_json() -> Value {
             "function": {
                 "name": "read_weekly_note",
                 "strict": true,
-                "description": "Read only the full SpringNote weekly report Markdown for a specific ISO week. Do not return daily notes.",
+                "description": "Read only the SpringNote weekly report Markdown for a specific ISO week. Do not return daily notes. The result includes truncated and totalCharacters fields: truncated is true when the snippet is clipped to a character limit (clipped parts are marked with '...'), and totalCharacters is the record's full length.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -1174,7 +1174,7 @@ pub fn memory_tools_json() -> Value {
             "function": {
                 "name": "read_month_weekly_notes",
                 "strict": true,
-                "description": "Read all available SpringNote weekly report Markdown files whose ISO weeks overlap a specific calendar month. Return weekly reports only, not daily notes or the monthly report.",
+                "description": "Read all available SpringNote weekly report Markdown files whose ISO weeks overlap a specific calendar month. Return weekly reports only, not daily notes or the monthly report. Each result includes truncated and totalCharacters fields: truncated is true when the snippet is clipped to a character limit (clipped parts are marked with '...'), and totalCharacters is the record's full length.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -1194,7 +1194,7 @@ pub fn memory_tools_json() -> Value {
             "function": {
                 "name": "read_month_report",
                 "strict": true,
-                "description": "Read only the monthly report Markdown for a specific month. Do not return daily notes.",
+                "description": "Read only the monthly report Markdown for a specific month. Do not return daily notes. The result includes truncated and totalCharacters fields: truncated is true when the snippet is clipped to a character limit (clipped parts are marked with '...'), and totalCharacters is the record's full length.",
                 "parameters": {
                     "type": "object",
                     "properties": {

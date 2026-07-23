@@ -113,23 +113,39 @@ class MemorySource {
     required this.path,
     required this.snippet,
     required this.score,
+    this.truncated = false,
+    this.totalCharacters = 0,
   });
 
   final String title;
   final String path;
   final String snippet;
   final int score;
+  final bool truncated;
+  final int totalCharacters;
 
   factory MemorySource.fromJson(Map<String, Object?> json) {
+    final snippet = json['snippet']?.toString() ?? '';
     return MemorySource(
       title: json['title']?.toString() ?? '',
       path: json['path']?.toString() ?? '',
-      snippet: json['snippet']?.toString() ?? '',
+      snippet: snippet,
       score: json['score'] is num ? (json['score'] as num).toInt() : 0,
+      truncated: json['truncated'] as bool? ?? false,
+      totalCharacters: json['totalCharacters'] is num
+          ? (json['totalCharacters'] as num).toInt()
+          : snippet.length,
     );
   }
 
   Map<String, Object?> toJson() {
-    return {'title': title, 'path': path, 'snippet': snippet, 'score': score};
+    return {
+      'title': title,
+      'path': path,
+      'snippet': snippet,
+      'score': score,
+      'truncated': truncated,
+      'totalCharacters': totalCharacters,
+    };
   }
 }

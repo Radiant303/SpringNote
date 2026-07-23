@@ -352,6 +352,66 @@ void main() {
     },
   );
 
+  test('read tools include truncation metadata in tool results', () async {
+    final temp = await Directory.systemTemp.createTemp(
+      'spring_note_memory_truncation_',
+    );
+    addTearDown(() async {
+      if (await temp.exists()) {
+        await temp.delete(recursive: true);
+      }
+    });
+    final daily = Directory('${temp.path}${Platform.pathSeparator}daily');
+    await daily.create(recursive: true);
+    final longBody = '很长的一天' * 100;
+    await File(
+      '${daily.path}${Platform.pathSeparator}2026-07-01.md',
+    ).writeAsString('# 日报\n\n$longBody');
+    await File(
+      '${daily.path}${Platform.pathSeparator}2026-07-02.md',
+    ).writeAsString('# 日报\n\n短。');
+    final state = LocalDataState(
+      dataDirectory: temp.path,
+      configPath: '${temp.path}${Platform.pathSeparator}config.json',
+      dailyNotesDirectory: daily.path,
+      weeklyNotesDirectory: '${temp.path}${Platform.pathSeparator}weekly',
+      monthlyNotesDirectory: '${temp.path}${Platform.pathSeparator}monthly',
+      config: AppConfig.defaults().copyWith(memoryResultMaxCharacters: 100),
+    );
+
+    final truncatedExecution = await const MemorySearchService().executeTool(
+      localDataState: state,
+      toolName: 'read_daily_note',
+      arguments: const {'date': '2026-07-01'},
+      limit: 10,
+    );
+    final fullExecution = await const MemorySearchService().executeTool(
+      localDataState: state,
+      toolName: 'read_daily_note',
+      arguments: const {'date': '2026-07-02'},
+      limit: 10,
+    );
+
+    final truncatedSource = truncatedExecution.sources.single;
+    expect(truncatedSource.truncated, isTrue);
+    expect(truncatedSource.totalCharacters, greaterThan(100));
+    expect(truncatedSource.snippet, endsWith('...'));
+    final truncatedJson =
+        jsonDecode(truncatedExecution.content) as Map<String, dynamic>;
+    final truncatedResult =
+        (truncatedJson['results'] as List).single as Map<String, dynamic>;
+    expect(truncatedResult['truncated'], isTrue);
+    expect(truncatedResult['totalCharacters'], truncatedSource.totalCharacters);
+
+    final fullSource = fullExecution.sources.single;
+    expect(fullSource.truncated, isFalse);
+    expect(fullSource.totalCharacters, fullSource.snippet.length);
+    final fullJson = jsonDecode(fullExecution.content) as Map<String, dynamic>;
+    final fullResult =
+        (fullJson['results'] as List).single as Map<String, dynamic>;
+    expect(fullResult['truncated'], isFalse);
+  });
+
   test('current date tool returns date and ISO week information', () async {
     final execution = await const MemorySearchService().executeTool(
       localDataState: LocalDataState(

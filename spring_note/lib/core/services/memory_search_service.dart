@@ -271,12 +271,15 @@ class MemorySearchService {
       if (score <= 0) {
         continue;
       }
+      final snippet = _snippet(content, terms, localDataState);
       scored.add(
         MemorySource(
           title: _title(file),
           path: file.path,
-          snippet: _snippet(content, terms, localDataState),
+          snippet: snippet.text,
           score: score,
+          truncated: snippet.truncated,
+          totalCharacters: snippet.totalCharacters,
         ),
       );
     }
@@ -529,11 +532,14 @@ class MemorySearchService {
       return null;
     }
     final content = await file.readAsString();
+    final snippet = _snippet(content, const [], state);
     return MemorySource(
       title: '日报 ${_formatDate(date)}',
       path: file.path,
-      snippet: _snippet(content, const [], state),
+      snippet: snippet.text,
       score: 100,
+      truncated: snippet.truncated,
+      totalCharacters: snippet.totalCharacters,
     );
   }
 
@@ -584,11 +590,14 @@ class MemorySearchService {
       return null;
     }
     final content = await file.readAsString();
+    final snippet = _snippet(content, const [], state);
     return MemorySource(
       title: title,
       path: file.path,
-      snippet: _snippet(content, const [], state),
+      snippet: snippet.text,
       score: score,
+      truncated: snippet.truncated,
+      totalCharacters: snippet.totalCharacters,
     );
   }
 
@@ -674,14 +683,18 @@ class MemorySearchService {
     return state.config.memoryKeywordContextAfter.round().clamp(0, 100000);
   }
 
-  String _snippet(String content, List<String> terms, LocalDataState state) {
+  ({String text, bool truncated, int totalCharacters}) _snippet(
+    String content,
+    List<String> terms,
+    LocalDataState state,
+  ) {
     final normalized = content
         .split('\n')
         .map((line) => line.trim())
         .where((line) => line.isNotEmpty)
         .join('\n');
     if (normalized.isEmpty) {
-      return '（空文档）';
+      return (text: '（空文档）', truncated: false, totalCharacters: 0);
     }
     final maxCharacters = _singleResultMaxCharacters(state);
     final lower = normalized.toLowerCase();
@@ -693,9 +706,14 @@ class MemorySearchService {
       }
     }
     if (index < 0) {
-      return normalized.length > maxCharacters
-          ? '${normalized.substring(0, maxCharacters)}...'
-          : normalized;
+      final clipped = normalized.length > maxCharacters;
+      return (
+        text: clipped
+            ? '${normalized.substring(0, maxCharacters)}...'
+            : normalized,
+        truncated: clipped,
+        totalCharacters: normalized.length,
+      );
     }
     final contextBefore = _keywordContextBefore(state);
     final contextAfter = _keywordContextAfter(state);
@@ -710,7 +728,14 @@ class MemorySearchService {
     final clippedSuffix = suffix.isNotEmpty || excerpt.length > maxCharacters
         ? '...'
         : '';
-    return '$prefix$clipped$clippedSuffix';
+    return (
+      text: '$prefix$clipped$clippedSuffix',
+      truncated:
+          start > 0 ||
+          end < normalized.length ||
+          clipped.length < excerpt.length,
+      totalCharacters: normalized.length,
+    );
   }
 
   String _title(File file) {
