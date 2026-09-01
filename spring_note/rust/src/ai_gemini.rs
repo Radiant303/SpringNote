@@ -1227,6 +1227,7 @@ mod tests {
                 reasoning_content: String::new(),
                 tool_call_id: String::new(),
                 tool_calls: vec![],
+                images: vec![],
             }],
             thinking_enabled: true,
             reasoning_effort: "high".to_string(),
@@ -1452,6 +1453,7 @@ mod tests {
                 name: "keyword_search".to_string(),
                 arguments: "{\"keywords\":[\"nacos\"]}".to_string(),
             }],
+            images: vec![],
         });
         request.messages.push(AiChatMessage {
             role: "tool".to_string(),
@@ -1459,6 +1461,7 @@ mod tests {
             reasoning_content: String::new(),
             tool_call_id: "gemini_call_1".to_string(),
             tool_calls: vec![],
+            images: vec![],
         });
         request.messages.push(AiChatMessage {
             role: "assistant".to_string(),
@@ -1466,6 +1469,7 @@ mod tests {
             reasoning_content: String::new(),
             tool_call_id: String::new(),
             tool_calls: vec![],
+            images: vec![],
         });
 
         let contents = memory_contents(&request.messages);

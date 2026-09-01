@@ -131,6 +131,21 @@ void main() {
     expect(sanitized[2].toolCallId, 'call-1');
   });
 
+  test('memory sanitizer preserves attached image names', () {
+    final messages = [
+      MemoryMessage(
+        role: 'user',
+        content: '这张图里有什么？',
+        createdAt: DateTime(2026, 9, 1),
+        imageNames: const ['a.png', 'b.png'],
+      ),
+    ];
+
+    final sanitized = sanitizeMemoryMessagesForModel(messages);
+
+    expect(sanitized.single.imageNames, ['a.png', 'b.png']);
+  });
+
   test('memory sanitizer converts local and orphan tools to context', () {
     final messages = [
       MemoryMessage(

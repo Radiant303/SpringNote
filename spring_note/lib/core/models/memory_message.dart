@@ -10,6 +10,7 @@ class MemoryMessage {
     this.toolCalls = const [],
     this.sources = const [],
     this.modeIds = const [],
+    this.imageNames = const [],
   });
 
   final String role;
@@ -27,6 +28,12 @@ class MemoryMessage {
   /// was used. Recorded so later requests can explain the resulting
   /// reply's format without guessing from its content.
   final List<String> modeIds;
+
+  /// File names of images attached to this user message, relative to the
+  /// `memory_images` directory under the app data directory (see
+  /// `MemoryConversationService`). Kept as names instead of bytes so
+  /// `remember.json` stays small.
+  final List<String> imageNames;
 
   factory MemoryMessage.fromJson(Map<String, Object?> json) {
     return MemoryMessage(
@@ -46,6 +53,11 @@ class MemoryMessage {
       modeIds: json['modeIds'] is List
           ? (json['modeIds'] as List).map((id) => id.toString()).toList()
           : const [],
+      imageNames: json['imageNames'] is List
+          ? (json['imageNames'] as List)
+                .map((name) => name.toString())
+                .toList()
+          : const [],
     );
   }
 
@@ -64,6 +76,7 @@ class MemoryMessage {
       if (sources.isNotEmpty)
         'sources': sources.map((source) => source.toJson()).toList(),
       if (modeIds.isNotEmpty) 'modeIds': modeIds,
+      if (imageNames.isNotEmpty) 'imageNames': imageNames,
     };
   }
 

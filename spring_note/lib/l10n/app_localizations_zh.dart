@@ -1655,4 +1655,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get memoryToolLabelRunToolSequence => '顺序执行工具';
+
+  @override
+  String get memoryImageCountLimit => '最多添加 4 张图片。';
+
+  @override
+  String get memoryImageInvalid => '仅支持 5 MB 以内的 png、jpg、webp、gif 图片。';
+
+  @override
+  String get memoryImageModelUnsupported => '当前回忆模型不支持图片输入。';
+
+  @override
+  String get memoryImageSaveFailed => '图片保存失败，请重试。';
 }

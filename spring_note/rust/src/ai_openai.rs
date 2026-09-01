@@ -874,13 +874,56 @@ pub fn build_fim_body(request: &FimCompleteRequest) -> Value {
     })
 }
 
+/// 单次请求中所有图片解码后字节数的上限。base64 会让体积膨胀约 4/3，
+/// 24 MiB 解码字节在请求体中约占 32 MiB，连同文本仍低于常见供应商
+/// 48 MiB 的请求体上限。
+const MAX_MEMORY_IMAGE_TOTAL_BYTES: usize = 24 * 1024 * 1024;
+
+/// 图片因请求预算被全部丢弃且消息没有文本时的占位内容，
+/// 避免空 content 触发 API 报错。
+const MEMORY_IMAGE_OMITTED_PLACEHOLDER: &str =
+    "[image omitted: request image size budget exceeded]";
+
+/// 为每条消息计算预算内可保留的图片数量：从最新一条消息向前累计解码字节数，
+/// 单条消息的图片要么全部保留、要么全部丢弃；超预算后继续检查更早的消息。
+fn memory_image_budget_mask(messages: &[AiChatMessage]) -> Vec<usize> {
+    let mut mask = vec![0; messages.len()];
+    let mut remaining = MAX_MEMORY_IMAGE_TOTAL_BYTES;
+    for (index, message) in messages.iter().enumerate().rev() {
+        let decoded: usize = message
+            .images
+            .iter()
+            .map(|image| image.data_base64.len() / 4 * 3)
+            .sum();
+        if !message.images.is_empty() && decoded <= remaining {
+            mask[index] = message.images.len();
+            remaining -= decoded;
+        }
+    }
+    mask
+}
+
+/// 消息文本；图片全部被预算丢弃且没有文本时返回占位标记。
+fn memory_text_or_image_placeholder(message: &AiChatMessage, kept_images: usize) -> String {
+    if kept_images == 0 && !message.images.is_empty() && message.content.trim().is_empty() {
+        return MEMORY_IMAGE_OMITTED_PLACEHOLDER.to_string();
+    }
+    message.content.clone()
+}
+
 fn memory_messages_json(system_prompt: &str, messages: &[AiChatMessage]) -> Vec<Value> {
     let mut result = vec![json!({"role": "system", "content": system_prompt})];
-    result.extend(messages.iter().map(memory_message_json));
+    let image_mask = memory_image_budget_mask(messages);
+    result.extend(
+        messages
+            .iter()
+            .enumerate()
+            .map(|(index, message)| memory_message_json(message, image_mask[index])),
+    );
     result
 }
 
-fn memory_message_json(message: &AiChatMessage) -> Value {
+fn memory_message_json(message: &AiChatMessage, kept_images: usize) -> Value {
     if message.role == "assistant" && !message.tool_calls.is_empty() {
         let mut result = json!({
             "role": "assistant",
@@ -910,15 +953,43 @@ fn memory_message_json(message: &AiChatMessage) -> Value {
         });
     }
 
+    let kept = if message.role == "user" {
+        kept_images.min(message.images.len())
+    } else {
+        0
+    };
+    if kept == 0 {
+        return json!({
+            "role": message.role,
+            "content": memory_text_or_image_placeholder(message, kept)
+        });
+    }
+
+    let mut parts = Vec::new();
+    if !message.content.trim().is_empty() {
+        parts.push(json!({
+            "type": "text",
+            "text": message.content
+        }));
+    }
+    parts.extend(message.images[..kept].iter().map(|image| {
+        json!({
+            "type": "image_url",
+            "image_url": {
+                "url": data_url(image)
+            }
+        })
+    }));
     json!({
         "role": message.role,
-        "content": message.content
+        "content": parts
     })
 }
 
 fn responses_memory_input(messages: &[AiChatMessage]) -> Vec<Value> {
+    let image_mask = memory_image_budget_mask(messages);
     let mut result = Vec::new();
-    for message in messages {
+    for (index, message) in messages.iter().enumerate() {
         if message.role == "assistant" && !message.tool_calls.is_empty() {
             if !message.content.trim().is_empty() {
                 result.push(json!({
@@ -950,9 +1021,35 @@ fn responses_memory_input(messages: &[AiChatMessage]) -> Vec<Value> {
             continue;
         }
 
+        let kept = if message.role == "user" {
+            image_mask[index].min(message.images.len())
+        } else {
+            0
+        };
+        if kept > 0 {
+            let mut parts = Vec::new();
+            if !message.content.trim().is_empty() {
+                parts.push(json!({
+                    "type": "input_text",
+                    "text": message.content
+                }));
+            }
+            parts.extend(message.images[..kept].iter().map(|image| {
+                json!({
+                    "type": "input_image",
+                    "image_url": data_url(image)
+                })
+            }));
+            result.push(json!({
+                "role": "user",
+                "content": parts
+            }));
+            continue;
+        }
+
         result.push(json!({
             "role": if message.role == "assistant" { "assistant" } else { message.role.as_str() },
-            "content": message.content
+            "content": memory_text_or_image_placeholder(message, kept)
         }));
     }
     result
@@ -1891,6 +1988,7 @@ mod tests {
                 reasoning_content: String::new(),
                 tool_call_id: String::new(),
                 tool_calls: vec![],
+                images: vec![],
             }],
             thinking_enabled: true,
             reasoning_effort: "high".to_string(),
@@ -1941,6 +2039,7 @@ mod tests {
                     reasoning_content: String::new(),
                     tool_call_id: String::new(),
                     tool_calls: vec![],
+                    images: vec![],
                 },
                 AiChatMessage {
                     role: "assistant".to_string(),
@@ -1952,6 +2051,7 @@ mod tests {
                         name: "keyword_search".to_string(),
                         arguments: "{\"keywords\":[\"nacos\"]}".to_string(),
                     }],
+                    images: vec![],
                 },
                 AiChatMessage {
                     role: "tool".to_string(),
@@ -1959,6 +2059,7 @@ mod tests {
                     reasoning_content: String::new(),
                     tool_call_id: "call_1".to_string(),
                     tool_calls: vec![],
+                    images: vec![],
                 },
             ],
             thinking_enabled: true,
@@ -2015,6 +2116,7 @@ mod tests {
                 reasoning_content: String::new(),
                 tool_call_id: String::new(),
                 tool_calls: vec![],
+                images: vec![],
             }],
             thinking_enabled: true,
             reasoning_effort: "max".to_string(),
@@ -2262,6 +2364,7 @@ mod tests {
                         name: "keyword_search".to_string(),
                         arguments: "{\"keywords\":[\"nacos\"]}".to_string(),
                     }],
+                    images: vec![],
                 },
                 AiChatMessage {
                     role: "tool".to_string(),
@@ -2269,6 +2372,7 @@ mod tests {
                     reasoning_content: String::new(),
                     tool_call_id: "call_1".to_string(),
                     tool_calls: vec![],
+                    images: vec![],
                 },
             ],
         );
@@ -2278,6 +2382,123 @@ mod tests {
         assert_eq!(messages[1]["tool_calls"][0]["id"], "call_1");
         assert_eq!(messages[2]["role"], "tool");
         assert_eq!(messages[2]["tool_call_id"], "call_1");
+    }
+
+    fn memory_image_attachment(name: &str, base64: &str) -> AiImageAttachment {
+        AiImageAttachment {
+            name: name.to_string(),
+            mime_type: "image/png".to_string(),
+            data_base64: base64.to_string(),
+        }
+    }
+
+    fn memory_user_message(content: &str, images: Vec<AiImageAttachment>) -> AiChatMessage {
+        AiChatMessage {
+            role: "user".to_string(),
+            content: content.to_string(),
+            reasoning_content: String::new(),
+            tool_call_id: String::new(),
+            tool_calls: vec![],
+            images,
+        }
+    }
+
+    #[test]
+    fn serializes_user_images_as_chat_content_parts() {
+        let messages = memory_messages_json(
+            "system",
+            &[memory_user_message(
+                "这张图里有什么？",
+                vec![memory_image_attachment("a.png", "aGVsbG8=")],
+            )],
+        );
+
+        let parts = messages[1]["content"].as_array().unwrap();
+        assert_eq!(parts[0]["type"], "text");
+        assert_eq!(parts[0]["text"], "这张图里有什么？");
+        assert_eq!(parts[1]["type"], "image_url");
+        assert_eq!(
+            parts[1]["image_url"]["url"],
+            "data:image/png;base64,aGVsbG8="
+        );
+    }
+
+    #[test]
+    fn serializes_image_only_user_message_without_text_part() {
+        let messages = memory_messages_json(
+            "system",
+            &[memory_user_message(
+                "",
+                vec![memory_image_attachment("a.png", "aGVsbG8=")],
+            )],
+        );
+
+        let parts = messages[1]["content"].as_array().unwrap();
+        assert_eq!(parts.len(), 1);
+        assert_eq!(parts[0]["type"], "image_url");
+    }
+
+    #[test]
+    fn ignores_images_on_non_user_messages() {
+        let messages = memory_messages_json(
+            "system",
+            &[AiChatMessage {
+                role: "assistant".to_string(),
+                content: "回答".to_string(),
+                reasoning_content: String::new(),
+                tool_call_id: String::new(),
+                tool_calls: vec![],
+                images: vec![memory_image_attachment("a.png", "aGVsbG8=")],
+            }],
+        );
+
+        assert_eq!(messages[1]["content"], "回答");
+    }
+
+    #[test]
+    fn drops_oldest_images_over_request_budget() {
+        // 单张 base64 长度约 26 MiB（解码约 19.5 MiB），两张合计超 24 MiB
+        // 预算，只保留最新一条消息的图片。
+        let big = "a".repeat(26 * 1024 * 1024);
+        let messages = memory_messages_json(
+            "system",
+            &[
+                memory_user_message("旧消息", vec![memory_image_attachment("old.png", &big)]),
+                memory_user_message("新消息", vec![memory_image_attachment("new.png", &big)]),
+            ],
+        );
+
+        assert_eq!(messages[1]["content"], "旧消息");
+        assert!(messages[2]["content"].is_array());
+    }
+
+    #[test]
+    fn placeholder_when_images_dropped_and_text_empty() {
+        let big = "a".repeat(26 * 1024 * 1024);
+        let messages = memory_messages_json(
+            "system",
+            &[
+                memory_user_message("", vec![memory_image_attachment("old.png", &big)]),
+                memory_user_message("新消息", vec![memory_image_attachment("new.png", &big)]),
+            ],
+        );
+
+        assert_eq!(messages[1]["content"], MEMORY_IMAGE_OMITTED_PLACEHOLDER);
+    }
+
+    #[test]
+    fn serializes_user_images_as_responses_input_parts() {
+        let input = responses_memory_input(&[memory_user_message(
+            "看图",
+            vec![memory_image_attachment("a.png", "aGVsbG8=")],
+        )]);
+
+        let parts = input[0]["content"].as_array().unwrap();
+        assert_eq!(input[0]["role"], "user");
+        assert_eq!(parts[0]["type"], "input_text");
+        assert_eq!(parts[0]["text"], "看图");
+        assert_eq!(parts[1]["type"], "input_image");
+        assert_eq!(parts[1]["image_url"], "data:image/png;base64,aGVsbG8=");
     }
 
     #[test]

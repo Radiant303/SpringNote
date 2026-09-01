@@ -3178,6 +3178,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'顺序执行工具'**
   String get memoryToolLabelRunToolSequence;
+
+  /// No description provided for @memoryImageCountLimit.
+  ///
+  /// In zh, this message translates to:
+  /// **'最多添加 4 张图片。'**
+  String get memoryImageCountLimit;
+
+  /// No description provided for @memoryImageInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅支持 5 MB 以内的 png、jpg、webp、gif 图片。'**
+  String get memoryImageInvalid;
+
+  /// No description provided for @memoryImageModelUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前回忆模型不支持图片输入。'**
+  String get memoryImageModelUnsupported;
+
+  /// No description provided for @memoryImageSaveFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'图片保存失败，请重试。'**
+  String get memoryImageSaveFailed;
 }
 
 class _AppLocalizationsDelegate

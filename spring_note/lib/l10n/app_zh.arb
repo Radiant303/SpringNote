@@ -511,5 +511,9 @@
   "settingsVariableSourceMarkdown": "本周日报内容",
   "memoryToolLabelResolveIsoWeek": "获取周起止日期",
   "memoryToolLabelRunToolBatch": "批量执行工具",
-  "memoryToolLabelRunToolSequence": "顺序执行工具"
+  "memoryToolLabelRunToolSequence": "顺序执行工具",
+  "memoryImageCountLimit": "最多添加 4 张图片。",
+  "memoryImageInvalid": "仅支持 5 MB 以内的 png、jpg、webp、gif 图片。",
+  "memoryImageModelUnsupported": "当前回忆模型不支持图片输入。",
+  "memoryImageSaveFailed": "图片保存失败，请重试。"
 }

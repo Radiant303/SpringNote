@@ -89,6 +89,7 @@ pub struct AiChatMessage {
     pub reasoning_content: String,
     pub tool_call_id: String,
     pub tool_calls: Vec<AiToolCall>,
+    pub images: Vec<AiImageAttachment>,
 }
 
 #[derive(Clone, Debug)]

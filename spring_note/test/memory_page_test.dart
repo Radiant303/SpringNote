@@ -8,12 +8,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gpt_markdown/custom_widgets/unordered_ordered_list.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
+import 'package:spring_note/core/attachments/pending_image.dart';
 import 'package:spring_note/core/models/app_config.dart';
 import 'package:spring_note/core/models/local_data_state.dart';
 import 'package:spring_note/core/models/memory_message.dart';
 import 'package:spring_note/core/services/ai_client_service.dart';
 import 'package:spring_note/core/services/memory_conversation_service.dart';
 import 'package:spring_note/core/services/memory_search_service.dart';
+import 'package:spring_note/core/services/pending_image_clipboard_service.dart';
 import 'package:spring_note/core/widgets/spring_markdown.dart';
 import 'package:spring_note/core/widgets/spring_tree.dart';
 import 'package:spring_note/features/memory/memory_input_modes.dart';
@@ -476,6 +478,70 @@ void main() {
       );
     });
   }
+
+  testWidgets('removing one pasted image chip keeps the others', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 760);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    // The real clipboard service returns the same id for every pasted
+    // bitmap (`clipboard-png-0`); removal matches chips by id, so this
+    // regression test pastes two images with identical ids and expects
+    // deleting one to keep the other.
+    final clipboard = _FakePendingImageClipboardService([
+      PendingImage(
+        id: 'clipboard-png-0',
+        bytes: Uint8List.fromList([1, 2, 3]),
+        name: 'one.png',
+        extension: 'png',
+      ),
+      PendingImage(
+        id: 'clipboard-png-0',
+        bytes: Uint8List.fromList([4, 5, 6]),
+        name: 'two.png',
+        extension: 'png',
+      ),
+    ]);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MemoryPage(
+            localDataState: _localDataState(),
+            conversationService: _FakeMemoryConversationService(),
+            searchService: const _FakeMemorySearchService(),
+            aiClientService: const _ImageCapableMemoryAiClientService(),
+            pendingImageClipboardService: clipboard,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byType(TextField));
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    for (var index = 0; index < 20; index++) {
+      await tester.pump(const Duration(milliseconds: 100));
+      if (find.byIcon(Icons.close).evaluate().length == 2) {
+        break;
+      }
+    }
+
+    expect(find.text('one.png'), findsOneWidget);
+    expect(find.text('two.png'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.close).first);
+    await tester.pump();
+
+    expect(find.byIcon(Icons.close), findsOneWidget);
+    expect(find.text('one.png'), findsNothing);
+    expect(find.text('two.png'), findsOneWidget);
+  });
 
   testWidgets(
     'memory entry does not submit with bare enter in ctrl enter mode',
@@ -1032,13 +1098,13 @@ class _DelayedMemoryAiClientService extends AiClientService {
   List<MemoryMessage>? capturedMessages;
 
   @override
-  Stream<rust_ai.MemoryToolChatStreamEvent>? memoryToolChatStream({
+  Future<Stream<rust_ai.MemoryToolChatStreamEvent>?> memoryToolChatStream({
     required String appDataDir,
     required AppConfig config,
     required List<MemoryMessage> messages,
     required bool thinkingEnabled,
     required String reasoningEffort,
-  }) {
+  }) async {
     started = true;
     capturedMessages = messages;
     return _controller.stream;
@@ -1105,5 +1171,32 @@ class _FakeMemorySearchService extends MemorySearchService {
     required int limit,
   }) async {
     return const MemoryRecallResult(sources: [], steps: []);
+  }
+}
+
+class _FakePendingImageClipboardService extends PendingImageClipboardService {
+  _FakePendingImageClipboardService(this.images);
+
+  final List<PendingImage> images;
+
+  @override
+  Future<List<PendingImage>> readPendingImages() async => images;
+}
+
+class _ImageCapableMemoryAiClientService extends AiClientService {
+  const _ImageCapableMemoryAiClientService();
+
+  @override
+  bool memoryModelSupportsImageInput(AppConfig config) => true;
+
+  @override
+  Future<Stream<rust_ai.MemoryToolChatStreamEvent>?> memoryToolChatStream({
+    required String appDataDir,
+    required AppConfig config,
+    required List<MemoryMessage> messages,
+    required bool thinkingEnabled,
+    required String reasoningEffort,
+  }) async {
+    return const Stream.empty();
   }
 }

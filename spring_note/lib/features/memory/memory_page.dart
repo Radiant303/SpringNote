@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,9 +8,11 @@ import 'package:gpt_markdown/gpt_markdown.dart';
 
 import '../../core/models/local_data_state.dart';
 import '../../core/models/memory_message.dart';
+import '../../core/attachments/pending_image.dart';
 import '../../core/services/ai_client_service.dart';
 import '../../core/services/memory_conversation_service.dart';
 import '../../core/services/memory_search_service.dart';
+import '../../core/services/pending_image_clipboard_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/spring_tree.dart';
 import 'memory_input_modes.dart';
@@ -103,12 +106,14 @@ class MemoryPage extends StatefulWidget {
     this.aiClientService = const AiClientService(),
     this.conversationService = const MemoryConversationService(),
     this.searchService = const MemorySearchService(),
+    this.pendingImageClipboardService = const PendingImageClipboardService(),
   });
 
   final LocalDataState localDataState;
   final AiClientService aiClientService;
   final MemoryConversationService conversationService;
   final MemorySearchService searchService;
+  final PendingImageClipboardService pendingImageClipboardService;
 
   @override
   State<MemoryPage> createState() => _MemoryPageState();
@@ -147,6 +152,17 @@ class _MemoryPageState extends State<MemoryPage> {
   Timer? _reasoningDurationTimer;
   int? _reasoningDurationMessageIndex;
   DateTime? _reasoningDurationStartedAt;
+
+  /// Images pasted into the composer but not sent yet. Shared by the entry
+  /// and chat composers (only one is visible at a time), like the mode
+  /// tags carried between the two controllers.
+  List<PendingImage> _pendingImages = [];
+
+  /// Serial for assigning collision-free ids to pasted images (clipboard
+  /// ids repeat between paste operations; see `_addPendingImages`).
+  int _pendingImageSerial = 0;
+  String? _attachmentError;
+  bool _pastingImages = false;
 
   bool get _inChat => _messages.isNotEmpty;
 
@@ -208,6 +224,8 @@ class _MemoryPageState extends State<MemoryPage> {
       _activeNavIndex = 0;
       _entryController.clear();
       _chatController.clear();
+      _pendingImages = [];
+      _attachmentError = null;
     });
     _entryFocusNode.requestFocus();
   }
@@ -240,12 +258,33 @@ class _MemoryPageState extends State<MemoryPage> {
       );
     }
     final question = resolved.userText.trim();
-    if (question.isEmpty || _answering) {
+    if ((question.isEmpty && _pendingImages.isEmpty) || _answering) {
       return;
     }
+    // 提示文案在异步间隙之前取好。
+    final strings = l10n(context);
     final modelQuestion = resolved.modes.isEmpty
         ? null
         : '$question\n\n${resolved.promptSuffix}';
+
+    // 粘贴的图片先落盘到 memory_images/，remember.json 只记录文件名。
+    var imageNames = const <String>[];
+    if (_pendingImages.isNotEmpty) {
+      try {
+        imageNames = await widget.conversationService.saveImages(
+          appDataDir: widget.localDataState.dataDirectory,
+          images: _pendingImages,
+        );
+      } catch (_) {
+        if (mounted) {
+          setState(() => _attachmentError = strings.memoryImageSaveFailed);
+        }
+        return;
+      }
+    }
+    if (!mounted) {
+      return;
+    }
 
     final now = DateTime.now();
     final userMessage = MemoryMessage(
@@ -255,6 +294,7 @@ class _MemoryPageState extends State<MemoryPage> {
       // Record which modes were active so later requests can explain the
       // resulting reply's format without guessing from its content.
       modeIds: [for (final mode in resolved.modes) mode.id],
+      imageNames: imageNames,
     );
 
     setState(() {
@@ -270,6 +310,8 @@ class _MemoryPageState extends State<MemoryPage> {
       _chatController.text = [
         for (final mode in resolved.modes) mode.token,
       ].join();
+      _pendingImages = [];
+      _attachmentError = null;
     });
     await _persist();
     _scrollToBottom();
@@ -291,6 +333,132 @@ class _MemoryPageState extends State<MemoryPage> {
     await _persist();
     _scrollToBottom();
     _chatFocusNode.requestFocus();
+  }
+
+  TextEditingController get _activeComposerController =>
+      _inChat ? _chatController : _entryController;
+
+  FocusNode get _activeComposerFocusNode =>
+      _inChat ? _chatFocusNode : _entryFocusNode;
+
+  Future<void> _handlePasteShortcut() async {
+    if (_answering || _pastingImages) {
+      return;
+    }
+
+    _pastingImages = true;
+    try {
+      final images = await widget.pendingImageClipboardService
+          .readPendingImages();
+      if (!mounted) {
+        return;
+      }
+      if (images.isEmpty) {
+        await _pasteClipboardText();
+        return;
+      }
+      final strings = l10n(context);
+      if (!widget.aiClientService.memoryModelSupportsImageInput(
+        widget.localDataState.config,
+      )) {
+        setState(() => _attachmentError = strings.memoryImageModelUnsupported);
+        return;
+      }
+      setState(() => _attachmentError = _addPendingImages(images, strings));
+      _activeComposerFocusNode.requestFocus();
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _attachmentError = l10n(context).homeClipboardImageError,
+        );
+      }
+    } finally {
+      _pastingImages = false;
+    }
+  }
+
+  /// Adds pasted images to the composer, enforcing the same per-image and
+  /// per-message limits as note generation. Returns the error to show when
+  /// any image was rejected.
+  ///
+  /// Each image gets a fresh id on insertion: clipboard-sourced
+  /// [PendingImage] ids repeat across paste operations (`clipboard-png-0`),
+  /// and chip removal matches by id — reusing them would delete every chip
+  /// sharing the id at once.
+  String? _addPendingImages(
+    List<PendingImage> images,
+    AppLocalizations strings,
+  ) {
+    var rejected = false;
+    for (final image in images) {
+      if (_pendingImages.length >= maxAiImageInputs) {
+        return strings.memoryImageCountLimit;
+      }
+      final aiImage = AiImageInput.fromBytes(
+        name: image.name,
+        bytes: image.bytes,
+        extension: image.extension,
+      );
+      if (!isSupportedAiImageInput(aiImage)) {
+        rejected = true;
+        continue;
+      }
+      _pendingImages.add(
+        PendingImage(
+          id: 'memory-pending-${_pendingImageSerial++}',
+          bytes: image.bytes,
+          name: image.name,
+          extension: image.extension,
+        ),
+      );
+    }
+    return rejected ? strings.memoryImageInvalid : null;
+  }
+
+  Future<void> _pasteClipboardText() async {
+    final ClipboardData? data;
+    try {
+      data = await Clipboard.getData(Clipboard.kTextPlain);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _attachmentError = l10n(context).homeClipboardTextError);
+      }
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+    final text = data?.text;
+    if (text == null || text.isEmpty) {
+      return;
+    }
+    _insertComposerText(text);
+    _activeComposerFocusNode.requestFocus();
+  }
+
+  void _insertComposerText(String text) {
+    final controller = _activeComposerController;
+    final value = controller.value;
+    final selection = value.selection;
+    final start = selection.isValid ? selection.start : value.text.length;
+    final end = selection.isValid ? selection.end : value.text.length;
+    final nextText = value.text.replaceRange(start, end, text);
+    final offset = start + text.length;
+    controller.value = TextEditingValue(
+      text: nextText,
+      selection: TextSelection.collapsed(offset: offset),
+    );
+  }
+
+  void _removePendingImage(PendingImage image) {
+    setState(() {
+      _pendingImages = _pendingImages
+          .where((item) => item.id != image.id)
+          .toList();
+      if (_pendingImages.isEmpty) {
+        _attachmentError = null;
+      }
+    });
   }
 
   /// The conversation as the model should see it: identical to [_messages]
@@ -318,6 +486,7 @@ class _MemoryPageState extends State<MemoryPage> {
                   '${message.content.trimRight()}\n\n${modeRequestNote(modes)}',
               createdAt: message.createdAt,
               modeIds: message.modeIds,
+              imageNames: message.imageNames,
             ),
           );
           continue;
@@ -345,6 +514,7 @@ class _MemoryPageState extends State<MemoryPage> {
             role: 'user',
             content: requestQuestion,
             createdAt: view[i].createdAt,
+            imageNames: view[i].imageNames,
           );
           break;
         }
@@ -368,7 +538,7 @@ class _MemoryPageState extends State<MemoryPage> {
     for (var turn = 0; turn < maxTurns; turn++) {
       final requestStartedAt = DateTime.now();
       _setWaitingForMemoryResponse(true);
-      final stream = widget.aiClientService.memoryToolChatStream(
+      final stream = await widget.aiClientService.memoryToolChatStream(
         appDataDir: widget.localDataState.dataDirectory,
         config: widget.localDataState.config,
         messages: _requestMessages(modelQuestion),
@@ -823,6 +993,10 @@ class _MemoryPageState extends State<MemoryPage> {
                 onSubmit: _sendFromEntry,
                 menuLink: _entryMenuLink,
                 submitWithEnter: widget.localDataState.config.submitWithEnter,
+                pendingImages: _pendingImages,
+                attachmentError: _attachmentError,
+                onPasteShortcut: _handlePasteShortcut,
+                onRemoveImage: _removePendingImage,
               ),
               const SizedBox(height: 18),
               Wrap(
@@ -997,7 +1171,13 @@ class _MemoryPageState extends State<MemoryPage> {
             ListView(
               key: _chatListKey,
               controller: _scrollController,
-              padding: const EdgeInsets.fromLTRB(32, 36, 32, 150),
+              // Extra room while pasted images wait above the composer.
+              padding: EdgeInsets.fromLTRB(
+                32,
+                36,
+                32,
+                _pendingImages.isEmpty ? 150 : 214,
+              ),
               children: [
                 Center(
                   child: ConstrainedBox(
@@ -1013,6 +1193,14 @@ class _MemoryPageState extends State<MemoryPage> {
                             message: entry.value,
                             localDataState: widget.localDataState,
                             attachments: _toolAttachmentsFor(entry.value),
+                            imagePaths: [
+                              for (final name in entry.value.imageNames)
+                                widget.conversationService.imagePath(
+                                  appDataDir:
+                                      widget.localDataState.dataDirectory,
+                                  name: name,
+                                ),
+                            ],
                           ),
                         if (_waitingForMemoryResponse)
                           const _MemoryWaitingIndicator(),
@@ -1026,53 +1214,56 @@ class _MemoryPageState extends State<MemoryPage> {
               left: 0,
               right: 0,
               bottom: 0,
-              child: SizedBox(
-                height: 132,
-                child: Stack(
-                  children: [
-                    // The gradient strip is purely decorative. Ignore its
-                    // pointers so the bottom corners stay scrollable/selectable
-                    // instead of becoming dead zones. (A nested
-                    // IgnorePointer(ignoring: false) cannot re-enable hit
-                    // testing, so the composer must live outside it.)
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                colors.background.withValues(alpha: 0),
-                                colors.background,
-                                colors.background,
-                              ],
-                            ),
+              // No fixed height: the strip of pasted image chips above the
+              // composer makes the whole area grow while composing.
+              child: Stack(
+                children: [
+                  // The gradient strip is purely decorative. Ignore its
+                  // pointers so the bottom corners stay scrollable/selectable
+                  // instead of becoming dead zones. (A nested
+                  // IgnorePointer(ignoring: false) cannot re-enable hit
+                  // testing, so the composer must live outside it.)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              colors.background.withValues(alpha: 0),
+                              colors.background,
+                              colors.background,
+                            ],
                           ),
                         ),
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 760),
-                          child: _MemoryComposer(
-                            controller: _chatController,
-                            focusNode: _chatFocusNode,
-                            hintText: l10n(context).memoryChatHint,
-                            answering: _answering,
-                            onSubmit: _sendFromChat,
-                            menuOpensUpward: true,
-                            menuLink: _chatMenuLink,
-                            submitWithEnter:
-                                widget.localDataState.config.submitWithEnter,
-                          ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 760),
+                        child: _MemoryComposer(
+                          controller: _chatController,
+                          focusNode: _chatFocusNode,
+                          hintText: l10n(context).memoryChatHint,
+                          answering: _answering,
+                          onSubmit: _sendFromChat,
+                          menuOpensUpward: true,
+                          menuLink: _chatMenuLink,
+                          submitWithEnter:
+                              widget.localDataState.config.submitWithEnter,
+                          pendingImages: _pendingImages,
+                          attachmentError: _attachmentError,
+                          onPasteShortcut: _handlePasteShortcut,
+                          onRemoveImage: _removePendingImage,
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
             if (showNav)
@@ -1519,6 +1710,10 @@ class _MemoryComposer extends StatelessWidget {
     required this.answering,
     required this.onSubmit,
     required this.menuLink,
+    required this.pendingImages,
+    required this.onPasteShortcut,
+    required this.onRemoveImage,
+    this.attachmentError,
     this.menuOpensUpward = false,
     this.submitWithEnter = false,
   });
@@ -1528,6 +1723,19 @@ class _MemoryComposer extends StatelessWidget {
   final String hintText;
   final bool answering;
   final VoidCallback onSubmit;
+
+  /// Pasted images waiting to be sent with the next message; rendered as
+  /// removable chips above the input bar.
+  final List<PendingImage> pendingImages;
+
+  /// Paste/attachment problem shown under the input bar, if any.
+  final String? attachmentError;
+
+  /// Intercepts Ctrl/Cmd+V so clipboard images can be attached; the
+  /// handler falls back to plain text paste when the clipboard holds no
+  /// image.
+  final VoidCallback onPasteShortcut;
+  final ValueChanged<PendingImage> onRemoveImage;
 
   /// Links the composer box to the floating mode menu: the menu anchors to
   /// the whole composer so it can span the composer's full width.
@@ -1617,7 +1825,38 @@ class _MemoryComposer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (pendingImages.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _MemoryPendingImageStrip(
+              images: pendingImages,
+              enabled: !answering,
+              onRemove: onRemoveImage,
+            ),
+          ),
+        _buildPill(AppTheme.colors(context)),
+        if (attachmentError != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 20, top: 6),
+            child: Text(
+              attachmentError!,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: dark ? const Color(0xFFFCD34D) : const Color(0xFFB45309),
+                fontSize: 12,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// The rounded input bar itself: mode menu button, text field, send.
+  Widget _buildPill(SpringThemeColors colors) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final panelWidth = constraints.maxWidth.isFinite
@@ -1653,6 +1892,14 @@ class _MemoryComposer extends StatelessWidget {
                     onKeyEvent: _handleEnterKey,
                     child: CallbackShortcuts(
                       bindings: {
+                        const SingleActivator(
+                          LogicalKeyboardKey.keyV,
+                          control: true,
+                        ): onPasteShortcut,
+                        const SingleActivator(
+                          LogicalKeyboardKey.keyV,
+                          meta: true,
+                        ): onPasteShortcut,
                         if (submitWithEnter) ...{
                           const SingleActivator(
                             LogicalKeyboardKey.enter,
@@ -1733,6 +1980,114 @@ class _MemoryComposer extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// The strip of pasted-image chips shown above the composer, styled after
+/// the home page's pending-image strip.
+class _MemoryPendingImageStrip extends StatelessWidget {
+  const _MemoryPendingImageStrip({
+    required this.images,
+    required this.enabled,
+    required this.onRemove,
+  });
+
+  final List<PendingImage> images;
+  final bool enabled;
+  final ValueChanged<PendingImage> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final image in images)
+          _MemoryPendingImageChip(
+            image: image,
+            enabled: enabled,
+            onRemove: () => onRemove(image),
+          ),
+      ],
+    );
+  }
+}
+
+class _MemoryPendingImageChip extends StatelessWidget {
+  const _MemoryPendingImageChip({
+    required this.image,
+    required this.enabled,
+    required this.onRemove,
+  });
+
+  final PendingImage image;
+  final bool enabled;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    return Tooltip(
+      message: image.name,
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.only(left: 6, right: 4),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          border: Border.all(color: colors.border),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(5),
+              child: SizedBox(
+                width: 28,
+                height: 28,
+                child: Image.memory(
+                  image.bytes,
+                  fit: BoxFit.cover,
+                  gaplessPlayback: true,
+                  errorBuilder: (_, _, _) => DecoratedBox(
+                    decoration: BoxDecoration(color: colors.surfaceMuted),
+                    child: Icon(
+                      Icons.image_outlined,
+                      size: 16,
+                      color: colors.textMuted,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              image.name,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: colors.textMuted,
+                fontSize: 12,
+                height: 1.2,
+              ),
+            ),
+            const SizedBox(width: 4),
+            InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: enabled ? onRemove : null,
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(
+                  Icons.close,
+                  size: 13,
+                  color: enabled
+                      ? colors.textSubtle
+                      : colors.textSubtle.withValues(alpha: 0.48),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -2110,11 +2465,16 @@ class _MemoryMessageView extends StatelessWidget {
     required this.message,
     required this.localDataState,
     required this.attachments,
+    this.imagePaths = const [],
   });
 
   final MemoryMessage message;
   final LocalDataState localDataState;
   final List<_MemoryToolAttachment> attachments;
+
+  /// Absolute paths of the images attached to a user message, resolved
+  /// from [MemoryMessage.imageNames] by the caller.
+  final List<String> imagePaths;
 
   @override
   Widget build(BuildContext context) {
@@ -2149,11 +2509,33 @@ class _MemoryMessageView extends StatelessWidget {
             color: bubbleColor,
             borderRadius: BorderRadius.circular(22),
           ),
-          child: SelectableText(
-            message.content,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyLarge?.copyWith(color: colors.text, height: 1.7),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (imagePaths.isNotEmpty)
+                Padding(
+                  padding: EdgeInsets.only(
+                    bottom: message.content.isEmpty ? 0 : 10,
+                  ),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final path in imagePaths)
+                        _MemorySentImage(path: path),
+                    ],
+                  ),
+                ),
+              if (message.content.isNotEmpty)
+                SelectableText(
+                  message.content,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: colors.text,
+                    height: 1.7,
+                  ),
+                ),
+            ],
           ),
         ),
       );
@@ -2231,6 +2613,35 @@ class _MemoryMessageView extends StatelessWidget {
               _ToolAttachmentStrip(attachments: attachments),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A thumbnail of an image attached to a sent user message, loaded from
+/// the conversation's `memory_images` directory.
+class _MemorySentImage extends StatelessWidget {
+  const _MemorySentImage({required this.path});
+
+  final String path;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Image.file(
+        File(path),
+        width: 160,
+        height: 120,
+        fit: BoxFit.cover,
+        gaplessPlayback: true,
+        errorBuilder: (_, _, _) => Container(
+          width: 160,
+          height: 120,
+          color: colors.surfaceMuted,
+          child: Icon(Icons.broken_image_outlined, color: colors.textMuted),
         ),
       ),
     );

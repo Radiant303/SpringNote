@@ -12,6 +12,7 @@ class AiChatMessage {
   final String reasoningContent;
   final String toolCallId;
   final List<AiToolCall> toolCalls;
+  final List<AiImageAttachment> images;
 
   const AiChatMessage({
     required this.role,
@@ -19,6 +20,7 @@ class AiChatMessage {
     required this.reasoningContent,
     required this.toolCallId,
     required this.toolCalls,
+    required this.images,
   });
 
   @override
@@ -27,7 +29,8 @@ class AiChatMessage {
       content.hashCode ^
       reasoningContent.hashCode ^
       toolCallId.hashCode ^
-      toolCalls.hashCode;
+      toolCalls.hashCode ^
+      images.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -38,7 +41,8 @@ class AiChatMessage {
           content == other.content &&
           reasoningContent == other.reasoningContent &&
           toolCallId == other.toolCallId &&
-          toolCalls == other.toolCalls;
+          toolCalls == other.toolCalls &&
+          images == other.images;
 }
 
 class AiImageAttachment {

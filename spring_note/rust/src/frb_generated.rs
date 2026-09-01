@@ -1148,12 +1148,14 @@ impl SseDecode for crate::ai::AiChatMessage {
         let mut var_reasoningContent = <String>::sse_decode(deserializer);
         let mut var_toolCallId = <String>::sse_decode(deserializer);
         let mut var_toolCalls = <Vec<crate::ai::AiToolCall>>::sse_decode(deserializer);
+        let mut var_images = <Vec<crate::ai::AiImageAttachment>>::sse_decode(deserializer);
         return crate::ai::AiChatMessage {
             role: var_role,
             content: var_content,
             reasoning_content: var_reasoningContent,
             tool_call_id: var_toolCallId,
             tool_calls: var_toolCalls,
+            images: var_images,
         };
     }
 }
@@ -2272,6 +2274,7 @@ impl flutter_rust_bridge::IntoDart for crate::ai::AiChatMessage {
             self.reasoning_content.into_into_dart().into_dart(),
             self.tool_call_id.into_into_dart().into_dart(),
             self.tool_calls.into_into_dart().into_dart(),
+            self.images.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -3190,6 +3193,7 @@ impl SseEncode for crate::ai::AiChatMessage {
         <String>::sse_encode(self.reasoning_content, serializer);
         <String>::sse_encode(self.tool_call_id, serializer);
         <Vec<crate::ai::AiToolCall>>::sse_encode(self.tool_calls, serializer);
+        <Vec<crate::ai::AiImageAttachment>>::sse_encode(self.images, serializer);
     }
 }
 

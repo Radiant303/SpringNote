@@ -511,5 +511,9 @@
   "settingsVariableSourceMarkdown": "Daily notes of the week",
   "memoryToolLabelResolveIsoWeek": "Resolve ISO week dates",
   "memoryToolLabelRunToolBatch": "Run tools in batch",
-  "memoryToolLabelRunToolSequence": "Run tools in sequence"
+  "memoryToolLabelRunToolSequence": "Run tools in sequence",
+  "memoryImageCountLimit": "Up to 4 images per message.",
+  "memoryImageInvalid": "Only png, jpg, webp or gif images up to 5 MB are supported.",
+  "memoryImageModelUnsupported": "The selected memory model does not support image input.",
+  "memoryImageSaveFailed": "Failed to save the images. Please try again."
 }

@@ -1720,4 +1720,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get memoryToolLabelRunToolSequence => 'Run tools in sequence';
+
+  @override
+  String get memoryImageCountLimit => 'Up to 4 images per message.';
+
+  @override
+  String get memoryImageInvalid =>
+      'Only png, jpg, webp or gif images up to 5 MB are supported.';
+
+  @override
+  String get memoryImageModelUnsupported =>
+      'The selected memory model does not support image input.';
+
+  @override
+  String get memoryImageSaveFailed =>
+      'Failed to save the images. Please try again.';
 }

@@ -17,6 +17,7 @@ import '../models/note_file.dart';
 import '../models/provider_config.dart';
 import '../models/structured_work_note.dart';
 import 'image_file_types.dart';
+import 'memory_conversation_service.dart';
 
 const int maxAiImageInputs = 4;
 const int maxAiImageInputBytes = 5 * 1024 * 1024;
@@ -317,6 +318,7 @@ MemoryMessage _copyMemoryMessage(
     toolCalls: message.toolCalls,
     sources: message.sources,
     modeIds: message.modeIds,
+    imageNames: message.imageNames,
   );
 }
 
@@ -370,7 +372,11 @@ String _stripMarkdownFence(String content) {
 }
 
 class AiClientService {
-  const AiClientService();
+  const AiClientService({
+    this.memoryConversationService = const MemoryConversationService(),
+  });
+
+  final MemoryConversationService memoryConversationService;
 
   Future<StructuredWorkNote?> generateStructuredNote({
     required String appDataDir,
@@ -1015,10 +1021,13 @@ class AiClientService {
         appDataDir: appDataDir,
         provider: _toRustProvider(selection.provider),
         model: _toRustModel(selection.model),
-        messages: sanitizeMemoryMessagesForModel(
-          messages,
-          language: resolveAppLanguage(config.language),
-        ).map(_toRustChatMessage).toList(),
+        messages: await _toRustChatMessages(
+          appDataDir,
+          sanitizeMemoryMessagesForModel(
+            messages,
+            language: resolveAppLanguage(config.language),
+          ),
+        ),
         thinkingEnabled: thinkingEnabled,
         reasoningEffort: reasoningEffort,
         language: resolveAppLanguage(config.language),
@@ -1029,13 +1038,13 @@ class AiClientService {
     return response.ok ? response : null;
   }
 
-  Stream<rust_ai.MemoryToolChatStreamEvent>? memoryToolChatStream({
+  Future<Stream<rust_ai.MemoryToolChatStreamEvent>?> memoryToolChatStream({
     required String appDataDir,
     required AppConfig config,
     required List<MemoryMessage> messages,
     required bool thinkingEnabled,
     required String reasoningEffort,
-  }) {
+  }) async {
     final selection = _selectModel(config, 'memoryBookModel');
     if (selection == null) {
       return null;
@@ -1046,10 +1055,13 @@ class AiClientService {
         appDataDir: appDataDir,
         provider: _toRustProvider(selection.provider),
         model: _toRustModel(selection.model),
-        messages: sanitizeMemoryMessagesForModel(
-          messages,
-          language: resolveAppLanguage(config.language),
-        ).map(_toRustChatMessage).toList(),
+        messages: await _toRustChatMessages(
+          appDataDir,
+          sanitizeMemoryMessagesForModel(
+            messages,
+            language: resolveAppLanguage(config.language),
+          ),
+        ),
         thinkingEnabled: thinkingEnabled,
         reasoningEffort: reasoningEffort,
         language: resolveAppLanguage(config.language),
@@ -1120,6 +1132,17 @@ class AiClientService {
   bool supportsMultimodalImageInput(AppConfig config) {
     final selection = _selectModel(config, 'intelligentGenerationModel');
     return selection != null && _imageCapableModel(selection.model);
+  }
+
+  /// Whether the memory-book chat may attach pasted images: the selected
+  /// memory model must accept image input and its provider must speak the
+  /// OpenAI-compatible protocol (the only protocol that carries images in
+  /// memory requests for now).
+  bool memoryModelSupportsImageInput(AppConfig config) {
+    final selection = _selectModel(config, 'memoryBookModel');
+    return selection != null &&
+        selection.provider.protocol == 'openaiCompatible' &&
+        _imageCapableModel(selection.model);
   }
 
   _ModelSelection? _findFimModel(AppConfig config, ModelReference modelRef) {
@@ -1234,7 +1257,21 @@ class AiClientService {
     return model.inputModes.contains('image');
   }
 
-  rust_ai.AiChatMessage _toRustChatMessage(MemoryMessage message) {
+  Future<List<rust_ai.AiChatMessage>> _toRustChatMessages(
+    String appDataDir,
+    List<MemoryMessage> messages,
+  ) async {
+    final result = <rust_ai.AiChatMessage>[];
+    for (final message in messages) {
+      result.add(await _toRustChatMessage(appDataDir, message));
+    }
+    return result;
+  }
+
+  Future<rust_ai.AiChatMessage> _toRustChatMessage(
+    String appDataDir,
+    MemoryMessage message,
+  ) async {
     return rust_ai.AiChatMessage(
       role: message.role == 'ai' ? 'assistant' : message.role,
       content: message.content,
@@ -1249,7 +1286,38 @@ class AiClientService {
             ),
           )
           .toList(),
+      images: await _toRustMemoryImages(appDataDir, message),
     );
+  }
+
+  /// Loads the image bytes saved for a user message. Only user messages
+  /// carry images; missing files are skipped so a moved data directory
+  /// degrades to text-only history instead of failing the request.
+  Future<List<rust_ai.AiImageAttachment>> _toRustMemoryImages(
+    String appDataDir,
+    MemoryMessage message,
+  ) async {
+    if (message.role != 'user' || message.imageNames.isEmpty) {
+      return const [];
+    }
+    final images = <rust_ai.AiImageAttachment>[];
+    for (final name in message.imageNames) {
+      final bytes = await memoryConversationService.readImageBytes(
+        appDataDir: appDataDir,
+        name: name,
+      );
+      if (bytes == null || bytes.isEmpty) {
+        continue;
+      }
+      images.add(
+        rust_ai.AiImageAttachment(
+          name: name,
+          mimeType: imageMimeTypeForExtension(name.split('.').last),
+          dataBase64: base64Encode(bytes),
+        ),
+      );
+    }
+    return images;
   }
 
   String _formatDate(DateTime date) {

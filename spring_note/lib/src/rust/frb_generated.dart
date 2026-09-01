@@ -1223,14 +1223,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   AiChatMessage dco_decode_ai_chat_message(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return AiChatMessage(
       role: dco_decode_String(arr[0]),
       content: dco_decode_String(arr[1]),
       reasoningContent: dco_decode_String(arr[2]),
       toolCallId: dco_decode_String(arr[3]),
       toolCalls: dco_decode_list_ai_tool_call(arr[4]),
+      images: dco_decode_list_ai_image_attachment(arr[5]),
     );
   }
 
@@ -2075,12 +2076,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_reasoningContent = sse_decode_String(deserializer);
     var var_toolCallId = sse_decode_String(deserializer);
     var var_toolCalls = sse_decode_list_ai_tool_call(deserializer);
+    var var_images = sse_decode_list_ai_image_attachment(deserializer);
     return AiChatMessage(
       role: var_role,
       content: var_content,
       reasoningContent: var_reasoningContent,
       toolCallId: var_toolCallId,
       toolCalls: var_toolCalls,
+      images: var_images,
     );
   }
 
@@ -3170,6 +3173,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.reasoningContent, serializer);
     sse_encode_String(self.toolCallId, serializer);
     sse_encode_list_ai_tool_call(self.toolCalls, serializer);
+    sse_encode_list_ai_image_attachment(self.images, serializer);
   }
 
   @protected

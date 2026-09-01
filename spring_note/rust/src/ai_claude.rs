@@ -1174,6 +1174,7 @@ mod tests {
                 reasoning_content: String::new(),
                 tool_call_id: String::new(),
                 tool_calls: vec![],
+                images: vec![],
             }],
             thinking_enabled,
             reasoning_effort: effort.to_string(),
@@ -1271,6 +1272,7 @@ mod tests {
                 reasoning_content: String::new(),
                 tool_call_id: String::new(),
                 tool_calls: vec![],
+                images: vec![],
             },
             AiChatMessage {
                 role: "assistant".to_string(),
@@ -1289,6 +1291,7 @@ mod tests {
                         arguments: "not json".to_string(),
                     },
                 ],
+                images: vec![],
             },
             AiChatMessage {
                 role: "tool".to_string(),
@@ -1296,6 +1299,7 @@ mod tests {
                 reasoning_content: String::new(),
                 tool_call_id: "toolu_01".to_string(),
                 tool_calls: vec![],
+                images: vec![],
             },
             AiChatMessage {
                 role: "tool".to_string(),
@@ -1303,6 +1307,7 @@ mod tests {
                 reasoning_content: String::new(),
                 tool_call_id: "toolu_02".to_string(),
                 tool_calls: vec![],
+                images: vec![],
             },
         ];
 

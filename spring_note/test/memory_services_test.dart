@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:spring_note/core/attachments/pending_image.dart';
 import 'package:spring_note/core/models/app_config.dart';
 import 'package:spring_note/core/models/local_data_state.dart';
 import 'package:spring_note/core/models/memory_message.dart';
@@ -53,6 +55,83 @@ void main() {
       );
     },
   );
+
+  test('memory conversation service saves and clears attached images', () async {
+    final temp = await Directory.systemTemp.createTemp(
+      'spring_note_memory_images_',
+    );
+    addTearDown(() async {
+      if (await temp.exists()) {
+        await temp.delete(recursive: true);
+      }
+    });
+
+    const service = MemoryConversationService();
+    final names = await service.saveImages(
+      appDataDir: temp.path,
+      images: [
+        PendingImage(
+          id: 'a',
+          bytes: Uint8List.fromList([1, 2, 3]),
+          name: 'a.png',
+          extension: 'png',
+        ),
+        PendingImage(
+          id: 'b',
+          bytes: Uint8List.fromList([4, 5, 6]),
+          name: 'b.jpg',
+          extension: 'jpg',
+        ),
+      ],
+    );
+
+    expect(names, hasLength(2));
+    expect(names.first, endsWith('.png'));
+    expect(names.last, endsWith('.jpg'));
+    expect(
+      service.imagePath(appDataDir: temp.path, name: names.first),
+      contains('memory_images'),
+    );
+
+    final message = MemoryMessage(
+      role: 'user',
+      content: '看图',
+      createdAt: DateTime(2026, 9, 1),
+      imageNames: names,
+    );
+    await service.saveMessages(appDataDir: temp.path, messages: [message]);
+    final reloaded = await service.readMessages(appDataDir: temp.path);
+    expect(reloaded.single.imageNames, names);
+    // remember.json 只存文件名，不存图片字节。
+    expect(
+      File(
+        '${temp.path}${Platform.pathSeparator}remember.json',
+      ).readAsStringSync(),
+      isNot(contains('AQID')),
+    );
+
+    expect(
+      await service.readImageBytes(appDataDir: temp.path, name: names.first),
+      [1, 2, 3],
+    );
+    // 路径穿越的文件名一律拒绝。
+    expect(
+      await service.readImageBytes(appDataDir: temp.path, name: '../x.png'),
+      isNull,
+    );
+
+    await service.clear(appDataDir: temp.path);
+    expect(
+      await service.readImageBytes(appDataDir: temp.path, name: names.first),
+      isNull,
+    );
+    expect(
+      Directory(
+        '${temp.path}${Platform.pathSeparator}memory_images',
+      ).existsSync(),
+      isFalse,
+    );
+  });
 
   test('memory search service finds markdown sources by keyword', () async {
     final temp = await Directory.systemTemp.createTemp(
