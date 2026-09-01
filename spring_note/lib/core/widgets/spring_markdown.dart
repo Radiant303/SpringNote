@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:gpt_markdown/custom_widgets/custom_divider.dart';
 import 'package:gpt_markdown/custom_widgets/indent_widget.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
-import 'package:gpt_markdown/custom_widgets/markdown_config.dart';
 import 'package:gpt_markdown/custom_widgets/unordered_ordered_list.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
