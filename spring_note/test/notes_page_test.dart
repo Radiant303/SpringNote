@@ -618,6 +618,61 @@ final value = 1;
     expect(find.text('周报'), findsWidgets);
   });
 
+  testWidgets('notes page ensures current period reports mid-period', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    // Only last week's weekly report and last month's monthly report exist;
+    // opening those kinds must still create and select the current period's
+    // title-only file so it can be written (or regenerated) mid-period.
+    final noteService = _MemoryNoteService({
+      'D:\\Temp\\SpringNote\\notes\\daily\\2026-06-18.md': '# 日报\n',
+      'D:\\Temp\\SpringNote\\notes\\weekly\\2026-W24.md':
+          '# 2026-W24 周报\n\n上周内容\n',
+      'D:\\Temp\\SpringNote\\notes\\monthly\\2026-05.md':
+          '# 2026-05 月报\n\n上月内容\n',
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: NotesPage(
+          localDataState: _localDataState,
+          noteService: noteService,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byIcon(Icons.more_horiz));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('周报').last);
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      noteService.contents['D:\\Temp\\SpringNote\\notes\\weekly\\2026-W25.md'],
+      '# 周报\n',
+    );
+    expect(_editableRealText(tester), '# 周报\n');
+
+    await tester.tap(find.byIcon(Icons.more_horiz));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('月报').last);
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      noteService.contents['D:\\Temp\\SpringNote\\notes\\monthly\\2026-06.md'],
+      '# 月报\n',
+    );
+    expect(_editableRealText(tester), '# 月报\n');
+  });
+
   testWidgets('notes editor clears undo history when switching note kind', (
     WidgetTester tester,
   ) async {

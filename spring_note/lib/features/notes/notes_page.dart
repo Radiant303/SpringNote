@@ -376,35 +376,24 @@ class _NotesPageState extends State<NotesPage> {
     });
 
     final directory = _directoryFor(kind);
-    var notes = await widget.noteService.listMarkdownFiles(
+    // Ensure the current period's file exists for every kind (title only),
+    // as has always been done for daily: the current week's weekly report
+    // and the current month's monthly report become editable (or manually
+    // regenerable) mid-period instead of first appearing after the period
+    // ends. The startup backfill only fills periods before the current one,
+    // so it never overwrites these files while the period is still running.
+    final currentPeriodNote = await widget.noteService
+        .ensureCurrentMarkdownFile(directoryPath: directory, kind: kind);
+    final notes = await widget.noteService.listMarkdownFiles(
       directoryPath: directory,
       kind: kind,
     );
-    NoteFile? currentDailyNote;
-    if (kind == NoteKind.daily) {
-      currentDailyNote = await widget.noteService.ensureCurrentMarkdownFile(
-        directoryPath: directory,
-        kind: kind,
-      );
-      notes = await widget.noteService.listMarkdownFiles(
-        directoryPath: directory,
-        kind: kind,
-      );
-    } else if (notes.isEmpty) {
-      final current = await widget.noteService.ensureCurrentMarkdownFile(
-        directoryPath: directory,
-        kind: kind,
-      );
-      notes = [current];
-    }
 
     final selected = selectedPath == null
-        ? currentDailyNote == null
-              ? notes.first
-              : notes.firstWhere(
-                  (note) => _samePath(note.path, currentDailyNote!.path),
-                  orElse: () => currentDailyNote!,
-                )
+        ? notes.firstWhere(
+            (note) => _samePath(note.path, currentPeriodNote.path),
+            orElse: () => notes.first,
+          )
         : notes.firstWhere(
             (note) => note.path == selectedPath,
             orElse: () => notes.first,
