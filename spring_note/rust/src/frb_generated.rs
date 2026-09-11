@@ -1372,6 +1372,7 @@ impl SseDecode for crate::ai::DailyMergeRequest {
         let mut var_model = <crate::ai::AiModel>::sse_decode(deserializer);
         let mut var_existingMarkdown = <String>::sse_decode(deserializer);
         let mut var_rawInput = <String>::sse_decode(deserializer);
+        let mut var_images = <Vec<crate::ai::AiImageAttachment>>::sse_decode(deserializer);
         let mut var_date = <String>::sse_decode(deserializer);
         let mut var_industry = <String>::sse_decode(deserializer);
         let mut var_mergePrompt = <String>::sse_decode(deserializer);
@@ -1384,6 +1385,7 @@ impl SseDecode for crate::ai::DailyMergeRequest {
             model: var_model,
             existing_markdown: var_existingMarkdown,
             raw_input: var_rawInput,
+            images: var_images,
             date: var_date,
             industry: var_industry,
             merge_prompt: var_mergePrompt,
@@ -1919,6 +1921,7 @@ impl SseDecode for crate::report_regeneration::RegenerateReportRequest {
         let mut var_weeklyReportPrompt = <String>::sse_decode(deserializer);
         let mut var_language = <String>::sse_decode(deserializer);
         let mut var_apiLogEnabled = <bool>::sse_decode(deserializer);
+        let mut var_includeImages = <bool>::sse_decode(deserializer);
         return crate::report_regeneration::RegenerateReportRequest {
             app_data_dir: var_appDataDir,
             provider: var_provider,
@@ -1932,6 +1935,7 @@ impl SseDecode for crate::report_regeneration::RegenerateReportRequest {
             weekly_report_prompt: var_weeklyReportPrompt,
             language: var_language,
             api_log_enabled: var_apiLogEnabled,
+            include_images: var_includeImages,
         };
     }
 }
@@ -1959,6 +1963,7 @@ impl SseDecode for crate::ai::ReportRequest {
         let mut var_provider = <crate::ai::AiProvider>::sse_decode(deserializer);
         let mut var_model = <crate::ai::AiModel>::sse_decode(deserializer);
         let mut var_sourceMarkdown = <String>::sse_decode(deserializer);
+        let mut var_images = <Vec<crate::ai::AiImageAttachment>>::sse_decode(deserializer);
         let mut var_periodLabel = <String>::sse_decode(deserializer);
         let mut var_industry = <String>::sse_decode(deserializer);
         let mut var_reportPrompt = <String>::sse_decode(deserializer);
@@ -1969,6 +1974,7 @@ impl SseDecode for crate::ai::ReportRequest {
             provider: var_provider,
             model: var_model,
             source_markdown: var_sourceMarkdown,
+            images: var_images,
             period_label: var_periodLabel,
             industry: var_industry,
             report_prompt: var_reportPrompt,
@@ -2522,6 +2528,7 @@ impl flutter_rust_bridge::IntoDart for crate::ai::DailyMergeRequest {
             self.model.into_into_dart().into_dart(),
             self.existing_markdown.into_into_dart().into_dart(),
             self.raw_input.into_into_dart().into_dart(),
+            self.images.into_into_dart().into_dart(),
             self.date.into_into_dart().into_dart(),
             self.industry.into_into_dart().into_dart(),
             self.merge_prompt.into_into_dart().into_dart(),
@@ -2953,6 +2960,7 @@ impl flutter_rust_bridge::IntoDart for crate::report_regeneration::RegenerateRep
             self.weekly_report_prompt.into_into_dart().into_dart(),
             self.language.into_into_dart().into_dart(),
             self.api_log_enabled.into_into_dart().into_dart(),
+            self.include_images.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2999,6 +3007,7 @@ impl flutter_rust_bridge::IntoDart for crate::ai::ReportRequest {
             self.provider.into_into_dart().into_dart(),
             self.model.into_into_dart().into_dart(),
             self.source_markdown.into_into_dart().into_dart(),
+            self.images.into_into_dart().into_dart(),
             self.period_label.into_into_dart().into_dart(),
             self.industry.into_into_dart().into_dart(),
             self.report_prompt.into_into_dart().into_dart(),
@@ -3333,6 +3342,7 @@ impl SseEncode for crate::ai::DailyMergeRequest {
         <crate::ai::AiModel>::sse_encode(self.model, serializer);
         <String>::sse_encode(self.existing_markdown, serializer);
         <String>::sse_encode(self.raw_input, serializer);
+        <Vec<crate::ai::AiImageAttachment>>::sse_encode(self.images, serializer);
         <String>::sse_encode(self.date, serializer);
         <String>::sse_encode(self.industry, serializer);
         <String>::sse_encode(self.merge_prompt, serializer);
@@ -3717,6 +3727,7 @@ impl SseEncode for crate::report_regeneration::RegenerateReportRequest {
         <String>::sse_encode(self.weekly_report_prompt, serializer);
         <String>::sse_encode(self.language, serializer);
         <bool>::sse_encode(self.api_log_enabled, serializer);
+        <bool>::sse_encode(self.include_images, serializer);
     }
 }
 
@@ -3737,6 +3748,7 @@ impl SseEncode for crate::ai::ReportRequest {
         <crate::ai::AiProvider>::sse_encode(self.provider, serializer);
         <crate::ai::AiModel>::sse_encode(self.model, serializer);
         <String>::sse_encode(self.source_markdown, serializer);
+        <Vec<crate::ai::AiImageAttachment>>::sse_encode(self.images, serializer);
         <String>::sse_encode(self.period_label, serializer);
         <String>::sse_encode(self.industry, serializer);
         <String>::sse_encode(self.report_prompt, serializer);

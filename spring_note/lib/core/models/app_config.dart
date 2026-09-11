@@ -183,6 +183,7 @@ class AppConfig {
     required this.globalSignPrompt,
     required this.weeklyReportPrompt,
     required this.apiLogEnabled,
+    required this.reportImageInputEnabled,
     required this.cloudSync,
     required this.providers,
     required this.defaultModels,
@@ -223,6 +224,7 @@ class AppConfig {
   final String globalSignPrompt;
   final String weeklyReportPrompt;
   final bool apiLogEnabled;
+  final bool reportImageInputEnabled;
   final CloudSyncConfig cloudSync;
   final List<ProviderConfig> providers;
   final Map<String, String?> defaultModels;
@@ -276,6 +278,7 @@ class AppConfig {
       globalSignPrompt: defaultGlobalSignPromptFor(language),
       weeklyReportPrompt: defaultWeeklyReportPromptFor(language),
       apiLogEnabled: false,
+      reportImageInputEnabled: true,
       cloudSync: CloudSyncConfig.defaultsValue,
       providers: [],
       defaultModels: {
@@ -365,6 +368,7 @@ class AppConfig {
         defaultWeeklyReportPromptFor(language),
       ),
       apiLogEnabled: json['apiLogEnabled'] as bool? ?? false,
+      reportImageInputEnabled: json['reportImageInputEnabled'] as bool? ?? true,
       cloudSync: CloudSyncConfig.fromJson(json['cloudSync']),
       providers: _readProviders(json['providers']),
       defaultModels: _readStringMap(
@@ -410,6 +414,7 @@ class AppConfig {
       'globalSignPrompt': globalSignPrompt,
       'weeklyReportPrompt': weeklyReportPrompt,
       'apiLogEnabled': apiLogEnabled,
+      'reportImageInputEnabled': reportImageInputEnabled,
       'cloudSync': cloudSync.toJson(),
       'providers': providers.map((provider) => provider.toJson()).toList(),
       'defaultModels': defaultModels,
@@ -449,6 +454,7 @@ class AppConfig {
     String? globalSignPrompt,
     String? weeklyReportPrompt,
     bool? apiLogEnabled,
+    bool? reportImageInputEnabled,
     CloudSyncConfig? cloudSync,
     List<ProviderConfig>? providers,
     Map<String, String?>? defaultModels,
@@ -503,6 +509,8 @@ class AppConfig {
       globalSignPrompt: globalSignPrompt ?? this.globalSignPrompt,
       weeklyReportPrompt: weeklyReportPrompt ?? this.weeklyReportPrompt,
       apiLogEnabled: apiLogEnabled ?? this.apiLogEnabled,
+      reportImageInputEnabled:
+          reportImageInputEnabled ?? this.reportImageInputEnabled,
       cloudSync: cloudSync ?? this.cloudSync,
       providers: providers ?? this.providers,
       defaultModels: defaultModels ?? this.defaultModels,

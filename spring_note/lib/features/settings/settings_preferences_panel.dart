@@ -717,6 +717,13 @@ class _PreferencesPanel extends StatelessWidget {
                 }
               },
             ),
+            _SwitchSettingRow(
+              label: strings.settingsReportImageInput,
+              value: config.reportImageInputEnabled,
+              onChanged: (value) => onChanged(
+                config.copyWith(reportImageInputEnabled: value),
+              ),
+            ),
           ],
         ),
         _SettingsCard(

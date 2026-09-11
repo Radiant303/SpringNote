@@ -1722,7 +1722,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get memoryToolLabelRunToolSequence => 'Run tools in sequence';
 
   @override
-  String get memoryImageCountLimit => 'Up to 4 images per message.';
+  String get memoryImageCountLimit => 'Up to 10 images per message.';
 
   @override
   String get memoryImageInvalid =>
@@ -1735,4 +1735,8 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get memoryImageSaveFailed =>
       'Failed to save the images. Please try again.';
+
+  @override
+  String get settingsReportImageInput =>
+      'Send note images to AI when generating reports';
 }

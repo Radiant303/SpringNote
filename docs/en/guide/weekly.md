@@ -6,6 +6,8 @@ Weekly notes organize progress and issues on a weekly basis, stored separately f
 
 When generating a weekly note, the application reads daily notes with actual content from Monday to Sunday of the target week and combines them by date before sending them to the report model. Daily notes without valid content do not contribute to the weekly note.
 
+During generation and regeneration, the images referenced by the source daily notes are also sent to the AI, collected from the newest date backwards, up to the 10 newest. The prerequisites and limits are described in [Daily Notes](./daily.md): the switch is enabled by default, the Smart Generation model needs the "image" input mode with an OpenAI-compatible provider (otherwise generation silently falls back to text), each image is at most 5MB (png, jpg, jpeg, webp, gif), and the total image budget is 24MB.
+
 The generated Markdown is saved as an independent file and can be further edited in the notebook. Manual edits belong to the weekly note itself and are not written back to the source daily notes; regenerating re-reads the source daily notes for the target week.
 
 ## Creation Timing

@@ -26,6 +26,8 @@ When opening the Daily note type in the notebook, if the file for the current da
 
 The Regenerate button in the editor header re-runs AI organization based on the current daily note body and overwrites the current file. During generation, the button shows progress and the editor is temporarily disabled; on failure, the error is shown in the status pill on the left side of the header. Nothing happens if the body has no actual content. If the daily note is written by another flow (such as a home page submission) during generation, the overwrite is abandoned and a notice is shown in the status pill, so newer content is not replaced by a stale result.
 
+During regeneration, the note images referenced in the body are sent to the AI together with the text, up to 10 images. Image sending requires the "Send note images to AI when generating reports" switch in `Settings > Prompts` (enabled by default), the Smart Generation model to have the "image" input mode enabled, and the provider to use the OpenAI-compatible protocol; when any condition is not met, regeneration proceeds with text only and no extra notice is shown. Each image must be 5MB or smaller, in png, jpg, jpeg, webp, or gif format, and the total image budget is 24MB — images later in the list are omitted when the budget is exceeded.
+
 ## File Name
 
 Daily note files use the following naming format:

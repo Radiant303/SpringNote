@@ -19,8 +19,9 @@ import '../models/structured_work_note.dart';
 import 'image_file_types.dart';
 import 'memory_conversation_service.dart';
 
-const int maxAiImageInputs = 4;
+const int maxAiImageInputs = 10;
 const int maxAiImageInputBytes = 5 * 1024 * 1024;
+const int maxAiImageTotalBytes = 24 * 1024 * 1024;
 const Set<String> supportedAiImageExtensions = {
   'png',
   'jpg',
@@ -389,7 +390,7 @@ class AiClientService {
       return null;
     }
     final safeImages = _imageCapableModel(selection.model)
-        ? images.where(isSupportedAiImageInput).take(maxAiImageInputs).toList()
+        ? selectAiImagesWithinBudget(images)
         : const <AiImageInput>[];
 
     final response = await rust_api.generateStructuredNote(
@@ -451,6 +452,7 @@ class AiClientService {
         model: _toRustModel(selection.model),
         existingMarkdown: existingMarkdown,
         rawInput: note.rawInput,
+        images: const [],
         date: _formatDate(date),
         industry: config.industry,
         mergePrompt: _renderDailyMergePrompt(
@@ -494,6 +496,7 @@ class AiClientService {
         model: _toRustModel(selection.model),
         existingMarkdown: dailyMarkdown,
         rawInput: rawInput,
+        images: const [],
         date: _formatDate(date),
         industry: config.industry,
         mergePrompt: _renderGlobalSignPrompt(
@@ -523,6 +526,7 @@ class AiClientService {
     required AppConfig config,
     required String sourceMarkdown,
     required String periodLabel,
+    List<AiImageInput> images = const [],
   }) {
     final language = resolveAppLanguage(config.language);
     return _generateReport(
@@ -531,6 +535,7 @@ class AiClientService {
       sourceMarkdown: sourceMarkdown,
       periodLabel: periodLabel,
       monthly: false,
+      images: images,
       reportPrompt: _renderWeeklyReportPrompt(
         config.weeklyReportPrompt,
         language: language,
@@ -546,6 +551,7 @@ class AiClientService {
     required AppConfig config,
     required String sourceMarkdown,
     required String periodLabel,
+    List<AiImageInput> images = const [],
   }) {
     return _generateReport(
       appDataDir: appDataDir,
@@ -553,6 +559,7 @@ class AiClientService {
       sourceMarkdown: sourceMarkdown,
       periodLabel: periodLabel,
       monthly: true,
+      images: images,
       reportPrompt: '',
     );
   }
@@ -594,6 +601,7 @@ class AiClientService {
             : config.weeklyReportPrompt,
         language: resolveAppLanguage(config.language),
         apiLogEnabled: config.apiLogEnabled,
+        includeImages: reportImageInputAllowed(config),
       ),
     );
 
@@ -611,17 +619,25 @@ class AiClientService {
     required String periodLabel,
     required bool monthly,
     required String reportPrompt,
+    List<AiImageInput> images = const [],
   }) async {
     final selection = _selectModel(config, 'intelligentGenerationModel');
     if (selection == null) {
       return null;
     }
 
+    final safeImages = config.reportImageInputEnabled &&
+            selection.provider.protocol == 'openaiCompatible' &&
+            _imageCapableModel(selection.model)
+        ? selectAiImagesWithinBudget(images)
+        : const <AiImageInput>[];
+
     final request = rust_ai.ReportRequest(
       appDataDir: appDataDir,
       provider: _toRustProvider(selection.provider),
       model: _toRustModel(selection.model),
       sourceMarkdown: sourceMarkdown,
+      images: safeImages.map(_toRustImageAttachment).toList(),
       periodLabel: periodLabel,
       industry: config.industry,
       reportPrompt: reportPrompt,
@@ -1145,6 +1161,23 @@ class AiClientService {
         _imageCapableModel(selection.model);
   }
 
+  /// Whether the selected intelligent-generation model may receive note
+  /// images in report requests: same protocol/input-mode rule as the memory
+  /// book, but resolved against the report model.
+  bool reportModelSupportsImageInput(AppConfig config) {
+    final selection = _selectModel(config, 'intelligentGenerationModel');
+    return selection != null &&
+        selection.provider.protocol == 'openaiCompatible' &&
+        _imageCapableModel(selection.model);
+  }
+
+  /// 报告生成是否真正把笔记图片发送给 AI：开关开启且智能生成模型链路
+  /// 支持图片输入；任一不满足时静默按纯文本处理。
+  bool reportImageInputAllowed(AppConfig config) {
+    return config.reportImageInputEnabled &&
+        reportModelSupportsImageInput(config);
+  }
+
   _ModelSelection? _findFimModel(AppConfig config, ModelReference modelRef) {
     for (final provider in config.providers) {
       if (modelRef.providerId != null && provider.id != modelRef.providerId) {
@@ -1402,6 +1435,33 @@ bool isSupportedAiImageInput(AiImageInput image) {
 bool isSupportedAiImageExtension(String extension) {
   final normalized = extension.trim().toLowerCase().replaceFirst('.', '');
   return supportedAiImageExtensions.contains(normalized);
+}
+
+/// 按调用方给出的顺序（最新在前）挑选可发送给 AI 的图片：先用
+/// [isSupportedAiImageInput] 过滤单张限制（非空、≤5MB、格式白名单），
+/// 再累计字节总量，张数达 [maxAiImageInputs] 或累计超出
+/// [maxAiImageTotalBytes] 时停止，超出预算的那张及其后全部丢弃。
+///
+/// Rust 侧存在同口径副本：report_regeneration.rs 的报表收集限制与
+/// ai_openai.rs 的 MAX_MEMORY_IMAGE_TOTAL_BYTES。调整上述常量时需双侧同步。
+List<AiImageInput> selectAiImagesWithinBudget(Iterable<AiImageInput> images) {
+  final selected = <AiImageInput>[];
+  var totalBytes = 0;
+  for (final image in images) {
+    if (selected.length >= maxAiImageInputs) {
+      break;
+    }
+    if (!isSupportedAiImageInput(image)) {
+      continue;
+    }
+    final nextTotal = totalBytes + image.bytes.length;
+    if (nextTotal > maxAiImageTotalBytes) {
+      break;
+    }
+    selected.add(image);
+    totalBytes = nextTotal;
+  }
+  return selected;
 }
 
 class ReportRegenerationResult {

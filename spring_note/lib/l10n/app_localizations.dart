@@ -3182,7 +3182,7 @@ abstract class AppLocalizations {
   /// No description provided for @memoryImageCountLimit.
   ///
   /// In zh, this message translates to:
-  /// **'最多添加 4 张图片。'**
+  /// **'最多添加 10 张图片。'**
   String get memoryImageCountLimit;
 
   /// No description provided for @memoryImageInvalid.
@@ -3202,6 +3202,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'图片保存失败，请重试。'**
   String get memoryImageSaveFailed;
+
+  /// No description provided for @settingsReportImageInput.
+  ///
+  /// In zh, this message translates to:
+  /// **'生成日报/周报/月报时将笔记图片发送给 AI'**
+  String get settingsReportImageInput;
 }
 
 class _AppLocalizationsDelegate

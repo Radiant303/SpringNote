@@ -10,6 +10,8 @@ The data directory contains daily, weekly, and monthly notes, images, and applic
 
 Features such as Smart Generation on the home page, real-time completion in the notebook, and Memory Book answers may send relevant text, images, or retrieved records to the selected provider. Before use, review the provider's privacy policy, account permissions, and data retention rules.
 
+When generating or regenerating daily, weekly, or monthly reports, if the "Send note images to AI" toggle is on (it is on by default) and the selected model supports image input, images referenced by the source notes are sent to the provider together with the text; otherwise only the text is sent, without any notice.
+
 When AI features are not invoked, normal input, saving, editing, previewing, and local search do not automatically upload records simply because the application is open.
 
 ## API Key Security
@@ -19,6 +21,8 @@ Provider API keys should only be entered in the application settings. Do not inc
 ## Images and File Paths
 
 When adding an image, SpringNote copies it to the current data directory; the original file is not deleted. Regular files currently send only the file name and path information — the application does not read file contents or copy the file. Deleting an image link from a note does not automatically delete the image from the data directory; cleanup must be confirmed in Storage Management.
+
+Images pasted in Memory Book conversations are stored in the `memory_images` folder of the data directory, are used only within the current session, and are cleared when a new conversation starts.
 
 ## Cloud Sync
 

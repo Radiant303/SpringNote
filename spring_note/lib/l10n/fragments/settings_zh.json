@@ -151,5 +151,6 @@
   "settingsUpdateCheckFailed": "暂时无法检查更新，请稍后重试",
   "settingsVersion": "版本",
   "settingsSystem": "系统",
-  "settingsUnknown": "未知"
+  "settingsUnknown": "未知",
+  "settingsReportImageInput": "生成日报/周报/月报时将笔记图片发送给 AI"
 }

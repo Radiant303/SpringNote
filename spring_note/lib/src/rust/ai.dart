@@ -207,6 +207,7 @@ class DailyMergeRequest {
   final AiModel model;
   final String existingMarkdown;
   final String rawInput;
+  final List<AiImageAttachment> images;
   final String date;
   final String industry;
   final String mergePrompt;
@@ -220,6 +221,7 @@ class DailyMergeRequest {
     required this.model,
     required this.existingMarkdown,
     required this.rawInput,
+    required this.images,
     required this.date,
     required this.industry,
     required this.mergePrompt,
@@ -235,6 +237,7 @@ class DailyMergeRequest {
       model.hashCode ^
       existingMarkdown.hashCode ^
       rawInput.hashCode ^
+      images.hashCode ^
       date.hashCode ^
       industry.hashCode ^
       mergePrompt.hashCode ^
@@ -252,6 +255,7 @@ class DailyMergeRequest {
           model == other.model &&
           existingMarkdown == other.existingMarkdown &&
           rawInput == other.rawInput &&
+          images == other.images &&
           date == other.date &&
           industry == other.industry &&
           mergePrompt == other.mergePrompt &&
@@ -528,6 +532,7 @@ class ReportRequest {
   final AiProvider provider;
   final AiModel model;
   final String sourceMarkdown;
+  final List<AiImageAttachment> images;
   final String periodLabel;
   final String industry;
   final String reportPrompt;
@@ -539,6 +544,7 @@ class ReportRequest {
     required this.provider,
     required this.model,
     required this.sourceMarkdown,
+    required this.images,
     required this.periodLabel,
     required this.industry,
     required this.reportPrompt,
@@ -552,6 +558,7 @@ class ReportRequest {
       provider.hashCode ^
       model.hashCode ^
       sourceMarkdown.hashCode ^
+      images.hashCode ^
       periodLabel.hashCode ^
       industry.hashCode ^
       reportPrompt.hashCode ^
@@ -567,6 +574,7 @@ class ReportRequest {
           provider == other.provider &&
           model == other.model &&
           sourceMarkdown == other.sourceMarkdown &&
+          images == other.images &&
           periodLabel == other.periodLabel &&
           industry == other.industry &&
           reportPrompt == other.reportPrompt &&

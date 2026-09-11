@@ -6,6 +6,8 @@ The quick input box is used to save text and images for the current day. On subm
 
 Images can be added via the file picker or system clipboard. After adding, they appear in the pending submission area and only become part of the daily note upon successful submission. Image preview depends on the saved reference path; original image files are not deleted when copied to the data directory.
 
+You can add up to 10 images at a time, each no larger than 5MB, in png, jpg, jpeg, webp, or gif format; images beyond the count or size limit are not saved, and the app reports how many were skipped or which files were too large. Images sent with Smart Generation are also capped by a total budget of 24MB; when the budget is exceeded, images later in the list are dropped.
+
 Whether Smart Generation can process images depends on whether the selected model supports image input. If the model does not support images, the images are still saved but are not included in the AI input.
 
 ## Files

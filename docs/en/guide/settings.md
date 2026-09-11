@@ -78,6 +78,8 @@ The weekly note organization prompt controls how the AI organizes the week's dai
 
 The Global Sign organization prompt controls how AI maintains the Global Sign list during Smart Generation on the home page. The prompt can use built-in information such as the current date, the day's daily note content, the current Global Sign JSON, new quick records, and industry. Modifications only affect future Global Sign organization and do not change the saved Global Sign content.
 
+At the bottom of the Prompts card, the "Send note images to AI when generating reports" switch is enabled by default. When enabled, generating or regenerating daily, weekly, or monthly notes also sends the images referenced by the source notes to the AI (up to the 10 newest); see [Daily Notes](./daily.md) for the prerequisites and fallback behavior.
+
 ## Memory Book Retrieval
 
 The Memory Book Retrieval card controls the number and length of content the Memory Book tool reads and returns:

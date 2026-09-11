@@ -1205,6 +1205,7 @@ dependencies = [
 name = "rust"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "chrono",
  "flutter_rust_bridge",
  "libc",

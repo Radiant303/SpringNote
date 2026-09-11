@@ -5,15 +5,18 @@ import '../models/local_data_state.dart';
 import '../models/note_file.dart';
 import 'ai_client_service.dart';
 import 'note_service.dart';
+import 'report_image_service.dart';
 
 class StartupReportGenerationService {
   const StartupReportGenerationService({
     this.aiClientService = const AiClientService(),
     this.noteService = const NoteService(),
+    this.reportImageService = const ReportImageService(),
   });
 
   final AiClientService aiClientService;
   final NoteService noteService;
+  final ReportImageService reportImageService;
 
   Future<List<GeneratedReport>> generateMissingReports({
     required LocalDataState localDataState,
@@ -74,6 +77,11 @@ class StartupReportGenerationService {
 
     // 与 Rust 重生成路径（report_regeneration.rs）的周期格式保持一致。
     final english = resolveAppLanguage(localDataState.config.language) == 'en';
+    final images = await _collectReportImages(
+      localDataState,
+      localDataState.dailyNotesDirectory,
+      _dailySourcePathsForWeekNewestFirst(localDataState, weekStart),
+    );
     final markdown = await aiClientService.generateWeeklyReport(
       appDataDir: localDataState.dataDirectory,
       config: localDataState.config,
@@ -81,6 +89,7 @@ class StartupReportGenerationService {
       periodLabel: english
           ? '$label (${_formatDate(weekStart)} - ${_formatDate(weekEnd)})'
           : '$label（${_formatDate(weekStart)} 至 ${_formatDate(weekEnd)}）',
+      images: images,
     );
     if (markdown == null) {
       return null;
@@ -108,11 +117,17 @@ class StartupReportGenerationService {
 
     // 与 Rust 重生成路径（report_regeneration.rs）的周期格式保持一致。
     final english = resolveAppLanguage(localDataState.config.language) == 'en';
+    final images = await _collectReportImages(
+      localDataState,
+      localDataState.weeklyNotesDirectory,
+      await _weeklySourcePathsForMonthNewestFirst(localDataState, month),
+    );
     final markdown = await aiClientService.generateMonthlyReport(
       appDataDir: localDataState.dataDirectory,
       config: localDataState.config,
       sourceMarkdown: source,
       periodLabel: english ? '$label Monthly Report' : '$label 月报',
+      images: images,
     );
     if (markdown == null) {
       return null;
@@ -212,6 +227,64 @@ class StartupReportGenerationService {
     return buffer.toString().trimRight();
   }
 
+  // 图片收集按日期从近到远，取最新引用的图片；文本聚合顺序保持不变。
+  List<String> _dailySourcePathsForWeekNewestFirst(
+    LocalDataState localDataState,
+    DateTime weekStart,
+  ) {
+    return [
+      for (var index = 6; index >= 0; index--)
+        _join(
+          localDataState.dailyNotesDirectory,
+          '${_formatDate(weekStart.add(Duration(days: index)))}.md',
+        ),
+    ];
+  }
+
+  Future<List<String>> _weeklySourcePathsForMonthNewestFirst(
+    LocalDataState localDataState,
+    DateTime month,
+  ) async {
+    final monthStart = DateTime(month.year, month.month);
+    final monthEnd = DateTime(month.year, month.month + 1, 0);
+    final paths = <String>[];
+    for (
+      var weekStart = _startOfWeek(monthStart);
+      !weekStart.isAfter(monthEnd);
+      weekStart = weekStart.add(const Duration(days: 7))
+    ) {
+      final label = _formatIsoWeek(weekStart);
+      final upperPath = _join(
+        localDataState.weeklyNotesDirectory,
+        '$label.md',
+      );
+      // 与文本来源一致：大写文件不存在时回退到小写 w 文件名。
+      paths.add(
+        await File(upperPath).exists()
+            ? upperPath
+            : _join(
+                localDataState.weeklyNotesDirectory,
+                '${_lowercaseWeekLabel(label)}.md',
+              ),
+      );
+    }
+    return paths.reversed.toList();
+  }
+
+  Future<List<AiImageInput>> _collectReportImages(
+    LocalDataState localDataState,
+    String sourceNotesDirectory,
+    List<String> notePathsNewestFirst,
+  ) async {
+    if (!aiClientService.reportImageInputAllowed(localDataState.config)) {
+      return const [];
+    }
+    return reportImageService.collect(
+      notePathsNewestFirst: notePathsNewestFirst,
+      notesRootDirectory: Directory(sourceNotesDirectory).parent.path,
+    );
+  }
+
   Future<String> _weeklySourceForMonth(
     LocalDataState localDataState,
     DateTime month,
@@ -226,8 +299,18 @@ class StartupReportGenerationService {
       weekStart = weekStart.add(const Duration(days: 7))
     ) {
       final label = _formatIsoWeek(weekStart);
-      final path = _join(localDataState.weeklyNotesDirectory, '$label.md');
-      final content = await _readMeaningfulMarkdown(path);
+      // 与 Rust 重生成路径（report_regeneration.rs）保持一致：兼容手工改为
+      // 小写 w 的周报文件名（仅 Linux 等大小写敏感文件系统上才会体现差异）。
+      final content =
+          await _readMeaningfulMarkdown(
+            _join(localDataState.weeklyNotesDirectory, '$label.md'),
+          ) ??
+          await _readMeaningfulMarkdown(
+            _join(
+              localDataState.weeklyNotesDirectory,
+              '${_lowercaseWeekLabel(label)}.md',
+            ),
+          );
       if (content == null) {
         continue;
       }
@@ -342,6 +425,10 @@ class StartupReportGenerationService {
     final first = _startOfWeek(DateTime(isoYear, 1, 4));
     final week = (start.difference(first).inDays ~/ 7) + 1;
     return '${isoYear.toString().padLeft(4, '0')}-W${week.toString().padLeft(2, '0')}';
+  }
+
+  String _lowercaseWeekLabel(String label) {
+    return label.replaceFirst('W', 'w');
   }
 
   String _join(String left, String right) {

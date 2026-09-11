@@ -873,7 +873,7 @@ void main() {
           homeOverviewService: _FakeHomeOverviewService(),
           pendingImageService: fakePendingImageService,
           imageAttachmentPicker: () async => [
-            for (var index = 0; index < 5; index++)
+            for (var index = 0; index < 11; index++)
               PendingImage(
                 id: 'picked-image-$index',
                 bytes: imageBytes,
@@ -896,10 +896,11 @@ void main() {
 
     expect(find.text('图片 · screen-0.png'), findsOneWidget);
     expect(find.text('图片 · screen-3.png'), findsOneWidget);
-    expect(find.text('图片 · screen-4.png'), findsNothing);
+    expect(find.text('图片 · screen-9.png'), findsOneWidget);
+    expect(find.text('图片 · screen-10.png'), findsNothing);
     expect(find.text('图片 · huge.png'), findsNothing);
     expect(find.textContaining('单张图片不能超过 5 MB'), findsOneWidget);
-    expect(find.textContaining('最多添加 4 张图片'), findsOneWidget);
+    expect(find.textContaining('最多添加 10 张图片'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('home-smart-generate-button')));
     await _pumpUntil(
@@ -908,7 +909,7 @@ void main() {
       'daily note with limited image attachments to be saved',
     );
 
-    expect(fakePendingImageService.savedBytes, hasLength(4));
+    expect(fakePendingImageService.savedBytes, hasLength(10));
   });
 
   testWidgets('home image attachment unsupported by AI is saved but not sent', (

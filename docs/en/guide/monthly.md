@@ -6,6 +6,8 @@ Monthly notes record changes, achievements, and ongoing issues on a calendar mon
 
 When generating a monthly note, the application reads weekly notes with actual content within the target calendar month and combines them by weekly note file. Monthly notes use weekly notes as their periodic source; weekly notes from other months are not included as default content.
 
+During generation and regeneration, the images referenced by the source weekly notes are also sent to the AI, collected from the newest week backwards, up to the 10 newest. The prerequisites and limits are described in [Daily Notes](./daily.md): the switch is enabled by default, the Smart Generation model needs the "image" input mode with an OpenAI-compatible provider (otherwise generation silently falls back to text), each image is at most 5MB (png, jpg, jpeg, webp, gif), and the total image budget is 24MB.
+
 After saving, monthly notes can be manually edited. Manual edits belong to the monthly note itself and do not update daily or weekly notes. Regenerating re-reads the source weekly notes for the target month.
 
 ## Creation Timing

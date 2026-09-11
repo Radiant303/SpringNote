@@ -1,9 +1,13 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use base64::Engine;
 use chrono::{Datelike, Duration, NaiveDate, Weekday};
 
-use crate::ai::{self, AiModel, AiProvider, AiTextResult, DailyMergeRequest, ReportRequest};
+use crate::ai::{
+    self, AiImageAttachment, AiModel, AiProvider, AiTextResult, DailyMergeRequest, ReportRequest,
+};
+use crate::markdown_links;
 
 #[derive(Clone, Debug)]
 pub struct RegenerateReportRequest {
@@ -19,6 +23,7 @@ pub struct RegenerateReportRequest {
     pub weekly_report_prompt: String,
     pub language: String,
     pub api_log_enabled: bool,
+    pub include_images: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -119,12 +124,19 @@ async fn regenerate_daily(
         &request.industry,
         &request.language,
     );
+    let notes_root = notes_root_from(&request.daily_notes_directory);
+    let images = report_images_for_notes(
+        request.include_images,
+        &[target_path.to_path_buf()],
+        &notes_root,
+    );
     let response = ai::merge_daily_note(DailyMergeRequest {
         app_data_dir: request.app_data_dir.clone(),
         provider: request.provider.clone(),
         model: request.model.clone(),
         existing_markdown: existing.clone(),
         raw_input: String::new(),
+        images,
         date: date_label,
         industry: request.industry.clone(),
         merge_prompt,
@@ -177,11 +189,16 @@ async fn regenerate_weekly(
         &request.industry,
         &request.language,
     );
+    let daily_dir = Path::new(&request.daily_notes_directory);
+    let notes_root = notes_root_from(&request.daily_notes_directory);
+    let daily_paths = daily_paths_for_week_newest_first(daily_dir, week_start);
+    let images = report_images_for_notes(request.include_images, &daily_paths, &notes_root);
     let response = ai::generate_weekly_report(ReportRequest {
         app_data_dir: request.app_data_dir.clone(),
         provider: request.provider.clone(),
         model: request.model.clone(),
         source_markdown: source,
+        images,
         period_label,
         industry: request.industry.clone(),
         report_prompt,
@@ -215,11 +232,16 @@ async fn regenerate_monthly(
     } else {
         format!("{} 月报", format_month(month))
     };
+    let weekly_dir = Path::new(&request.weekly_notes_directory);
+    let notes_root = notes_root_from(&request.weekly_notes_directory);
+    let weekly_paths = weekly_paths_for_month_newest_first(weekly_dir, month);
+    let images = report_images_for_notes(request.include_images, &weekly_paths, &notes_root);
     let response = ai::generate_monthly_report(ReportRequest {
         app_data_dir: request.app_data_dir.clone(),
         provider: request.provider.clone(),
         model: request.model.clone(),
         source_markdown: source,
+        images,
         period_label,
         industry: request.industry.clone(),
         report_prompt: String::new(),
@@ -371,6 +393,132 @@ fn read_meaningful_markdown(path: &Path) -> Option<String> {
         return None;
     }
     Some(content.trim_end().to_string())
+}
+
+// 与 Dart 侧 ai_client_service.dart 的图片限制保持一致。
+const MAX_REPORT_IMAGES: usize = 10;
+const MAX_REPORT_IMAGE_BYTES: u64 = 5 * 1024 * 1024;
+const MAX_REPORT_IMAGE_TOTAL_BYTES: u64 = 24 * 1024 * 1024;
+const REPORT_IMAGE_EXTENSIONS: [&str; 5] = ["png", "jpg", "jpeg", "webp", "gif"];
+
+fn notes_root_from(notes_directory: &str) -> PathBuf {
+    Path::new(notes_directory)
+        .parent()
+        .map(Path::to_path_buf)
+        .unwrap_or_default()
+}
+
+/// 按"日期从近到远"的笔记顺序收集引用图片，解析/读取失败单张跳过，
+/// 与 Dart 侧 ReportImageService 的语义一致；全部失败时返回空列表。
+fn report_images_for_notes(
+    include_images: bool,
+    note_paths_newest_first: &[PathBuf],
+    notes_root: &Path,
+) -> Vec<AiImageAttachment> {
+    if !include_images {
+        return Vec::new();
+    }
+    let mut images = Vec::new();
+    let mut total_bytes = 0u64;
+    let mut seen = std::collections::HashSet::new();
+    for note_path in note_paths_newest_first {
+        if images.len() >= MAX_REPORT_IMAGES {
+            break;
+        }
+        let Ok(markdown) = fs::read_to_string(note_path) else {
+            continue;
+        };
+        for target in markdown_links::markdown_link_targets(&markdown) {
+            if images.len() >= MAX_REPORT_IMAGES {
+                break;
+            }
+            let Some(name) =
+                markdown_links::shared_image_name_from_note_target(notes_root, note_path, &target)
+            else {
+                continue;
+            };
+            let Some(file_name) = name.rsplit('/').next().filter(|part| !part.is_empty()) else {
+                continue;
+            };
+            let extension = file_name
+                .rsplit_once('.')
+                .map(|(_, extension)| extension.to_lowercase())
+                .unwrap_or_default();
+            if !REPORT_IMAGE_EXTENSIONS.contains(&extension.as_str()) {
+                continue;
+            }
+            let full_path = notes_root.join("images").join(Path::new(&name));
+            if !seen.insert(full_path.to_string_lossy().replace('\\', "/")) {
+                continue;
+            }
+            let Ok(bytes) = fs::read(&full_path) else {
+                continue;
+            };
+            if bytes.is_empty() || bytes.len() as u64 > MAX_REPORT_IMAGE_BYTES {
+                continue;
+            }
+            // 超出总预算时这张及其后（更旧）的全部丢弃。
+            if total_bytes + bytes.len() as u64 > MAX_REPORT_IMAGE_TOTAL_BYTES {
+                return images;
+            }
+            total_bytes += bytes.len() as u64;
+            images.push(AiImageAttachment {
+                name: file_name.to_string(),
+                mime_type: report_image_mime_type(&extension).to_string(),
+                data_base64: base64::engine::general_purpose::STANDARD.encode(bytes),
+            });
+        }
+    }
+    images
+}
+
+fn report_image_mime_type(extension: &str) -> &'static str {
+    match extension {
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        _ => "image/png",
+    }
+}
+
+fn daily_paths_for_week_newest_first(daily_dir: &Path, week_start: NaiveDate) -> Vec<PathBuf> {
+    (0..7)
+        .rev()
+        .map(|index| {
+            daily_dir.join(format!(
+                "{}.md",
+                format_date(week_start + Duration::days(index))
+            ))
+        })
+        .collect()
+}
+
+fn weekly_paths_for_month_newest_first(weekly_dir: &Path, month: NaiveDate) -> Vec<PathBuf> {
+    let (year, month_number) = (month.year(), month.month());
+    let Some(next_month) = (if month_number == 12 {
+        NaiveDate::from_ymd_opt(year + 1, 1, 1)
+    } else {
+        NaiveDate::from_ymd_opt(year, month_number + 1, 1)
+    }) else {
+        return Vec::new();
+    };
+    let month_end = next_month - Duration::days(1);
+
+    let mut paths = Vec::new();
+    let mut week_start = week_start(month);
+    while week_start <= month_end {
+        let label = format_iso_week(week_start);
+        let upper_path = weekly_dir.join(format!("{label}.md"));
+        let lower_path = weekly_dir.join(format!("{}.md", label.replacen('W', "w", 1)));
+        if upper_path.is_file() {
+            paths.push(upper_path);
+        } else if lower_path.is_file() {
+            paths.push(lower_path);
+        }
+        week_start += Duration::days(7);
+    }
+    paths.reverse();
+    paths
 }
 
 fn has_meaningful_content(content: &str) -> bool {
@@ -609,6 +757,213 @@ mod tests {
 
         assert!(july.contains("## 2026-W29 周报"));
         assert!(july.contains("小写文件名周报。"));
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    fn write_report_image_fixtures(root: &Path) -> (PathBuf, PathBuf) {
+        let notes_root = root.join("notes");
+        let daily = notes_root.join("daily");
+        let images = notes_root.join("images");
+        fs::create_dir_all(&daily).unwrap();
+        fs::create_dir_all(&images).unwrap();
+        (notes_root, daily)
+    }
+
+    #[test]
+    fn report_images_collects_newest_first_up_to_limit() {
+        let root = temp_root();
+        let (notes_root, daily) = write_report_image_fixtures(&root);
+        let images = notes_root.join("images");
+        for index in 0..12 {
+            fs::write(images.join(format!("n{index}.png")), format!("img{index}")).unwrap();
+        }
+        fs::write(images.join("old.png"), "old").unwrap();
+        let references = (0..12)
+            .map(|index| format!("![n{index}](../images/n{index}.png)"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        fs::write(daily.join("2026-07-22.md"), format!("{references}\n")).unwrap();
+        fs::write(daily.join("2026-07-21.md"), "![old](../images/old.png)\n").unwrap();
+
+        let notes = daily_paths_for_week_newest_first(
+            &daily,
+            NaiveDate::from_ymd_opt(2026, 7, 20).unwrap(),
+        );
+        let collected = report_images_for_notes(true, &notes, &notes_root);
+
+        assert_eq!(collected.len(), MAX_REPORT_IMAGES);
+        assert_eq!(collected[0].name, "n0.png");
+        assert_eq!(collected[9].name, "n9.png");
+        assert!(collected.iter().all(|image| !image.data_base64.is_empty()));
+        assert_eq!(collected[0].mime_type, "image/png");
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn report_images_stops_when_total_byte_budget_exceeded() {
+        let root = temp_root();
+        let (notes_root, daily) = write_report_image_fixtures(&root);
+        let images = notes_root.join("images");
+        for index in 0..6 {
+            fs::write(
+                images.join(format!("full{index}.png")),
+                vec![7u8; MAX_REPORT_IMAGE_BYTES as usize],
+            )
+            .unwrap();
+        }
+        fs::write(images.join("tail.png"), "tail").unwrap();
+        let references = (0..6)
+            .map(|index| format!("![full{index}](../images/full{index}.png)"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        fs::write(
+            daily.join("2026-07-22.md"),
+            format!("{references}\n![tail](../images/tail.png)\n"),
+        )
+        .unwrap();
+
+        let notes = vec![daily.join("2026-07-22.md")];
+        let collected = report_images_for_notes(true, &notes, &notes_root);
+
+        // 4×5MB = 20MB ≤ 24MB，第 5 张（累计 25MB）起连同其后全部丢弃。
+        assert_eq!(collected.len(), 4);
+        assert_eq!(collected[3].name, "full3.png");
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn report_images_dedupes_resolved_paths_across_notes() {
+        let root = temp_root();
+        let (notes_root, daily) = write_report_image_fixtures(&root);
+        let images = notes_root.join("images");
+        fs::write(images.join("shared.png"), "shared").unwrap();
+        fs::write(images.join("extra.png"), "extra").unwrap();
+        fs::write(daily.join("2026-07-22.md"), "![x](../images/shared.png)\n").unwrap();
+        fs::write(
+            daily.join("2026-07-21.md"),
+            "![y](../images/./shared.png)\n![z](../images/extra.png)\n",
+        )
+        .unwrap();
+
+        let notes = vec![daily.join("2026-07-22.md"), daily.join("2026-07-21.md")];
+        let collected = report_images_for_notes(true, &notes, &notes_root);
+
+        assert_eq!(collected.len(), 2);
+        assert_eq!(collected[0].name, "shared.png");
+        assert_eq!(collected[1].name, "extra.png");
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn report_images_skips_oversize_unsupported_and_missing_files() {
+        let root = temp_root();
+        let (notes_root, daily) = write_report_image_fixtures(&root);
+        let images = notes_root.join("images");
+        fs::write(
+            images.join("big.png"),
+            vec![7u8; (MAX_REPORT_IMAGE_BYTES + 1) as usize],
+        )
+        .unwrap();
+        fs::write(images.join("chart.svg"), "svg").unwrap();
+        fs::write(images.join("ok.webp"), "webp").unwrap();
+        fs::write(
+            daily.join("2026-07-21.md"),
+            concat!(
+                "![big](../images/big.png)\n",
+                "![svg](../images/chart.svg)\n",
+                "![missing](../images/missing.png)\n",
+                "![ok](../images/ok.webp)\n",
+            ),
+        )
+        .unwrap();
+
+        let notes = vec![daily.join("2026-07-21.md")];
+        let collected = report_images_for_notes(true, &notes, &notes_root);
+
+        assert_eq!(collected.len(), 1);
+        assert_eq!(collected[0].name, "ok.webp");
+        assert_eq!(collected[0].mime_type, "image/webp");
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn report_images_rejects_targets_outside_images_directory() {
+        let root = temp_root();
+        let (notes_root, daily) = write_report_image_fixtures(&root);
+        let images = notes_root.join("images");
+        fs::write(root.join("outside.png"), "outside").unwrap();
+        fs::write(images.join("inside.png"), "inside").unwrap();
+        fs::write(
+            daily.join("2026-07-21.md"),
+            concat!(
+                "![outside](../../outside.png)\n",
+                "![abs](/tmp/evil.png)\n",
+                "![web](https://example.com/x.png)\n",
+                "![inside](../images/inside.png)\n",
+            ),
+        )
+        .unwrap();
+
+        let notes = vec![daily.join("2026-07-21.md")];
+        let collected = report_images_for_notes(true, &notes, &notes_root);
+
+        assert_eq!(collected.len(), 1);
+        assert_eq!(collected[0].name, "inside.png");
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn report_images_returns_empty_when_disabled() {
+        let root = temp_root();
+        let (notes_root, daily) = write_report_image_fixtures(&root);
+        fs::write(notes_root.join("images").join("a.png"), "a").unwrap();
+        fs::write(daily.join("2026-07-21.md"), "![a](../images/a.png)\n").unwrap();
+
+        let notes = vec![daily.join("2026-07-21.md")];
+        let collected = report_images_for_notes(false, &notes, &notes_root);
+
+        assert!(collected.is_empty());
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn weekly_paths_for_month_newest_first_reverses_and_keeps_case_candidates() {
+        let root = temp_root();
+        let weekly = root.join("weekly");
+        fs::create_dir_all(&weekly).unwrap();
+        fs::write(weekly.join("2026-W01.md"), "# 周报\n\n第一周。\n").unwrap();
+        fs::write(weekly.join("2026-w05.md"), "# 周报\n\n小写第五周。\n").unwrap();
+
+        let paths = weekly_paths_for_month_newest_first(
+            &weekly,
+            NaiveDate::from_ymd_opt(2026, 1, 1).unwrap(),
+        );
+
+        assert_eq!(paths.len(), 2);
+        // Windows 文件系统大小写不敏感，大写候选可直接命中小写文件。
+        assert_eq!(
+            paths[0]
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .to_lowercase(),
+            "2026-w05.md"
+        );
+        assert_eq!(
+            paths[1]
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .to_lowercase(),
+            "2026-w01.md"
+        );
 
         fs::remove_dir_all(root).unwrap();
     }

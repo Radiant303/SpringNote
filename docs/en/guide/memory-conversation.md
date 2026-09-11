@@ -6,6 +6,21 @@ Starting a new conversation clears the current Memory Book session and starts fr
 
 Every message you send carries its send time. The AI can perceive when each question was asked and how the conversation is spaced, and resolves relative times such as "today", "yesterday", or "this week" against the latest message's send time, without an extra lookup.
 
+## Pasting Images
+
+Press `Ctrl+V` (`Cmd+V` on macOS) in the Memory Book input box to paste images from the clipboard. Pasted images appear as thumbnails above the input box and are sent with the message. Pasting is currently supported only on Windows and macOS; on other platforms it is silently ignored and does not affect text input.
+
+Pasting images requires the Memory Book model to have the "image" input mode enabled and its provider to use the OpenAI-compatible protocol. Otherwise, the notice "The selected memory model does not support image input." appears above the input box and the images are not added.
+
+Pasted images are limited as follows:
+
+- Up to 10 images per message;
+- Each image must be 5MB or smaller, in png, jpg, jpeg, webp, or gif format.
+
+Images are stored only in the `memory_images` folder of the local data directory and are never uploaded anywhere else; starting a new conversation clears them together with the session.
+
+All images in the conversation share a total budget of 24MB. When a question is sent, images are counted per message starting from the newest; when a message would exceed the budget, its images are omitted as a whole and replaced with a placeholder in that message, so older images are omitted first.
+
 ## Input Modes
 
 Input modes appear as tags in the input box. The "Mind Map" mode is currently supported.

@@ -78,6 +78,47 @@ void main() {
     );
   });
 
+  test('selectAiImagesWithinBudget enforces count and total byte budget', () {
+    AiImageInput png(String name, int bytes) => AiImageInput(
+      name: name,
+      bytes: Uint8List(bytes),
+      mimeType: 'image/png',
+    );
+
+    // 5MB×4 = 20MB ≤ 24MB，第 5 张（累计 25MB）起被预算截断。
+    final fiveFullSize = [
+      for (var index = 0; index < 5; index++)
+        png('full-$index.png', maxAiImageInputBytes),
+    ];
+    final withinBudget = selectAiImagesWithinBudget(fiveFullSize);
+    expect(withinBudget, hasLength(4));
+    expect(withinBudget.map((image) => image.name), [
+      'full-0.png',
+      'full-1.png',
+      'full-2.png',
+      'full-3.png',
+    ]);
+
+    // 张数上限 10 张先命中。
+    final twelveSmall = [
+      for (var index = 0; index < 12; index++) png('small-$index.png', 1024),
+    ];
+    expect(selectAiImagesWithinBudget(twelveSmall), hasLength(10));
+
+    // 不支持的单张被跳过且不占名额。
+    final mixed = [
+      png('a.png', 1024),
+      AiImageInput(
+        name: 'b.svg',
+        bytes: Uint8List(1024),
+        mimeType: 'image/svg+xml',
+      ),
+      png('c.png', 1024),
+    ];
+    final selected = selectAiImagesWithinBudget(mixed);
+    expect(selected.map((image) => image.name), ['a.png', 'c.png']);
+  });
+
   test('default templates mark known image-capable models', () {
     final openAi = ProviderConfig.template('OpenAI');
     expect(openAi.models.single.inputModes, contains('image'));
@@ -314,6 +355,69 @@ void main() {
       },
     );
     expect(service.supportsMultimodalImageInput(textOnlyConfig), isFalse);
+  });
+
+  test('report image input requires switch, openai protocol and image mode', () {
+    final config = AppConfig.defaults().copyWith(
+      providers: const [
+        ProviderConfig(
+          id: 'openai',
+          enabled: true,
+          name: 'OpenAI',
+          protocol: 'openaiCompatible',
+          apiKey: 'key',
+          baseUrl: 'https://api.openai.com/v1',
+          apiPath: '/chat/completions',
+          models: [
+            ModelConfig(
+              modelId: 'gpt-4o',
+              displayName: 'GPT-4o',
+              inputModes: ['text', 'image'],
+            ),
+          ],
+        ),
+      ],
+      defaultModels: {
+        ...AppConfig.defaults().defaultModels,
+        'intelligentGenerationModel': ModelReference.encode(
+          providerId: 'openai',
+          modelId: 'gpt-4o',
+        ),
+      },
+    );
+
+    expect(service.reportModelSupportsImageInput(config), isTrue);
+    expect(service.reportImageInputAllowed(config), isTrue);
+
+    // 开关关闭时整体门控为 false（模型链路本身仍支持图片）。
+    final switchOff = config.copyWith(reportImageInputEnabled: false);
+    expect(switchOff.reportImageInputEnabled, isFalse);
+    expect(service.reportModelSupportsImageInput(switchOff), isTrue);
+    expect(service.reportImageInputAllowed(switchOff), isFalse);
+
+    // 供应商协议不符（Gemini/Claude）时静默回退纯文本。
+    final geminiProtocol = config.copyWith(
+      providers: [config.providers.single.copyWith(protocol: 'gemini')],
+    );
+    expect(service.reportModelSupportsImageInput(geminiProtocol), isFalse);
+    expect(service.reportImageInputAllowed(geminiProtocol), isFalse);
+
+    // 模型没有 image 输入模式时同样回退。
+    final textOnlyModel = config.copyWith(
+      providers: [
+        config.providers.single.copyWith(
+          models: const [
+            ModelConfig(
+              modelId: 'gpt-4o',
+              displayName: 'GPT-4o',
+              inputModes: ['text'],
+            ),
+          ],
+        ),
+      ],
+    );
+    expect(service.reportModelSupportsImageInput(textOnlyModel), isFalse);
+    expect(service.reportImageInputAllowed(textOnlyModel), isFalse);
   });
 
   test(

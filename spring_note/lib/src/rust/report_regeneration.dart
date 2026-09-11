@@ -20,6 +20,7 @@ class RegenerateReportRequest {
   final String weeklyReportPrompt;
   final String language;
   final bool apiLogEnabled;
+  final bool includeImages;
 
   const RegenerateReportRequest({
     required this.appDataDir,
@@ -34,6 +35,7 @@ class RegenerateReportRequest {
     required this.weeklyReportPrompt,
     required this.language,
     required this.apiLogEnabled,
+    required this.includeImages,
   });
 
   @override
@@ -49,7 +51,8 @@ class RegenerateReportRequest {
       dailyMergePrompt.hashCode ^
       weeklyReportPrompt.hashCode ^
       language.hashCode ^
-      apiLogEnabled.hashCode;
+      apiLogEnabled.hashCode ^
+      includeImages.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -67,7 +70,8 @@ class RegenerateReportRequest {
           dailyMergePrompt == other.dailyMergePrompt &&
           weeklyReportPrompt == other.weeklyReportPrompt &&
           language == other.language &&
-          apiLogEnabled == other.apiLogEnabled;
+          apiLogEnabled == other.apiLogEnabled &&
+          includeImages == other.includeImages;
 }
 
 class RegenerateReportResult {
