@@ -117,8 +117,9 @@ String? _normalizedTarget(String? raw) {
   return normalized;
 }
 
-/// 把笔记内的相对目标解析成规范化完整路径（处理 . 与 ..）；越界（解析
-/// 后脱离笔记目录树）时返回 null。
+/// 把笔记内的相对目标解析成规范化完整路径（处理 .  与 ..）；越界（解析
+/// 后脱离笔记目录树）时返回 null。POSIX 下需保留开头的 /，否则解析结果
+/// 会变成相对路径。
 String? _resolveImagePath(String noteDirectory, String target) {
   final segments = <String>[
     for (final segment in noteDirectory.split('/'))
@@ -137,7 +138,8 @@ String? _resolveImagePath(String noteDirectory, String target) {
     }
     segments.add(segment);
   }
-  return segments.join('/');
+  final joined = segments.join('/');
+  return noteDirectory.startsWith('/') ? '/$joined' : joined;
 }
 
 /// 要求解析结果落在 `<notesRoot>/images/` 内，与 rust 侧共享图片的安全
