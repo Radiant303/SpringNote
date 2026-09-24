@@ -28,6 +28,7 @@ class ProviderConfig {
     'Qwen DashScope',
     'Kimi',
     'OpenRouter',
+    'Requesty',
     'SiliconFlow',
     'Ollama',
     'Google',
@@ -185,6 +186,29 @@ class ProviderConfig {
           ModelConfig(
             modelId: 'anthropic/claude-sonnet-4',
             displayName: 'Claude Sonnet 4',
+            inputModes: ['text', 'image'],
+          ),
+        ],
+      );
+    }
+    if (normalized == 'requesty') {
+      return ProviderConfig(
+        id: _makeId('Requesty'),
+        enabled: true,
+        name: 'Requesty',
+        protocol: 'openaiCompatible',
+        apiKey: '',
+        baseUrl: 'https://router.requesty.ai/v1',
+        apiPath: '/chat/completions',
+        models: const [
+          ModelConfig(
+            modelId: 'openai/gpt-4.1-mini',
+            displayName: 'GPT-4.1 Mini',
+            inputModes: ['text', 'image'],
+          ),
+          ModelConfig(
+            modelId: 'anthropic/claude-sonnet-4-5',
+            displayName: 'Claude Sonnet 4.5',
             inputModes: ['text', 'image'],
           ),
         ],

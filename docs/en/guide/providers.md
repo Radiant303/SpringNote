@@ -10,7 +10,7 @@ The search box filters providers by name; the query is case-insensitive. When no
 
 ## Add Provider
 
-When adding a provider, you can first select a built-in template. Templates pre-fill the provider name, protocol-corresponding default address, API path, and some example models; these can still be modified before saving. Current templates include OpenAI, OpenAI Responses, DeepSeek, Qwen DashScope, Kimi, OpenRouter, SiliconFlow, Ollama, Google, and Claude.
+When adding a provider, you can first select a built-in template. Templates pre-fill the provider name, protocol-corresponding default address, API path, and some example models; these can still be modified before saving. Current templates include OpenAI, OpenAI Responses, DeepSeek, Qwen DashScope, Kimi, OpenRouter, Requesty, SiliconFlow, Ollama, Google, and Claude.
 
 The add form includes:
 

@@ -10,7 +10,7 @@
 
 ## 添加供应商
 
-添加供应商时可以先选择内置模板。模板会预填供应商名称、协议对应的默认地址、API 路径和部分示例模型，保存前仍可以修改这些内容。当前模板包括 OpenAI、OpenAI Responses、DeepSeek、Qwen DashScope、Kimi、OpenRouter、SiliconFlow、Ollama、Google 和 Claude。
+添加供应商时可以先选择内置模板。模板会预填供应商名称、协议对应的默认地址、API 路径和部分示例模型，保存前仍可以修改这些内容。当前模板包括 OpenAI、OpenAI Responses、DeepSeek、Qwen DashScope、Kimi、OpenRouter、Requesty、SiliconFlow、Ollama、Google 和 Claude。
 
 添加表单包含：
 

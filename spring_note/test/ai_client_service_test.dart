@@ -133,6 +133,17 @@ void main() {
     expect(deepSeek.models.first.inputModes, isNot(contains('image')));
   });
 
+  test('requesty template uses the openai compatible router endpoint', () {
+    expect(ProviderConfig.templateNames, contains('Requesty'));
+
+    final requesty = ProviderConfig.template('Requesty');
+    expect(requesty.name, 'Requesty');
+    expect(requesty.protocol, 'openaiCompatible');
+    expect(requesty.baseUrl, 'https://router.requesty.ai/v1');
+    expect(requesty.apiPath, '/chat/completions');
+    expect(requesty.models.first.modelId, 'openai/gpt-4.1-mini');
+  });
+
   test('memory sanitizer preserves complete tool call chains', () {
     final messages = [
       MemoryMessage(
