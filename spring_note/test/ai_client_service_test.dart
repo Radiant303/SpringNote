@@ -141,7 +141,12 @@ void main() {
     expect(requesty.protocol, 'openaiCompatible');
     expect(requesty.baseUrl, 'https://router.requesty.ai/v1');
     expect(requesty.apiPath, '/chat/completions');
-    expect(requesty.models.first.modelId, 'openai/gpt-4.1-mini');
+    expect(requesty.enabled, isTrue);
+    expect(requesty.apiKey, isEmpty);
+    expect(requesty.models.map((model) => model.modelId), [
+      'openai/gpt-4.1-mini',
+      'anthropic/claude-sonnet-4-5',
+    ]);
   });
 
   test('memory sanitizer preserves complete tool call chains', () {
