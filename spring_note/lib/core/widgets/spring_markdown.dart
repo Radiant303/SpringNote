@@ -361,14 +361,17 @@ class SpringMarkdownImage extends StatelessWidget {
     if (_isLocalReference(url)) {
       image = const _ImageFallbackIcon();
     } else {
-      image = Image.network(
-        url,
+      image = Image(
+        // Same aspect-preserving decode cap as local images.
+        image: ResizeImage(
+          NetworkImage(url),
+          width: 1400,
+          height: 1400,
+          policy: ResizeImagePolicy.fit,
+        ),
         width: width,
         height: height,
         fit: BoxFit.contain,
-        // Same decode cap as local images (see buildMarkdownLocalImage).
-        cacheWidth: 1400,
-        cacheHeight: 1400,
         filterQuality: FilterQuality.medium,
         errorBuilder: (context, error, stackTrace) =>
             const _ImageFallbackIcon(),

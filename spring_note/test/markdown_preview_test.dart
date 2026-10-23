@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -486,6 +488,42 @@ void main() {
     },
   );
 
+  for (final (width, height, decodedWidth, decodedHeight) in [
+    (2800, 700, 1400, 350),
+    (700, 2800, 350, 1400),
+    (2800, 2100, 1400, 1050),
+    (2100, 2800, 1050, 1400),
+    (2800, 2800, 1400, 1400),
+    (800, 600, 800, 600),
+    (1400, 700, 1400, 700),
+  ]) {
+    test(
+      'markdown local image preserves aspect ratio when decoding ${width}x$height',
+      () async {
+        final file = File(_joinPath(noteDirectory.path, 'image.png'));
+        await _writePng(file, width, height);
+        final image =
+            buildMarkdownLocalImage(
+                  url: 'image.png',
+                  baseDirectoryPath: noteDirectory.path,
+                  width: null,
+                  height: null,
+                  fit: BoxFit.contain,
+                  errorBuilder: _imageErrorBuilder,
+                )
+                as Image;
+
+        final decodedSize = await _decodeImageSize(image.image);
+
+        expect(
+          decodedSize,
+          Size(decodedWidth.toDouble(), decodedHeight.toDouble()),
+        );
+        expect(decodedSize.width / decodedSize.height, width / height);
+      },
+    );
+  }
+
   test(
     'markdown local image allows shared notes image directory references',
     () async {
@@ -729,7 +767,49 @@ void main() {
     final image = tester.widget<Image>(find.byType(Image));
 
     expect(_unwrapResizeImage(image.image), isA<NetworkImage>());
+    final resize = image.image as ResizeImage;
+    expect(resize.policy, ResizeImagePolicy.fit);
+    expect(resize.width, 1400);
+    expect(resize.height, 1400);
+    expect(resize.allowUpscaling, isFalse);
   });
+}
+
+Future<void> _writePng(File file, int width, int height) async {
+  final recorder = ui.PictureRecorder();
+  ui.Canvas(recorder).drawColor(const Color(0xFF123456), ui.BlendMode.src);
+  final picture = recorder.endRecording();
+  final image = await picture.toImage(width, height);
+  try {
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    await file.writeAsBytes(bytes!.buffer.asUint8List());
+  } finally {
+    image.dispose();
+    picture.dispose();
+  }
+}
+
+Future<Size> _decodeImageSize(ImageProvider provider) async {
+  final result = Completer<Size>();
+  final stream = provider.resolve(ImageConfiguration.empty);
+  final listener = ImageStreamListener(
+    (info, _) {
+      result.complete(
+        Size(info.image.width.toDouble(), info.image.height.toDouble()),
+      );
+      info.dispose();
+    },
+    onError: (Object error, StackTrace? stackTrace) {
+      result.completeError(error, stackTrace);
+    },
+  );
+  stream.addListener(listener);
+  try {
+    return await result.future;
+  } finally {
+    stream.removeListener(listener);
+    await provider.evict();
+  }
 }
 
 Widget _imageErrorBuilder(

@@ -26,16 +26,20 @@ Widget? buildMarkdownLocalImage({
       placeholderBuilder: (context) => const SizedBox.shrink(),
     );
   }
-  return Image.file(
-    file,
+  return Image(
+    // Fit within the decode cap without stretching or upscaling the source.
+    image: ResizeImage(
+      FileImage(file),
+      width: 1400,
+      height: 1400,
+      policy: ResizeImagePolicy.fit,
+    ),
     width: width,
     height: height,
     fit: fit,
     // Decode near display resolution (the frame caps at 680x520 logical):
     // full-resolution photos would otherwise occupy tens of MB each in the
-    // image cache. Mirrors _StorageLocalImage in the settings panel.
-    cacheWidth: 1400,
-    cacheHeight: 1400,
+    // image cache.
     filterQuality: FilterQuality.medium,
     errorBuilder: errorBuilder,
   );
