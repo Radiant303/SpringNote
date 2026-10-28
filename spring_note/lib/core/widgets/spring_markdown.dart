@@ -619,25 +619,16 @@ class _SpringInlineCodeMd extends HighlightedText {
     final code = match?[1] ?? '';
     final colors = AppTheme.colors(context);
     final baseStyle = config.style ?? DefaultTextStyle.of(context).style;
-    final fontSize = baseStyle.fontSize ?? kDefaultFontSize;
-    final textColor = baseStyle.color ?? colors.text;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = springMarkdownTextColor(context);
 
     return WidgetSpan(
       alignment: PlaceholderAlignment.middle,
       child: Container(
         key: const ValueKey('markdown-inline-code'),
-        padding: const EdgeInsets.symmetric(horizontal: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
-          color: isDark
-              ? colors.surfaceMuted.withValues(alpha: 0.45)
-              : const Color(0xFFF3F4F4),
-          border: Border.all(
-            color: isDark
-                ? colors.border.withValues(alpha: 0.75)
-                : const Color(0xFFE7EAED),
-          ),
-          borderRadius: BorderRadius.circular(3),
+          color: colors.surfaceHover,
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Transform.translate(
           offset: const Offset(0, 0.5),
@@ -645,8 +636,8 @@ class _SpringInlineCodeMd extends HighlightedText {
             code,
             style: baseStyle.copyWith(
               color: textColor,
-              fontSize: fontSize * 0.9,
-              height: 1.08,
+              fontSize: 14,
+              height: 1.55,
               fontWeight: baseStyle.fontWeight,
               fontFamily: 'monospace',
               background: null,

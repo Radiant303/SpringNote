@@ -76,7 +76,6 @@ void main() {
       ),
     );
     final decoration = inlineCode.decoration as BoxDecoration;
-    final border = decoration.border as Border;
     final opticalOffset = tester.widget<Transform>(
       find.descendant(
         of: find.byKey(const ValueKey('markdown-inline-code')),
@@ -85,12 +84,39 @@ void main() {
     );
 
     expect(text.style?.fontWeight, FontWeight.w400);
-    expect(text.style?.fontSize, closeTo(12.6, 0.001));
+    expect(text.style?.fontSize, 14);
+    expect(text.style?.height, 1.55);
     expect(text.style?.fontFamily, 'monospace');
-    expect(decoration.borderRadius, BorderRadius.circular(3));
-    expect(border.top.width, 1);
-    expect(inlineCode.padding, const EdgeInsets.symmetric(horizontal: 2));
+    expect(text.style?.color, _bodyTextColor(tester));
+    expect(decoration.color, const Color(0xFFF5F5F5));
+    expect(decoration.border, isNull);
+    expect(decoration.borderRadius, BorderRadius.circular(8));
+    expect(
+      inlineCode.padding,
+      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    );
     expect(opticalOffset.transform.getTranslation().y, closeTo(0.5, 0.001));
+  });
+
+  testWidgets('markdown preview colors inline code for dark theme', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark(),
+        home: const Scaffold(
+          body: MarkdownPreview(markdown: 'Dark `code` text'),
+        ),
+      ),
+    );
+
+    final inlineCode = tester.widget<Container>(
+      find.byKey(const ValueKey('markdown-inline-code')),
+    );
+    final decoration = inlineCode.decoration! as BoxDecoration;
+    final text = tester.widget<Text>(find.text('code'));
+    expect(decoration.color, SpringThemeColors.dark.surfaceHover);
+    expect(text.style?.color, SpringThemeColors.dark.text);
   });
 
   testWidgets('markdown preview keeps bold nesting for inline code', (
@@ -106,7 +132,8 @@ void main() {
     );
 
     expect(text.style?.fontWeight, FontWeight.w700);
-    expect(text.style?.fontSize, closeTo(12.6, 0.001));
+    expect(text.style?.fontSize, 14);
+    expect(text.style?.height, 1.55);
     expect(text.style?.fontFamily, 'monospace');
     expect(text.style?.color, _bodyTextColor(tester));
   });
