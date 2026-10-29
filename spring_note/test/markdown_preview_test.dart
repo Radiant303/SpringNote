@@ -85,15 +85,16 @@ void main() {
 
     expect(text.style?.fontWeight, FontWeight.w400);
     expect(text.style?.fontSize, 14);
-    expect(text.style?.height, 1.55);
+    expect(text.style?.height, closeTo(20 / 14, 0.001));
     expect(text.style?.fontFamily, 'monospace');
     expect(text.style?.color, _bodyTextColor(tester));
     expect(decoration.color, const Color(0xFFF5F5F5));
     expect(decoration.border, isNull);
-    expect(decoration.borderRadius, BorderRadius.circular(8));
+    expect(decoration.borderRadius, BorderRadius.circular(6));
+    expect(inlineCode.padding, const EdgeInsets.symmetric(horizontal: 6));
     expect(
-      inlineCode.padding,
-      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      tester.getSize(find.byKey(const ValueKey('markdown-inline-code'))).height,
+      closeTo(20, 0.001),
     );
     expect(opticalOffset.transform.getTranslation().y, closeTo(0.5, 0.001));
   });
@@ -133,7 +134,7 @@ void main() {
 
     expect(text.style?.fontWeight, FontWeight.w700);
     expect(text.style?.fontSize, 14);
-    expect(text.style?.height, 1.55);
+    expect(text.style?.height, closeTo(20 / 14, 0.001));
     expect(text.style?.fontFamily, 'monospace');
     expect(text.style?.color, _bodyTextColor(tester));
   });

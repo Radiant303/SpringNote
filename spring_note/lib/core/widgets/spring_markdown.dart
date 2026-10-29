@@ -625,10 +625,10 @@ class _SpringInlineCodeMd extends HighlightedText {
       alignment: PlaceholderAlignment.middle,
       child: Container(
         key: const ValueKey('markdown-inline-code'),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 6),
         decoration: BoxDecoration(
           color: colors.surfaceHover,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
         ),
         child: Transform.translate(
           offset: const Offset(0, 0.5),
@@ -637,7 +637,7 @@ class _SpringInlineCodeMd extends HighlightedText {
             style: baseStyle.copyWith(
               color: textColor,
               fontSize: 14,
-              height: 1.55,
+              height: 20 / 14,
               fontWeight: baseStyle.fontWeight,
               fontFamily: 'monospace',
               background: null,

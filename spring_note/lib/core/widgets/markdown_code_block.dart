@@ -132,113 +132,115 @@ class _MarkdownCodeBlockState extends State<MarkdownCodeBlock> {
         border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(12),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            key: const ValueKey('markdown-code-block-header'),
-            height: 38,
-            padding: const EdgeInsets.only(left: 18, right: 3),
-            decoration: BoxDecoration(
-              color: colors.surfaceHover,
-              border: Border(bottom: BorderSide(color: colors.divider)),
-            ),
-            child: Row(
-              children: [
-                Text(
-                  displayLanguage,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colors.textSubtle,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    height: 1,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(11),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              key: const ValueKey('markdown-code-block-header'),
+              height: 38,
+              padding: const EdgeInsets.only(left: 18, right: 3),
+              decoration: BoxDecoration(
+                color: colors.surfaceHover,
+                border: Border(bottom: BorderSide(color: colors.divider)),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    displayLanguage,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: colors.textSubtle,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      height: 1,
+                    ),
                   ),
-                ),
-                const Spacer(),
-                SizedBox(
-                  key: const ValueKey('markdown-code-copy-button'),
-                  width: 32,
-                  height: 32,
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _copyCode,
-                      borderRadius: BorderRadius.circular(8),
-                      hoverColor: const Color(0x08000000),
-                      splashColor: Colors.transparent,
-                      highlightColor: Colors.transparent,
-                      child: Center(
-                        child: Semantics(
-                          button: true,
-                          label: _copied
-                              ? l10n(context).coreCodeCopied
-                              : l10n(context).coreCodeCopy,
-                          child: SvgPicture.string(
-                            _copied ? _checkSvg : _copySvg,
-                            width: 20,
-                            height: 20,
-                            colorFilter: ColorFilter.mode(
-                              colors.textSubtle,
-                              BlendMode.srcIn,
+                  const Spacer(),
+                  SizedBox(
+                    key: const ValueKey('markdown-code-copy-button'),
+                    width: 32,
+                    height: 32,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _copyCode,
+                        borderRadius: BorderRadius.circular(8),
+                        hoverColor: const Color(0x08000000),
+                        splashColor: Colors.transparent,
+                        highlightColor: Colors.transparent,
+                        child: Center(
+                          child: Semantics(
+                            button: true,
+                            label: _copied
+                                ? l10n(context).coreCodeCopied
+                                : l10n(context).coreCodeCopy,
+                            child: SvgPicture.string(
+                              _copied ? _checkSvg : _copySvg,
+                              width: 20,
+                              height: 20,
+                              colorFilter: ColorFilter.mode(
+                                colors.textSubtle,
+                                BlendMode.srcIn,
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
                   ),
+                ],
+              ),
+            ),
+            Stack(
+              children: [
+                ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(
+                    context,
+                  ).copyWith(scrollbars: false),
+                  child: SingleChildScrollView(
+                    key: const ValueKey('markdown-code-scroll-view'),
+                    controller: _scrollController,
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 12),
+                    child: highlightLanguage == null
+                        ? _PlainCodeText(
+                            code: widget.code,
+                            color: colors.textMuted,
+                          )
+                        : FutureBuilder<HighlighterTheme>(
+                            future: highlightThemeFuture,
+                            builder: (context, snapshot) {
+                              final theme = snapshot.data;
+                              if (theme == null) {
+                                return _PlainCodeText(
+                                  code: widget.code,
+                                  color: colors.textMuted,
+                                );
+                              }
+
+                              final highlighter = Highlighter(
+                                language: highlightLanguage,
+                                theme: theme,
+                              );
+                              return Text.rich(
+                                highlighter.highlight(widget.code),
+                              );
+                            },
+                          ),
+                  ),
+                ),
+                Positioned(
+                  left: 18,
+                  right: 18,
+                  bottom: 0,
+                  height: 14,
+                  child: _CodeScrollbar(controller: _scrollController),
                 ),
               ],
             ),
-          ),
-          Stack(
-            children: [
-              ScrollConfiguration(
-                behavior: ScrollConfiguration.of(
-                  context,
-                ).copyWith(scrollbars: false),
-                child: SingleChildScrollView(
-                  key: const ValueKey('markdown-code-scroll-view'),
-                  controller: _scrollController,
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 24),
-                  child: highlightLanguage == null
-                      ? _PlainCodeText(
-                          code: widget.code,
-                          color: colors.textMuted,
-                        )
-                      : FutureBuilder<HighlighterTheme>(
-                          future: highlightThemeFuture,
-                          builder: (context, snapshot) {
-                            final theme = snapshot.data;
-                            if (theme == null) {
-                              return _PlainCodeText(
-                                code: widget.code,
-                                color: colors.textMuted,
-                              );
-                            }
-
-                            final highlighter = Highlighter(
-                              language: highlightLanguage,
-                              theme: theme,
-                            );
-                            return Text.rich(
-                              highlighter.highlight(widget.code),
-                            );
-                          },
-                        ),
-                ),
-              ),
-              Positioned(
-                left: 18,
-                right: 18,
-                bottom: 0,
-                height: 14,
-                child: _CodeScrollbar(controller: _scrollController),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

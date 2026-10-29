@@ -24,6 +24,14 @@ void main() {
     expect((decoration.border! as Border).top.color, AppTheme.border);
     expect((decoration.border! as Border).top.width, 1);
     expect(decoration.borderRadius, BorderRadius.circular(12));
+    expect(card.clipBehavior, Clip.none);
+    final contentClip = tester.widget<ClipRRect>(
+      find.descendant(
+        of: find.byKey(const ValueKey('markdown-code-block-card')),
+        matching: find.byType(ClipRRect),
+      ),
+    );
+    expect(contentClip.borderRadius, BorderRadius.circular(11));
 
     final headerFinder = find.byKey(
       const ValueKey('markdown-code-block-header'),
@@ -49,7 +57,7 @@ void main() {
     final scrollView = tester.widget<SingleChildScrollView>(
       find.byKey(const ValueKey('markdown-code-scroll-view')),
     );
-    expect(scrollView.padding, const EdgeInsets.fromLTRB(18, 14, 18, 24));
+    expect(scrollView.padding, const EdgeInsets.fromLTRB(18, 14, 18, 12));
     expect(find.byType(Scrollbar), findsNothing);
 
     final codeText = tester.widget<Text>(find.text(_code));
