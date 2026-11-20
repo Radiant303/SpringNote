@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gpt_markdown/custom_widgets/custom_divider.dart';
 import 'package:gpt_markdown/custom_widgets/indent_widget.dart';
@@ -48,7 +48,7 @@ void main() {
 
     expect(plainText, contains('SQL 注入'));
     expect(plainText, isNot(contains('**SQL 注入**')));
-    expect(_hasBoldText(richTexts, 'SQL 注入'), isTrue);
+    expect(_hasBoldText(tester, richTexts, 'SQL 注入'), isTrue);
   });
 
   testWidgets('markdown preview wires browser link opener', (
@@ -426,7 +426,13 @@ void main() {
       isTrue,
     );
     expect(
-      _hasBoldText(tester.widgetList<RichText>(find.byType(RichText)), 'A'),
+      _hasBoldText(
+        tester,
+        tester.widgetList<RichText>(
+          find.byWidgetPredicate((widget) => widget is RichText),
+        ),
+        'A',
+      ),
       isTrue,
     );
   });
@@ -891,9 +897,15 @@ Color _bodyTextColor(WidgetTester tester) {
   return springMarkdownTextColor(tester.element(find.byType(MarkdownPreview)));
 }
 
-bool _hasBoldText(Iterable<RichText> richTexts, String text) {
+bool _hasBoldText(
+  WidgetTester tester,
+  Iterable<RichText> richTexts,
+  String text,
+) {
   for (final richText in richTexts) {
-    if (_spanHasBoldText(richText.text, text, null)) {
+    final context = tester.element(find.byWidget(richText));
+    final inheritedStyle = DefaultTextStyle.of(context).style;
+    if (_spanHasBoldText(richText.text, text, inheritedStyle)) {
       return true;
     }
   }
@@ -911,7 +923,7 @@ bool _spanHasBoldText(InlineSpan span, String text, TextStyle? inheritedStyle) {
   final style = inheritedStyle?.merge(span.style) ?? span.style;
 
   if (span is TextSpan) {
-    if ((span.text ?? '').contains(text) &&
+    if (span.toPlainText().contains(text) &&
         style?.fontWeight == FontWeight.w700) {
       return true;
     }

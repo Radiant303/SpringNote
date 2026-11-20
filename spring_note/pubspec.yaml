@@ -36,13 +36,14 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  cupertino_ui: ^1.1.7
   flutter_rust_bridge: 2.12.0
+  intl: ^0.20.3
+  material_ui: ^1.11.1
   rust:
     path: rust_builder
-  # Custom renderers use the legacy API. Keep CI on the tested version even
-  # when switching between pub.dev and the local package mirror.
-  gpt_markdown: 1.2.1
-  flutter_math_fork: ^0.7.4
+  gpt_markdown: 1.4.1
+  val_latex_flutter: ^0.1.4
   syntax_highlight: ^0.5.0
   window_manager: ^0.5.1
   msix: ^3.17.0

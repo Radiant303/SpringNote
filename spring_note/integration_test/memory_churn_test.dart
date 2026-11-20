@@ -11,7 +11,7 @@
 import 'dart:developer' as developer;
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:spring_note/core/models/app_config.dart';

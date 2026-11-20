@@ -1,6 +1,8 @@
-import 'package:flutter/cupertino.dart' show CupertinoLocalizations;
-import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:cupertino_ui/cupertino_ui.dart'
+    show CupertinoLocalizations, GlobalCupertinoLocalizations;
+import 'package:flutter_localizations/flutter_localizations.dart'
+    show GlobalWidgetsLocalizations;
+import 'package:material_ui/material_ui.dart';
 
 import 'core/models/app_config.dart';
 import 'core/models/local_data_state.dart';

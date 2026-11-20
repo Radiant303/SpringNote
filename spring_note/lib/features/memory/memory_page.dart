@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
@@ -2554,14 +2554,15 @@ class _MemoryMessageView extends StatelessWidget {
             GptMarkdownTheme.of(context),
           ),
           child: GptMarkdown(
-            prepareSpringMarkdownText(markdown),
+            renderSpringMarkdownText(markdown),
             followLinkColor: true,
             useDollarSignsForLatex: true,
-            latexBuilder: springMarkdownLatexBuilder,
-            components: springMarkdownComponents,
-            inlineComponents: springMarkdownInlineComponents,
+            inlineLatexBuilder: springMarkdownInlineLatexBuilder,
+            blockLatexBuilder: springMarkdownBlockLatexBuilder,
+            inlineCodeBuilder: springMarkdownInlineCodeBuilder,
+            checkboxBuilder: springMarkdownCheckboxBuilder,
+            hrBuilder: springMarkdownHrBuilder,
             unOrderedListBuilder: springMarkdownUnorderedListBuilder,
-            tableBuilder: springMarkdownTableBuilder,
             // The memoir page is a single scrollable page with no note
             // switching, so springtree blocks render without the inline
             // node cap.

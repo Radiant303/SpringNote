@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// 桌面组件壁纸模式
 enum DesktopWidgetWallpaperMode {

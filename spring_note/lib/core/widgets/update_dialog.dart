@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
 import '../../l10n/l10n.dart';
@@ -143,18 +143,22 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                                   GptMarkdownTheme.of(context),
                                 ),
                                 child: GptMarkdown(
-                                  prepareSpringMarkdownText(
+                                  renderSpringMarkdownText(
                                     widget.latest.changelog,
                                   ),
                                   followLinkColor: true,
                                   useDollarSignsForLatex: true,
-                                  latexBuilder: springMarkdownLatexBuilder,
-                                  components: springMarkdownComponents,
-                                  inlineComponents:
-                                      springMarkdownInlineComponents,
+                                  inlineLatexBuilder:
+                                      springMarkdownInlineLatexBuilder,
+                                  blockLatexBuilder:
+                                      springMarkdownBlockLatexBuilder,
+                                  inlineCodeBuilder:
+                                      springMarkdownInlineCodeBuilder,
+                                  checkboxBuilder:
+                                      springMarkdownCheckboxBuilder,
+                                  hrBuilder: springMarkdownHrBuilder,
                                   unOrderedListBuilder:
                                       springMarkdownUnorderedListBuilder,
-                                  tableBuilder: springMarkdownTableBuilder,
                                   imageBuilder: (context, url, width, height) =>
                                       SpringMarkdownImage(
                                         url: url,

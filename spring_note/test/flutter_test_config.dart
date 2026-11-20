@@ -6,11 +6,11 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   LeakTesting.enable();
   LeakTesting.settings = LeakTesting.settings
       .withTrackedAll()
-      // ImageStreamCompleterHandle/_LiveImage are the global image cache's
-      // bookkeeping for images still decoding when a test ends; widget tests
-      // never finish real codec work under fake async, so they always look
-      // alive at teardown.
-      .withIgnored(classes: ['ImageStreamCompleterHandle', '_LiveImage'])
+      // Image decoding and math font registration use process-lifetime global
+      // services, so their bookkeeping intentionally remains alive at teardown.
+      .withIgnored(
+        classes: ['ImageStreamCompleterHandle', '_LiveImage', 'FontsLoaded'],
+      )
       .withCreationStackTrace();
   await testMain();
 }

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../core/services/desktop_widget_controller.dart';
 import '../../core/services/level_progress_controller.dart';

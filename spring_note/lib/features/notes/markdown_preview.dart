@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -65,14 +65,15 @@ class MarkdownPreview extends StatelessWidget {
                 child: GptMarkdownTheme(
                   gptThemeData: springMarkdownThemeData(context, markdownTheme),
                   child: GptMarkdown(
-                    prepareSpringMarkdownText(markdown),
+                    renderSpringMarkdownText(markdown),
                     followLinkColor: true,
                     useDollarSignsForLatex: true,
-                    latexBuilder: springMarkdownLatexBuilder,
-                    components: springMarkdownComponents,
-                    inlineComponents: springMarkdownInlineComponents,
+                    inlineLatexBuilder: springMarkdownInlineLatexBuilder,
+                    blockLatexBuilder: springMarkdownBlockLatexBuilder,
+                    inlineCodeBuilder: springMarkdownInlineCodeBuilder,
+                    checkboxBuilder: springMarkdownCheckboxBuilder,
+                    hrBuilder: springMarkdownHrBuilder,
                     unOrderedListBuilder: springMarkdownUnorderedListBuilder,
-                    tableBuilder: springMarkdownTableBuilder,
                     codeBuilder: buildSpringCodeBlock,
                     imageBuilder: (context, url, width, height) =>
                         SpringMarkdownImage(
