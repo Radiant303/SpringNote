@@ -882,7 +882,7 @@ class _SidebarButtonState extends State<_SidebarButton> {
                       curve: Curves.easeOutCubic,
                       builder: (context, color, _) {
                         return DecoratedBox(
-                          decoration: BoxDecoration(
+                          decoration: AppTheme.continuousBoxDecoration(
                             color: color ?? backgroundColor,
                             borderRadius: BorderRadius.circular(12),
                           ),

@@ -127,7 +127,7 @@ class _MarkdownCodeBlockState extends State<MarkdownCodeBlock> {
     return Container(
       key: const ValueKey('markdown-code-block-card'),
       margin: const EdgeInsets.symmetric(vertical: 16),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: colors.surface,
         border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(12),
@@ -141,7 +141,7 @@ class _MarkdownCodeBlockState extends State<MarkdownCodeBlock> {
               key: const ValueKey('markdown-code-block-header'),
               height: 38,
               padding: const EdgeInsets.only(left: 18, right: 3),
-              decoration: BoxDecoration(
+              decoration: AppTheme.continuousBoxDecoration(
                 color: colors.surfaceHover,
                 border: Border(bottom: BorderSide(color: colors.divider)),
               ),

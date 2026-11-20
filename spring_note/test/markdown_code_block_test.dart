@@ -18,12 +18,13 @@ void main() {
     final card = tester.widget<Container>(
       find.byKey(const ValueKey('markdown-code-block-card')),
     );
-    final decoration = card.decoration! as BoxDecoration;
+    final decoration = card.decoration! as ShapeDecoration;
+    final shape = decoration.shape as RoundedSuperellipseBorder;
     expect(card.margin, const EdgeInsets.symmetric(vertical: 16));
     expect(decoration.color, AppTheme.surface);
-    expect((decoration.border! as Border).top.color, AppTheme.border);
-    expect((decoration.border! as Border).top.width, 1);
-    expect(decoration.borderRadius, BorderRadius.circular(12));
+    expect(shape.side.color, AppTheme.border);
+    expect(shape.side.width, 1);
+    expect(shape.borderRadius, BorderRadius.circular(12));
     expect(card.clipBehavior, Clip.none);
     final contentClip = tester.widget<ClipRRect>(
       find.descendant(

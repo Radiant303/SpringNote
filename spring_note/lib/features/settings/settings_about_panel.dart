@@ -20,7 +20,7 @@ class _AboutPanel extends StatelessWidget {
       children: [
         Container(
           padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: colors.surface,
             border: Border.all(color: colors.border),
             borderRadius: BorderRadius.circular(20),
@@ -140,7 +140,7 @@ class _AboutListCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
     return Container(
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: colors.surface,
         border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(18),
@@ -298,7 +298,7 @@ class _AboutListRowState extends State<_AboutListRow> {
                   curve: Curves.easeOutCubic,
                   opacity: active ? 1 : 0,
                   child: DecoratedBox(
-                    decoration: BoxDecoration(
+                    decoration: AppTheme.continuousBoxDecoration(
                       color: colors.surfaceHover,
                       borderRadius: BorderRadius.circular(13),
                     ),

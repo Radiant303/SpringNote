@@ -46,7 +46,7 @@ class _SettingsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = AppTheme.colors(context);
     return Container(
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: colors.surface,
         border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(18),
@@ -107,7 +107,7 @@ class _ActionSettingRowState extends State<_ActionSettingRow> {
         onTap: widget.onTap,
         child: Container(
           constraints: const BoxConstraints(minHeight: 58),
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             border: Border(top: BorderSide(color: colors.divider)),
           ),
           child: Stack(
@@ -124,7 +124,7 @@ class _ActionSettingRowState extends State<_ActionSettingRow> {
                     curve: Curves.easeOutCubic,
                     opacity: active ? 1 : 0,
                     child: DecoratedBox(
-                      decoration: BoxDecoration(
+                      decoration: AppTheme.continuousBoxDecoration(
                         color: colors.surfaceHover,
                         borderRadius: BorderRadius.circular(13),
                       ),
@@ -230,7 +230,7 @@ class _SettingsMessage extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: error
             ? (dark ? const Color(0xFF3B1119) : const Color(0xFFFFF1F2))
             : (dark ? const Color(0xFF0F2F1B) : const Color(0xFFF0FDF4)),
@@ -296,7 +296,7 @@ class _SettingsSearchFieldState extends State<_SettingsSearchField> {
       duration: const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
       height: 40,
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: focused ? colors.inputFocusedFill : colors.surfaceMuted,
         borderRadius: BorderRadius.circular(12),
       ),
@@ -583,7 +583,7 @@ class _ThemeModeSegmentedControl extends StatelessWidget {
           final segmentWidth = (constraints.maxWidth - 6) / 3;
           return Container(
             padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
+            decoration: AppTheme.continuousBoxDecoration(
               color: colors.surfaceMuted,
               border: Border.all(color: colors.border),
               borderRadius: BorderRadius.circular(14),
@@ -598,7 +598,7 @@ class _ThemeModeSegmentedControl extends StatelessWidget {
                   bottom: 0,
                   width: segmentWidth,
                   child: Container(
-                    decoration: BoxDecoration(
+                    decoration: AppTheme.continuousBoxDecoration(
                       color: colors.surface,
                       borderRadius: BorderRadius.circular(11),
                       boxShadow: [
@@ -721,7 +721,7 @@ class _LanguageSegmentedControl extends StatelessWidget {
           final segmentWidth = (constraints.maxWidth - 6) / 3;
           return Container(
             padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
+            decoration: AppTheme.continuousBoxDecoration(
               color: colors.surfaceMuted,
               border: Border.all(color: colors.border),
               borderRadius: BorderRadius.circular(14),
@@ -736,7 +736,7 @@ class _LanguageSegmentedControl extends StatelessWidget {
                   bottom: 0,
                   width: segmentWidth,
                   child: Container(
-                    decoration: BoxDecoration(
+                    decoration: AppTheme.continuousBoxDecoration(
                       color: colors.surface,
                       borderRadius: BorderRadius.circular(11),
                       boxShadow: [
@@ -788,7 +788,7 @@ class _SettingRowShell extends StatelessWidget {
     return Container(
       constraints: const BoxConstraints(minHeight: 58),
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         border: Border(top: BorderSide(color: colors.divider)),
       ),
       child: Row(
@@ -1051,7 +1051,9 @@ class _DropdownSelectFieldState extends State<_DropdownSelectField> {
             minimumSize: const WidgetStatePropertyAll(Size.zero),
             padding: const WidgetStatePropertyAll(EdgeInsets.zero),
             shape: WidgetStatePropertyAll(
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              RoundedSuperellipseBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
           ),
           onOpen: () => setState(() => _menuOpen = true),
@@ -1113,7 +1115,7 @@ class _DropdownSelectFieldState extends State<_DropdownSelectField> {
                   curve: Curves.easeOutCubic,
                   height: widget.height,
                   padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(
+                  decoration: AppTheme.continuousBoxDecoration(
                     color: active ? colors.surfaceHover : colors.inputFill,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
@@ -1170,7 +1172,7 @@ class _ProtocolMenuSurface extends StatelessWidget {
     return Container(
       width: width,
       padding: const EdgeInsets.symmetric(vertical: verticalPadding),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: AppTheme.menuSurface(context),
         border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(16),
@@ -1245,7 +1247,7 @@ class _ProtocolMenuOptionState extends State<_ProtocolMenuOption> {
                   curve: Curves.easeOutCubic,
                   opacity: active ? 1 : 0,
                   child: DecoratedBox(
-                    decoration: BoxDecoration(
+                    decoration: AppTheme.continuousBoxDecoration(
                       color: backgroundColor,
                       borderRadius: BorderRadius.circular(11),
                     ),
@@ -1311,7 +1313,7 @@ class _StatusPill extends StatelessWidget {
       height: 26,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       alignment: Alignment.center,
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: enabled
             ? (Theme.of(context).brightness == Brightness.dark
                   ? const Color(0xFF123522)
@@ -1366,7 +1368,7 @@ class _DialogFrame extends StatelessWidget {
     final colors = AppTheme.colors(context);
     return Dialog(
       backgroundColor: AppTheme.dialogSurface(context),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(24)),
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: width),
         child: Padding(
@@ -1447,7 +1449,7 @@ class _DialogSwitchRow extends StatelessWidget {
       height: 56,
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: colors.surfaceMuted,
         border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(14),
@@ -1519,7 +1521,7 @@ class _ChoiceSettingRow<T> extends StatelessWidget {
       description: description,
       child: Container(
         padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
+        decoration: AppTheme.continuousBoxDecoration(
           color: colors.surfaceMuted,
           border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(14),
@@ -1537,7 +1539,7 @@ class _ChoiceSettingRow<T> extends StatelessWidget {
                   bottom: 0,
                   width: segmentWidths[selectedIndex],
                   child: Container(
-                    decoration: BoxDecoration(
+                    decoration: AppTheme.continuousBoxDecoration(
                       color: colors.surface,
                       borderRadius: BorderRadius.circular(11),
                       boxShadow: [
@@ -1718,7 +1720,7 @@ class _ColorSettingRow extends StatelessWidget {
     final result = await showModalBottomSheet<Color>(
       context: context,
       backgroundColor: AppTheme.dialogSurface(context),
-      shape: const RoundedRectangleBorder(
+      shape: const RoundedSuperellipseBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
       builder: (_) => _ColorPickerSheet(current: color),
@@ -1741,7 +1743,7 @@ class _ColorSettingRow extends StatelessWidget {
           child: Container(
             width: 44,
             height: 28,
-            decoration: BoxDecoration(
+            decoration: AppTheme.continuousBoxDecoration(
               color: color,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: colors.border),
@@ -1799,7 +1801,7 @@ class _ColorPickerSheet extends StatelessWidget {
                     child: Container(
                       width: 40,
                       height: 40,
-                      decoration: BoxDecoration(
+                      decoration: AppTheme.continuousBoxDecoration(
                         color: item,
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(

@@ -311,7 +311,7 @@ class _HotkeyRecorderFieldState extends State<_HotkeyRecorderField> {
             height: 42,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             alignment: Alignment.centerLeft,
-            decoration: BoxDecoration(
+            decoration: AppTheme.continuousBoxDecoration(
               color: _recording ? colors.inputFocusedFill : colors.inputFill,
               border: Border.all(color: borderColor),
               borderRadius: BorderRadius.circular(14),
@@ -518,7 +518,7 @@ class _HotkeyActionButtonState extends State<_HotkeyActionButton> {
                     curve: Curves.easeOutCubic,
                     opacity: active ? 1 : 0,
                     child: DecoratedBox(
-                      decoration: BoxDecoration(
+                      decoration: AppTheme.continuousBoxDecoration(
                         color: backgroundColor,
                         borderRadius: BorderRadius.circular(12),
                       ),

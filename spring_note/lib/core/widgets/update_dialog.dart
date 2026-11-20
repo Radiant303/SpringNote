@@ -57,7 +57,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
     return Dialog(
       backgroundColor: AppTheme.dialogSurface(context),
       insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(24)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 760, maxHeight: 700),
         child: Padding(
@@ -68,7 +68,10 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
             children: [
               Row(
                 children: [
-                  Text(l10n(context).coreUpdateDialogTitle, style: textTheme.titleLarge),
+                  Text(
+                    l10n(context).coreUpdateDialogTitle,
+                    style: textTheme.titleLarge,
+                  ),
                   const Spacer(),
                   IconButton(
                     onPressed: _installing
@@ -100,20 +103,23 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                 ],
               ),
               const SizedBox(height: 18),
-              Text(l10n(context).coreUpdateChangelogTitle,
-                  style: textTheme.titleMedium),
+              Text(
+                l10n(context).coreUpdateChangelogTitle,
+                style: textTheme.titleMedium,
+              ),
               const SizedBox(height: 10),
               Flexible(
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
+                  decoration: AppTheme.continuousBoxDecoration(
                     color: colors.surfaceMuted,
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: SelectionArea(
                     child: SingleChildScrollView(
-                      child: widget.latest.changelogLoadFailed ||
+                      child:
+                          widget.latest.changelogLoadFailed ||
                               widget.latest.changelog.trim().isEmpty
                           ? Text(
                               widget.latest.changelogLoadFailed
@@ -126,43 +132,46 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                               ),
                             )
                           : DefaultTextStyle.merge(
-                        style: textTheme.bodyLarge?.copyWith(
-                          color: springMarkdownTextColor(context),
-                          fontSize: 14,
-                          height: 1.55,
-                        ),
-                        child: GptMarkdownTheme(
-                          gptThemeData: springMarkdownThemeData(
-                            context,
-                            GptMarkdownTheme.of(context),
-                          ),
-                          child: GptMarkdown(
-                            prepareSpringMarkdownText(widget.latest.changelog),
-                            followLinkColor: true,
-                            useDollarSignsForLatex: true,
-                            latexBuilder: springMarkdownLatexBuilder,
-                            components: springMarkdownComponents,
-                            inlineComponents: springMarkdownInlineComponents,
-                            unOrderedListBuilder:
-                                springMarkdownUnorderedListBuilder,
-                            tableBuilder: springMarkdownTableBuilder,
-                            imageBuilder: (context, url, width, height) =>
-                                SpringMarkdownImage(
-                                  url: url,
-                                  width: width,
-                                  height: height,
-                                  localImageBasePaths: const [],
+                              style: textTheme.bodyLarge?.copyWith(
+                                color: springMarkdownTextColor(context),
+                                fontSize: 14,
+                                height: 1.55,
+                              ),
+                              child: GptMarkdownTheme(
+                                gptThemeData: springMarkdownThemeData(
+                                  context,
+                                  GptMarkdownTheme.of(context),
                                 ),
-                            codeBuilder: buildSpringCodeBlock,
-                            style: textTheme.bodyLarge?.copyWith(
-                              color: springMarkdownTextColor(context),
-                              fontSize: 14,
-                              height: 1.55,
+                                child: GptMarkdown(
+                                  prepareSpringMarkdownText(
+                                    widget.latest.changelog,
+                                  ),
+                                  followLinkColor: true,
+                                  useDollarSignsForLatex: true,
+                                  latexBuilder: springMarkdownLatexBuilder,
+                                  components: springMarkdownComponents,
+                                  inlineComponents:
+                                      springMarkdownInlineComponents,
+                                  unOrderedListBuilder:
+                                      springMarkdownUnorderedListBuilder,
+                                  tableBuilder: springMarkdownTableBuilder,
+                                  imageBuilder: (context, url, width, height) =>
+                                      SpringMarkdownImage(
+                                        url: url,
+                                        width: width,
+                                        height: height,
+                                        localImageBasePaths: const [],
+                                      ),
+                                  codeBuilder: buildSpringCodeBlock,
+                                  style: textTheme.bodyLarge?.copyWith(
+                                    color: springMarkdownTextColor(context),
+                                    fontSize: 14,
+                                    height: 1.55,
+                                  ),
+                                  onLinkTap: openSpringMarkdownLink,
+                                ),
+                              ),
                             ),
-                            onLinkTap: openSpringMarkdownLink,
-                          ),
-                        ),
-                      ),
                     ),
                   ),
                 ),
@@ -237,9 +246,10 @@ String _localizedUpdateInstallError(
       strings.coreUpdateErrorUnsupportedPlatform,
     UpdateInstallErrorCode.updaterMissing =>
       strings.coreUpdateErrorUpdaterMissing,
-    UpdateInstallErrorCode.downloadFailed => hasDetail
-        ? strings.coreUpdateErrorDownloadFailed(detail)
-        : strings.coreUpdateErrorDownloadFailedRetry,
+    UpdateInstallErrorCode.downloadFailed =>
+      hasDetail
+          ? strings.coreUpdateErrorDownloadFailed(detail)
+          : strings.coreUpdateErrorDownloadFailedRetry,
     UpdateInstallErrorCode.downloadTimeout =>
       strings.coreUpdateErrorDownloadTimeout,
     UpdateInstallErrorCode.networkUnavailable =>
@@ -252,19 +262,16 @@ String _localizedUpdateInstallError(
       strings.coreUpdateErrorChecksumUnreadable,
     UpdateInstallErrorCode.checksumInfoMissing =>
       strings.coreUpdateErrorChecksumMissing,
-    UpdateInstallErrorCode.macUpdateFailed => hasDetail
-        ? detail
-        : strings.coreUpdateErrorMacFailed,
-    UpdateInstallErrorCode.macUpdateNotFound => hasDetail
-        ? detail
-        : strings.coreUpdateErrorMacNotFound,
+    UpdateInstallErrorCode.macUpdateFailed =>
+      hasDetail ? detail : strings.coreUpdateErrorMacFailed,
+    UpdateInstallErrorCode.macUpdateNotFound =>
+      hasDetail ? detail : strings.coreUpdateErrorMacNotFound,
     UpdateInstallErrorCode.macUpdateDismissed =>
       strings.coreUpdateErrorMacDismissed,
     UpdateInstallErrorCode.macUpdateInterrupted =>
       strings.coreUpdateErrorMacInterrupted,
-    UpdateInstallErrorCode.macUpdateLaunchFailed => hasDetail
-        ? detail
-        : strings.coreUpdateErrorMacLaunchFailed,
+    UpdateInstallErrorCode.macUpdateLaunchFailed =>
+      hasDetail ? detail : strings.coreUpdateErrorMacLaunchFailed,
   };
 }
 
@@ -298,9 +305,10 @@ class _UpdateInstallStatus extends StatelessWidget {
       UpdateInstallStage.verifying => l10n(context).coreUpdateVerifying,
       UpdateInstallStage.extracting => _extractingText(context, current),
       UpdateInstallStage.installing => l10n(context).coreUpdateInstalling,
-      UpdateInstallStage.launching => Platform.isWindows
-          ? l10n(context).coreUpdateLaunchingWindows
-          : l10n(context).coreUpdateLaunching,
+      UpdateInstallStage.launching =>
+        Platform.isWindows
+            ? l10n(context).coreUpdateLaunchingWindows
+            : l10n(context).coreUpdateLaunching,
       null => l10n(context).coreUpdatePreparing,
     };
     return Column(
@@ -338,7 +346,10 @@ class _UpdateInstallStatus extends StatelessWidget {
     ).coreUpdateDownloadingProgress(received, _formatBytes(total));
   }
 
-  String _extractingText(BuildContext context, UpdateInstallProgress? progress) {
+  String _extractingText(
+    BuildContext context,
+    UpdateInstallProgress? progress,
+  ) {
     final fraction = progress?.fraction;
     if (fraction == null) {
       return l10n(context).coreUpdateExtracting;
@@ -376,7 +387,7 @@ class _StatusBand extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(14),
       ),
@@ -469,7 +480,7 @@ class _UpdateMetaPill extends StatelessWidget {
     final colors = AppTheme.colors(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: colors.surfaceMuted,
         borderRadius: BorderRadius.circular(999),
       ),
@@ -537,7 +548,7 @@ class _UpdateActionButtonState extends State<_UpdateActionButton> {
           curve: Curves.easeOutCubic,
           height: 44,
           padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: background,
             borderRadius: BorderRadius.circular(14),
           ),

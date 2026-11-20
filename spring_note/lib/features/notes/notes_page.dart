@@ -802,7 +802,10 @@ class _NotesPageState extends State<NotesPage> {
       widget.localDataState.config,
     );
     if (unavailableReason != null) {
-      setState(() => _fimMessage = l10n(context).notesFimNotTriggered(unavailableReason));
+      setState(
+        () =>
+            _fimMessage = l10n(context).notesFimNotTriggered(unavailableReason),
+      );
       return;
     }
 
@@ -964,12 +967,18 @@ class _NotesPageState extends State<NotesPage> {
           setState(() => _editorMessage = l10n(context).notesRegenerated);
         }
       } else {
-        setState(() => _editorMessage = l10n(context).notesRegenerateFailedMessage(result.errorMessage));
+        setState(
+          () => _editorMessage = l10n(
+            context,
+          ).notesRegenerateFailedMessage(result.errorMessage),
+        );
       }
     } catch (error, stackTrace) {
       debugPrint('Failed to regenerate report: $error\n$stackTrace');
       if (mounted) {
-        setState(() => _editorMessage = l10n(context).notesRegenerateFailedRetry);
+        setState(
+          () => _editorMessage = l10n(context).notesRegenerateFailedRetry,
+        );
       }
     } finally {
       if (mounted) {
@@ -991,7 +1000,9 @@ class _NotesPageState extends State<NotesPage> {
         return;
       }
       if (images.isEmpty) {
-        setState(() => _editorMessage = l10n(context).notesImageSelectionCanceled);
+        setState(
+          () => _editorMessage = l10n(context).notesImageSelectionCanceled,
+        );
         return;
       }
       final copiedImages = <NoteImageAttachment>[];
@@ -1023,7 +1034,9 @@ class _NotesPageState extends State<NotesPage> {
     } on ArgumentError catch (error, stackTrace) {
       debugPrint('Unsupported image selected: $error\n$stackTrace');
       if (mounted) {
-        setState(() => _editorMessage = l10n(context).notesImageFormatUnsupported);
+        setState(
+          () => _editorMessage = l10n(context).notesImageFormatUnsupported,
+        );
       }
     } catch (error, stackTrace) {
       debugPrint('Failed to insert image: $error\n$stackTrace');
@@ -1122,12 +1135,18 @@ class _NotesPageState extends State<NotesPage> {
     } on ArgumentError catch (error, stackTrace) {
       debugPrint('Unsupported clipboard image file: $error\n$stackTrace');
       if (mounted) {
-        setState(() => _editorMessage = l10n(context).notesClipboardImageFormatUnsupported);
+        setState(
+          () => _editorMessage = l10n(
+            context,
+          ).notesClipboardImageFormatUnsupported,
+        );
       }
     } catch (error, stackTrace) {
       debugPrint('Failed to paste clipboard image files: $error\n$stackTrace');
       if (mounted) {
-        setState(() => _editorMessage = l10n(context).notesClipboardImagePasteFailed);
+        setState(
+          () => _editorMessage = l10n(context).notesClipboardImagePasteFailed,
+        );
       }
     }
   }
@@ -1159,7 +1178,9 @@ class _NotesPageState extends State<NotesPage> {
       if (!mounted) {
         return;
       }
-      setState(() => _editorMessage = l10n(context).notesClipboardImagePasteFailed);
+      setState(
+        () => _editorMessage = l10n(context).notesClipboardImagePasteFailed,
+      );
     }
   }
 
@@ -1169,7 +1190,9 @@ class _NotesPageState extends State<NotesPage> {
       data = await Clipboard.getData(Clipboard.kTextPlain);
     } catch (_) {
       if (mounted) {
-        setState(() => _editorMessage = l10n(context).notesClipboardTextReadFailed);
+        setState(
+          () => _editorMessage = l10n(context).notesClipboardTextReadFailed,
+        );
       }
       return;
     }
@@ -1546,7 +1569,7 @@ class _NotesSidebar extends StatelessWidget {
     return Container(
       width: 278,
       padding: const EdgeInsets.fromLTRB(18, 24, 14, 20),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: colors.sidebar,
         border: Border(right: BorderSide(color: colors.divider)),
       ),
@@ -1555,11 +1578,14 @@ class _NotesSidebar extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(l10n(context).notesNotebookTitle, style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                l10n(context).notesNotebookTitle,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
+                decoration: AppTheme.continuousBoxDecoration(
                   color: colors.surfaceMuted,
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -1575,7 +1601,9 @@ class _NotesSidebar extends StatelessWidget {
           const SizedBox(height: 16),
           _NotesSearchField(
             controller: searchController,
-            hintText: l10n(context).notesSearchAllHint(noteKindLabel(context, kind)),
+            hintText: l10n(
+              context,
+            ).notesSearchAllHint(noteKindLabel(context, kind)),
           ),
           const SizedBox(height: 16),
           Expanded(
@@ -1634,7 +1662,9 @@ class _FilteredNoteList extends StatelessWidget {
     if (results.isEmpty) {
       return Center(
         child: Text(
-          searching ? l10n(context).notesSearching : l10n(context).notesNoSearchResults,
+          searching
+              ? l10n(context).notesSearching
+              : l10n(context).notesNoSearchResults,
           style: Theme.of(context).textTheme.bodyMedium,
         ),
       );
@@ -1827,7 +1857,7 @@ class _NotesKindMenuState extends State<_NotesKindMenu> {
       child: Container(
         width: 190,
         padding: const EdgeInsets.all(7),
-        decoration: BoxDecoration(
+        decoration: AppTheme.continuousBoxDecoration(
           color: AppTheme.menuSurface(context),
           border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(16),
@@ -1945,7 +1975,7 @@ class _NotesKindMenuItem extends StatelessWidget {
                     curve: Curves.easeOutCubic,
                     builder: (context, color, _) {
                       return DecoratedBox(
-                        decoration: BoxDecoration(
+                        decoration: AppTheme.continuousBoxDecoration(
                           color: color ?? backgroundColor,
                           borderRadius: BorderRadius.circular(13),
                         ),
@@ -1994,7 +2024,10 @@ class _NotesKindMenuItem extends StatelessWidget {
                                   mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(noteKindLabel(context, kind), style: titleStyle),
+                                    Text(
+                                      noteKindLabel(context, kind),
+                                      style: titleStyle,
+                                    ),
                                     const SizedBox(height: 3),
                                     Text(
                                       _descriptionForKind(context, kind),
@@ -2077,7 +2110,7 @@ class _NotesSearchFieldState extends State<_NotesSearchField> {
       duration: const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
       height: 40,
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: focused ? colors.inputFocusedFill : colors.inputFill,
         borderRadius: BorderRadius.circular(12),
       ),
@@ -2178,7 +2211,7 @@ class _NoteListItemState extends State<_NoteListItem> {
                   curve: Curves.easeOutCubic,
                   builder: (context, color, _) {
                     return DecoratedBox(
-                      decoration: BoxDecoration(
+                      decoration: AppTheme.continuousBoxDecoration(
                         color: color ?? backgroundColor,
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -2587,7 +2620,7 @@ class _EditorHeaderIconButtonState extends State<_EditorHeaderIconButton> {
             padding: EdgeInsets.zero,
             backgroundColor: Colors.transparent,
             hoverColor: colors.surfaceMuted,
-            shape: RoundedRectangleBorder(
+            shape: RoundedSuperellipseBorder(
               borderRadius: BorderRadius.circular(9),
             ),
           ),
@@ -2755,7 +2788,7 @@ class _EditorStatusPill extends StatelessWidget {
         child: Container(
           constraints: const BoxConstraints(maxWidth: 240),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: background,
             borderRadius: BorderRadius.circular(6),
           ),
@@ -2859,7 +2892,7 @@ class _WorkspaceModeSegmentedControl extends StatelessWidget {
         height: 28,
         child: Container(
           padding: const EdgeInsets.all(outerPadding),
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: colors.surfaceMuted.withValues(alpha: 0.60),
             border: Border.all(color: borderColor, width: borderWidth),
             borderRadius: BorderRadius.circular(8),
@@ -2874,7 +2907,7 @@ class _WorkspaceModeSegmentedControl extends StatelessWidget {
                 bottom: 0,
                 width: segmentWidths[selectedIndex],
                 child: Container(
-                  decoration: BoxDecoration(
+                  decoration: AppTheme.continuousBoxDecoration(
                     color: highlightColor,
                     borderRadius: BorderRadius.circular(6),
                     boxShadow: [
@@ -3034,7 +3067,7 @@ class _PaneFrame extends StatelessWidget {
           Container(
             height: headerHeight,
             padding: headerPadding,
-            decoration: BoxDecoration(
+            decoration: AppTheme.continuousBoxDecoration(
               border: Border(bottom: BorderSide(color: colors.divider)),
             ),
             child: header,

@@ -213,7 +213,7 @@ class _StoragePanelState extends State<_StoragePanel> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(18, 17, 18, 17),
-              decoration: BoxDecoration(
+              decoration: AppTheme.continuousBoxDecoration(
                 border: Border(top: BorderSide(color: colors.divider)),
               ),
               child: Column(
@@ -284,7 +284,7 @@ class _StorageScanState extends StatelessWidget {
       width: double.infinity,
       constraints: const BoxConstraints(minHeight: 98),
       padding: const EdgeInsets.symmetric(horizontal: 18),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: colors.surfaceMuted,
         border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(14),
@@ -400,7 +400,7 @@ class _StorageMetric extends StatelessWidget {
     return Container(
       height: 72,
       padding: const EdgeInsets.fromLTRB(14, 13, 14, 12),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: colors.surfaceHover,
         borderRadius: BorderRadius.circular(13),
       ),
@@ -554,7 +554,7 @@ class _StorageActionButtonState extends State<_StorageActionButton> {
           curve: Curves.easeOutCubic,
           width: widget.width,
           height: 38,
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: background,
             border: Border.all(
               color: widget.filled ? Colors.transparent : colors.border,
@@ -720,13 +720,17 @@ class _UnusedImagesConfirmDialogState
                           child: Row(
                             children: [
                               Text(
-                                strings.settingsUnusedCount(widget.scan.unusedImageCount),
+                                strings.settingsUnusedCount(
+                                  widget.scan.unusedImageCount,
+                                ),
                                 style: Theme.of(context).textTheme.bodyMedium
                                     ?.copyWith(color: colors.text),
                               ),
                               const Spacer(),
                               _StorageTextButton(
-                                label: _allSelected ? strings.settingsDeselectAll : strings.settingsSelectAll,
+                                label: _allSelected
+                                    ? strings.settingsDeselectAll
+                                    : strings.settingsSelectAll,
                                 onTap: _toggleAll,
                               ),
                             ],
@@ -794,7 +798,7 @@ class _UnusedImagesConfirmDialogState
             ),
             Container(
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 17),
-              decoration: BoxDecoration(
+              decoration: AppTheme.continuousBoxDecoration(
                 color: colors.surface,
                 border: Border(top: BorderSide(color: colors.divider)),
               ),
@@ -865,7 +869,7 @@ class _StorageTextButtonState extends State<_StorageTextButton> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 130),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: _hovered ? colors.surfaceHover : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
           ),
@@ -929,7 +933,7 @@ class _UnusedImageRow extends StatelessWidget {
                   curve: Curves.easeOutCubic,
                   opacity: active ? 1 : 0,
                   child: DecoratedBox(
-                    decoration: BoxDecoration(
+                    decoration: AppTheme.continuousBoxDecoration(
                       color: background,
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -949,7 +953,7 @@ class _UnusedImageRow extends StatelessWidget {
                         onChanged: (value) => onSelected(value ?? false),
                         visualDensity: VisualDensity.compact,
                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        shape: RoundedRectangleBorder(
+                        shape: RoundedSuperellipseBorder(
                           borderRadius: BorderRadius.circular(5),
                         ),
                         side: BorderSide(
@@ -972,7 +976,7 @@ class _UnusedImageRow extends StatelessWidget {
                         child: Container(
                           width: 46,
                           height: 46,
-                          decoration: BoxDecoration(
+                          decoration: AppTheme.continuousBoxDecoration(
                             color: colors.surfaceMuted,
                             border: Border.all(color: colors.border),
                             borderRadius: BorderRadius.circular(9),
@@ -1050,7 +1054,7 @@ class _StoragePreviewPane extends StatelessWidget {
             child: Container(
               key: const ValueKey('storage-image-preview'),
               width: double.infinity,
-              decoration: BoxDecoration(
+              decoration: AppTheme.continuousBoxDecoration(
                 color: colors.surfaceMuted,
                 border: Border.all(color: colors.border),
                 borderRadius: BorderRadius.circular(16),

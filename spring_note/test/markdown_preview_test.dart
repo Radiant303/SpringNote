@@ -75,7 +75,7 @@ void main() {
         matching: find.text('syntax'),
       ),
     );
-    final decoration = inlineCode.decoration as BoxDecoration;
+    final decoration = inlineCode.decoration as ShapeDecoration;
     final opticalOffset = tester.widget<Transform>(
       find.descendant(
         of: find.byKey(const ValueKey('markdown-inline-code')),
@@ -89,8 +89,11 @@ void main() {
     expect(text.style?.fontFamily, 'monospace');
     expect(text.style?.color, _bodyTextColor(tester));
     expect(decoration.color, const Color(0xFFF5F5F5));
-    expect(decoration.border, isNull);
-    expect(decoration.borderRadius, BorderRadius.circular(6));
+    expect(decoration.shape, isA<RoundedSuperellipseBorder>());
+    expect(
+      (decoration.shape as RoundedSuperellipseBorder).borderRadius,
+      BorderRadius.circular(6),
+    );
     expect(inlineCode.padding, const EdgeInsets.symmetric(horizontal: 6));
     expect(
       tester.getSize(find.byKey(const ValueKey('markdown-inline-code'))).height,
@@ -114,7 +117,7 @@ void main() {
     final inlineCode = tester.widget<Container>(
       find.byKey(const ValueKey('markdown-inline-code')),
     );
-    final decoration = inlineCode.decoration! as BoxDecoration;
+    final decoration = inlineCode.decoration! as ShapeDecoration;
     final text = tester.widget<Text>(find.text('code'));
     expect(decoration.color, SpringThemeColors.dark.surfaceHover);
     expect(text.style?.color, SpringThemeColors.dark.text);

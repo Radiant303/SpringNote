@@ -532,6 +532,10 @@ void main() {
       find.byKey(const ValueKey('home-overview-details-dialog')),
       findsOneWidget,
     );
+    final detailsDialog = tester.widget<Dialog>(
+      find.byKey(const ValueKey('home-overview-details-dialog')),
+    );
+    expect(detailsDialog.shape, isA<RoundedRectangleBorder>());
     expect(find.text('进展完整内容'), findsOneWidget);
     expect(find.text('问题完整内容'), findsNothing);
 

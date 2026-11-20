@@ -1226,7 +1226,7 @@ class _MemoryPageState extends State<MemoryPage> {
                   Positioned.fill(
                     child: IgnorePointer(
                       child: Container(
-                        decoration: BoxDecoration(
+                        decoration: AppTheme.continuousBoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
@@ -1392,7 +1392,7 @@ class _MemoryConversationNavState extends State<_MemoryConversationNav> {
                 curve: Curves.easeOutCubic,
                 opacity: _expanded ? 1 : 0,
                 child: Container(
-                  decoration: BoxDecoration(
+                  decoration: AppTheme.continuousBoxDecoration(
                     color: colors.surface,
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: [
@@ -1553,7 +1553,7 @@ class _MemoryConversationNavState extends State<_MemoryConversationNav> {
                     curve: Curves.easeOutCubic,
                     width: active ? 8 : 5.6,
                     height: active || index.isEven ? 3 : 1.5,
-                    decoration: BoxDecoration(
+                    decoration: AppTheme.continuousBoxDecoration(
                       color: active
                           ? colors.text
                           : hovered
@@ -1593,7 +1593,7 @@ class _MemoryHeader extends StatelessWidget {
     return Container(
       height: 56,
       padding: const EdgeInsets.symmetric(horizontal: 32),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         border: Border(bottom: BorderSide(color: colors.divider)),
       ),
       child: Row(
@@ -1624,7 +1624,7 @@ class _MemoryHeader extends StatelessWidget {
                 maximumSize: const Size(34, 34),
                 backgroundColor: Colors.transparent,
                 hoverColor: colors.surfaceMuted,
-                shape: RoundedRectangleBorder(
+                shape: RoundedSuperellipseBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -1867,7 +1867,7 @@ class _MemoryComposer extends StatelessWidget {
           child: Container(
             constraints: const BoxConstraints(minHeight: 52),
             padding: const EdgeInsets.fromLTRB(7, 5, 8, 5),
-            decoration: BoxDecoration(
+            decoration: AppTheme.continuousBoxDecoration(
               color: colors.surface,
               border: Border.all(color: colors.border),
               borderRadius: BorderRadius.circular(28),
@@ -2033,7 +2033,7 @@ class _MemoryPendingImageChip extends StatelessWidget {
       child: Container(
         height: 40,
         padding: const EdgeInsets.only(left: 6, right: 4),
-        decoration: BoxDecoration(
+        decoration: AppTheme.continuousBoxDecoration(
           color: colors.surface,
           border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(8),
@@ -2051,7 +2051,9 @@ class _MemoryPendingImageChip extends StatelessWidget {
                   fit: BoxFit.cover,
                   gaplessPlayback: true,
                   errorBuilder: (_, _, _) => DecoratedBox(
-                    decoration: BoxDecoration(color: colors.surfaceMuted),
+                    decoration: AppTheme.continuousBoxDecoration(
+                      color: colors.surfaceMuted,
+                    ),
                     child: Icon(
                       Icons.image_outlined,
                       size: 16,
@@ -2179,7 +2181,7 @@ class _InputModeMenuButtonState extends State<_InputModeMenuButton> {
                 color: colors.surface,
                 elevation: 8,
                 shadowColor: colors.shadow.withValues(alpha: 0.24),
-                shape: RoundedRectangleBorder(
+                shape: RoundedSuperellipseBorder(
                   borderRadius: BorderRadius.circular(14),
                   side: BorderSide(color: colors.border),
                 ),
@@ -2277,7 +2279,9 @@ class _QuickPromptChip extends StatelessWidget {
       style: OutlinedButton.styleFrom(
         foregroundColor: colors.textMuted,
         side: BorderSide(color: colors.border),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.circular(999),
+        ),
         minimumSize: const Size(0, 36),
         textStyle: Theme.of(context).textTheme.bodyMedium,
       ),
@@ -2344,7 +2348,7 @@ class _ThinkingControl extends StatelessWidget {
           final segmentWidth = (constraints.maxWidth - 6) / 3;
           return Container(
             padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
+            decoration: AppTheme.continuousBoxDecoration(
               color: backgroundColor,
               border: Border.all(color: borderColor),
               borderRadius: BorderRadius.circular(999),
@@ -2359,7 +2363,7 @@ class _ThinkingControl extends StatelessWidget {
                   bottom: 0,
                   width: segmentWidth,
                   child: Container(
-                    decoration: BoxDecoration(
+                    decoration: AppTheme.continuousBoxDecoration(
                       color: thumbColor,
                       borderRadius: BorderRadius.circular(999),
                       boxShadow: [
@@ -2505,7 +2509,7 @@ class _MemoryMessageView extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 680),
           margin: const EdgeInsets.only(bottom: 28),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: bubbleColor,
             borderRadius: BorderRadius.circular(22),
           ),
@@ -2795,7 +2799,7 @@ class _ToolAttachmentChip extends StatelessWidget {
         onTap: () => _showToolDialog(context, attachment),
         child: Container(
           padding: const EdgeInsets.fromLTRB(10, 7, 12, 7),
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: colors.surfaceMuted,
             borderRadius: BorderRadius.circular(999),
           ),
@@ -2805,7 +2809,7 @@ class _ToolAttachmentChip extends StatelessWidget {
               Container(
                 width: 22,
                 height: 22,
-                decoration: BoxDecoration(
+                decoration: AppTheme.continuousBoxDecoration(
                   color: dark
                       ? const Color(0xFF0B3024)
                       : const Color(0xFFECFDF5),
@@ -2848,7 +2852,9 @@ class _ToolAttachmentChip extends StatelessWidget {
       builder: (context) => Dialog(
         backgroundColor: AppTheme.dialogSurface(context),
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720, maxHeight: 680),
           child: Padding(
@@ -2969,7 +2975,7 @@ class _ToolDetailBlock extends StatelessWidget {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
+            decoration: AppTheme.continuousBoxDecoration(
               color: colors.surfaceMuted,
               borderRadius: BorderRadius.circular(14),
             ),
@@ -3070,7 +3076,7 @@ class _ReasoningBlockState extends State<_ReasoningBlock> {
     );
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(16),
       ),

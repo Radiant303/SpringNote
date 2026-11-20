@@ -87,7 +87,11 @@ class _SettingsStatsPanelState extends State<SettingsStatsPanel> {
   _StatsDateRange _lastMonthRange(DateTime today) {
     final start = DateTime(today.year, today.month - 1);
     final end = DateTime(today.year, today.month, 0);
-    return _StatsDateRange(start: start, end: end, label: l10n(context).settingsStatsLastMonth);
+    return _StatsDateRange(
+      start: start,
+      end: end,
+      label: l10n(context).settingsStatsLastMonth,
+    );
   }
 
   _StatsDateRange _lastQuarterRange(DateTime today) {
@@ -98,7 +102,11 @@ class _SettingsStatsPanelState extends State<SettingsStatsPanel> {
       currentQuarterStart.month - 3,
     );
     final end = currentQuarterStart.subtract(const Duration(days: 1));
-    return _StatsDateRange(start: start, end: end, label: l10n(context).settingsStatsLastQuarter);
+    return _StatsDateRange(
+      start: start,
+      end: end,
+      label: l10n(context).settingsStatsLastQuarter,
+    );
   }
 
   DateTime _dateOnly(DateTime date) {
@@ -327,7 +335,7 @@ class _StatsRangeChipState extends State<_StatsRangeChip> {
                     curve: Curves.easeOutCubic,
                     builder: (context, color, _) {
                       return DecoratedBox(
-                        decoration: BoxDecoration(
+                        decoration: AppTheme.continuousBoxDecoration(
                           color: color ?? backgroundColor,
                           borderRadius: BorderRadius.circular(999),
                         ),
@@ -388,7 +396,7 @@ class _StatsSectionCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: colors.surface,
         border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(18),
@@ -491,7 +499,7 @@ class _StatsMetricCard extends StatelessWidget {
     return Container(
       height: 72,
       padding: const EdgeInsets.fromLTRB(14, 13, 14, 12),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: colors.surfaceHover,
         borderRadius: BorderRadius.circular(13),
       ),
@@ -631,9 +639,7 @@ class _YearHeatmapState extends State<_YearHeatmap> {
                                   child: Text(
                                     label,
                                     softWrap: false,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
+                                    style: Theme.of(context).textTheme.bodySmall
                                         ?.copyWith(
                                           color: colors.textSubtle,
                                           fontSize: 13,
@@ -860,7 +866,7 @@ class _HeatmapCell extends StatelessWidget {
       duration: const Duration(milliseconds: 150),
       curve: Curves.easeOut,
       child: DecoratedBox(
-        decoration: BoxDecoration(
+        decoration: AppTheme.continuousBoxDecoration(
           color: colors[AppTheme.activityHeatmapLevel(count)],
           borderRadius: BorderRadius.circular(3),
         ),
@@ -885,7 +891,7 @@ class _StatsHeatmapTooltip extends StatelessWidget {
     return IgnorePointer(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
+        decoration: AppTheme.continuousBoxDecoration(
           color: AppTheme.menuSurface(context),
           border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(8),
@@ -1024,7 +1030,7 @@ class _UsageTrendChartState extends State<_UsageTrendChart> {
                                 child: Container(
                                   width: metrics.width,
                                   height: 4,
-                                  decoration: BoxDecoration(
+                                  decoration: AppTheme.continuousBoxDecoration(
                                     color: colors.surfaceMuted,
                                     borderRadius: BorderRadius.circular(999),
                                   ),
@@ -1072,7 +1078,10 @@ class _UsageTrendChartState extends State<_UsageTrendChart> {
           runSpacing: 8,
           children: [
             if (providers.isEmpty)
-              Text(strings.settingsStatsNoUsageRecords, style: Theme.of(context).textTheme.bodyMedium)
+              Text(
+                strings.settingsStatsNoUsageRecords,
+                style: Theme.of(context).textTheme.bodyMedium,
+              )
             else
               for (final provider in providers)
                 Row(
@@ -1081,7 +1090,7 @@ class _UsageTrendChartState extends State<_UsageTrendChart> {
                     Container(
                       width: 14,
                       height: 14,
-                      decoration: BoxDecoration(
+                      decoration: AppTheme.continuousBoxDecoration(
                         color: provider.color,
                         borderRadius: BorderRadius.circular(4),
                       ),
@@ -1371,7 +1380,7 @@ class _UsageBarState extends State<_UsageBar> {
                       child: Container(
                         width: visibleBarWidth + 8,
                         height: barHeight + 8,
-                        decoration: BoxDecoration(
+                        decoration: AppTheme.continuousBoxDecoration(
                           color: Colors.transparent,
                           border: Border.all(
                             color: const Color(0xFF94A3B8),
@@ -1552,7 +1561,7 @@ class _UsageBarTooltip extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 11, 12, 12),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: AppTheme.menuSurface(context),
         border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(12),
@@ -1603,7 +1612,7 @@ class _UsageBarTooltip extends StatelessWidget {
                   Container(
                     width: 8,
                     height: 8,
-                    decoration: BoxDecoration(
+                    decoration: AppTheme.continuousBoxDecoration(
                       color: row.color,
                       borderRadius: BorderRadius.circular(999),
                     ),
@@ -1728,7 +1737,7 @@ class _StatsCustomRangeDialogState extends State<_StatsCustomRangeDialog> {
     return Dialog(
       backgroundColor: AppTheme.dialogSurface(context),
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(22)),
       child: SizedBox(
         width: 540,
         child: Padding(
@@ -1865,7 +1874,7 @@ class _StatsDateFieldState extends State<_StatsDateField> {
             children: [
               Positioned.fill(
                 child: DecoratedBox(
-                  decoration: BoxDecoration(
+                  decoration: AppTheme.continuousBoxDecoration(
                     color: colors.surfaceMuted,
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -1877,7 +1886,7 @@ class _StatsDateFieldState extends State<_StatsDateField> {
                   curve: Curves.easeOutCubic,
                   opacity: active ? 1 : 0,
                   child: DecoratedBox(
-                    decoration: BoxDecoration(
+                    decoration: AppTheme.continuousBoxDecoration(
                       color: overlayColor,
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -1982,7 +1991,7 @@ class _StatsDialogButtonState extends State<_StatsDialogButton> {
           curve: Curves.easeOutCubic,
           height: 44,
           alignment: Alignment.center,
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(14),
           ),
@@ -2038,7 +2047,7 @@ class _StatsCalendarDialogState extends State<_StatsCalendarDialog> {
     return Dialog(
       backgroundColor: AppTheme.dialogSurface(context),
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(22)),
       child: SizedBox(
         width: 440,
         child: Padding(
@@ -2062,7 +2071,7 @@ class _StatsCalendarDialogState extends State<_StatsCalendarDialog> {
                     height: 42,
                     padding: const EdgeInsets.symmetric(horizontal: 18),
                     alignment: Alignment.center,
-                    decoration: BoxDecoration(
+                    decoration: AppTheme.continuousBoxDecoration(
                       color: colors.surfaceMuted,
                       borderRadius: BorderRadius.circular(15),
                     ),
@@ -2204,7 +2213,7 @@ class _CalendarIconButtonState extends State<_CalendarIconButton> {
                   curve: Curves.easeOutCubic,
                   opacity: active ? 1 : 0,
                   child: DecoratedBox(
-                    decoration: BoxDecoration(
+                    decoration: AppTheme.continuousBoxDecoration(
                       color: backgroundColor,
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -2278,7 +2287,7 @@ class _CalendarDateCellState extends State<_CalendarDateCell> {
                     curve: Curves.easeOutCubic,
                     opacity: active ? 1 : 0,
                     child: DecoratedBox(
-                      decoration: BoxDecoration(
+                      decoration: AppTheme.continuousBoxDecoration(
                         color: backgroundColor,
                         borderRadius: BorderRadius.circular(15),
                       ),

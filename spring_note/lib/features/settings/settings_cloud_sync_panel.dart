@@ -476,7 +476,7 @@ class _CloudSyncDeleteConfirmDialogState
               ),
               Container(
                 padding: const EdgeInsets.fromLTRB(28, 16, 28, 20),
-                decoration: BoxDecoration(
+                decoration: AppTheme.continuousBoxDecoration(
                   color: colors.surface,
                   border: Border(top: BorderSide(color: colors.divider)),
                 ),
@@ -624,7 +624,7 @@ class _CloudSyncDeleteGroupHeaderState
               duration: const Duration(milliseconds: 130),
               curve: Curves.easeOutCubic,
               padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
+              decoration: AppTheme.continuousBoxDecoration(
                 color: backgroundColor,
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -660,7 +660,7 @@ class _CloudSyncDeleteGroupHeaderState
                       horizontal: 8,
                       vertical: 3,
                     ),
-                    decoration: BoxDecoration(
+                    decoration: AppTheme.continuousBoxDecoration(
                       color: colors.surface.withValues(alpha: 0.75),
                       borderRadius: BorderRadius.circular(999),
                     ),
@@ -708,7 +708,7 @@ class _CloudSyncDeleteFileTileState extends State<_CloudSyncDeleteFileTile> {
         height: 46,
         margin: const EdgeInsets.only(left: 28),
         padding: const EdgeInsets.only(left: 14, right: 10),
-        decoration: BoxDecoration(
+        decoration: AppTheme.continuousBoxDecoration(
           color: _hovered ? colors.surfaceHover : colors.surface,
           borderRadius: BorderRadius.circular(14),
         ),
@@ -1029,7 +1029,7 @@ class _DeleteModifyConflictRowState extends State<_DeleteModifyConflictRow> {
         curve: Curves.easeOutCubic,
         constraints: const BoxConstraints(minHeight: 72),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
+        decoration: AppTheme.continuousBoxDecoration(
           color: _hovered ? colors.surfaceHover : colors.surface,
           borderRadius: BorderRadius.circular(16),
         ),
@@ -1119,7 +1119,9 @@ class _DeleteModifyStatusCell extends StatelessWidget {
       runSpacing: 8,
       children: [
         _DeleteModifyStatusBadge(
-          label: localModifiedRemoteDeleted ? strings.settingsLocalModified : strings.settingsLocalDeleted,
+          label: localModifiedRemoteDeleted
+              ? strings.settingsLocalModified
+              : strings.settingsLocalDeleted,
           icon: localModifiedRemoteDeleted
               ? Icons.desktop_windows_outlined
               : Icons.delete_outline_rounded,
@@ -1131,7 +1133,9 @@ class _DeleteModifyStatusCell extends StatelessWidget {
               : const Color(0xFFFFEEEE),
         ),
         _DeleteModifyStatusBadge(
-          label: localModifiedRemoteDeleted ? strings.settingsRemoteDeleted : strings.settingsRemoteModified,
+          label: localModifiedRemoteDeleted
+              ? strings.settingsRemoteDeleted
+              : strings.settingsRemoteModified,
           icon: localModifiedRemoteDeleted
               ? Icons.cloud_off_outlined
               : Icons.cloud_done_outlined,
@@ -1165,7 +1169,7 @@ class _DeleteModifyStatusBadge extends StatelessWidget {
     return Container(
       height: 28,
       padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(8),
       ),
@@ -1210,7 +1214,9 @@ class _DeleteModifyActionCell extends StatelessWidget {
       children: [
         _DeleteModifyActionButton(
           width: 128,
-          label: localModifiedRemoteDeleted ? strings.settingsKeepLocalVersion : strings.settingsKeepLocalDeletion,
+          label: localModifiedRemoteDeleted
+              ? strings.settingsKeepLocalVersion
+              : strings.settingsKeepLocalDeletion,
           tooltip: localModifiedRemoteDeleted
               ? strings.settingsKeepLocalVersionTooltip
               : strings.settingsKeepLocalDeletionTooltip,
@@ -1223,7 +1229,9 @@ class _DeleteModifyActionCell extends StatelessWidget {
         ),
         _DeleteModifyActionButton(
           width: 128,
-          label: localModifiedRemoteDeleted ? strings.settingsKeepRemoteDeletion : strings.settingsKeepRemoteVersion,
+          label: localModifiedRemoteDeleted
+              ? strings.settingsKeepRemoteDeletion
+              : strings.settingsKeepRemoteVersion,
           tooltip: localModifiedRemoteDeleted
               ? strings.settingsKeepRemoteDeletionTooltip
               : strings.settingsKeepRemoteVersionTooltip,
@@ -1334,7 +1342,7 @@ class _DeleteModifyActionButtonState extends State<_DeleteModifyActionButton> {
               width: widget.width,
               height: 36,
               padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
+              decoration: AppTheme.continuousBoxDecoration(
                 color: background,
                 border: Border.all(color: borderColor),
                 borderRadius: BorderRadius.circular(10),
@@ -1390,7 +1398,7 @@ class _DeleteModifyDialogFooter extends StatelessWidget {
     final strings = l10n(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(28, 16, 28, 20),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: colors.surface,
         border: Border(top: BorderSide(color: colors.divider)),
       ),
@@ -1533,7 +1541,7 @@ class _DeleteModifyFooterButtonState extends State<_DeleteModifyFooterButton> {
             curve: Curves.easeOutCubic,
             width: filled ? 164 : 150,
             height: 44,
-            decoration: BoxDecoration(
+            decoration: AppTheme.continuousBoxDecoration(
               color: widget.enabled
                   ? background
                   : background.withValues(alpha: 0.55),
@@ -1642,7 +1650,11 @@ class _CloudSyncActionsRow extends StatelessWidget {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.cloud_done_outlined, size: 18),
-            label: Text(testing ? strings.settingsTesting : strings.settingsTestConnection),
+            label: Text(
+              testing
+                  ? strings.settingsTesting
+                  : strings.settingsTestConnection,
+            ),
           ),
           const SizedBox(width: 10),
           FilledButton.icon(
@@ -1654,7 +1666,9 @@ class _CloudSyncActionsRow extends StatelessWidget {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.sync_rounded, size: 18),
-            label: Text(syncing ? strings.settingsSyncing : strings.settingsManualSync),
+            label: Text(
+              syncing ? strings.settingsSyncing : strings.settingsManualSync,
+            ),
           ),
         ],
       ),

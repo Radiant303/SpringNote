@@ -599,7 +599,9 @@ class _PreferencesPanel extends StatelessWidget {
                     title: strings.settingsEditDailyMergePromptTitle,
                     hintText: strings.settingsDailyMergePromptHint,
                     initialPrompt: config.dailyMergePrompt,
-                    defaultPrompt: defaultDailyMergePromptFor(currentAppLanguage(context)),
+                    defaultPrompt: defaultDailyMergePromptFor(
+                      currentAppLanguage(context),
+                    ),
                     variables: [
                       (
                         Icons.calendar_month_outlined,
@@ -643,7 +645,9 @@ class _PreferencesPanel extends StatelessWidget {
                     title: strings.settingsEditWeeklyReportPromptTitle,
                     hintText: strings.settingsWeeklyReportPromptHint,
                     initialPrompt: config.weeklyReportPrompt,
-                    defaultPrompt: defaultWeeklyReportPromptFor(currentAppLanguage(context)),
+                    defaultPrompt: defaultWeeklyReportPromptFor(
+                      currentAppLanguage(context),
+                    ),
                     variables: [
                       (
                         Icons.date_range_outlined,
@@ -682,7 +686,9 @@ class _PreferencesPanel extends StatelessWidget {
                     title: strings.settingsEditGlobalSignPromptTitle,
                     hintText: strings.settingsGlobalSignPromptHint,
                     initialPrompt: config.globalSignPrompt,
-                    defaultPrompt: defaultGlobalSignPromptFor(currentAppLanguage(context)),
+                    defaultPrompt: defaultGlobalSignPromptFor(
+                      currentAppLanguage(context),
+                    ),
                     variables: [
                       (
                         Icons.calendar_month_outlined,
@@ -720,9 +726,8 @@ class _PreferencesPanel extends StatelessWidget {
             _SwitchSettingRow(
               label: strings.settingsReportImageInput,
               value: config.reportImageInputEnabled,
-              onChanged: (value) => onChanged(
-                config.copyWith(reportImageInputEnabled: value),
-              ),
+              onChanged: (value) =>
+                  onChanged(config.copyWith(reportImageInputEnabled: value)),
             ),
           ],
         ),
@@ -816,7 +821,7 @@ class _DataMigrationCompleteDialog extends StatelessWidget {
       key: const ValueKey('data-migration-complete-dialog'),
       backgroundColor: AppTheme.dialogSurface(context),
       insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(24)),
       child: SizedBox(
         width: 320,
         child: Padding(
@@ -960,7 +965,7 @@ class _DataMigrationDialogButtonState
             curve: Curves.easeOutCubic,
             height: 36,
             width: 88,
-            decoration: BoxDecoration(
+            decoration: AppTheme.continuousBoxDecoration(
               color: backgroundColor,
               borderRadius: BorderRadius.circular(13),
             ),
@@ -1021,7 +1026,7 @@ class _StructuredNoteSectionsDialogState
       key: const ValueKey('structured-note-sections-dialog'),
       backgroundColor: AppTheme.dialogSurface(context),
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(24)),
       child: SizedBox(
         width: 680,
         child: Column(
@@ -1093,10 +1098,15 @@ class _StructuredNoteSectionsDialogState
   void _restoreDefault() {
     for (
       var index = 0;
-      index < StructuredNoteSectionConfig.defaultsFor(currentAppLanguage(context)).length;
+      index <
+          StructuredNoteSectionConfig.defaultsFor(
+            currentAppLanguage(context),
+          ).length;
       index++
     ) {
-      final section = StructuredNoteSectionConfig.defaultsFor(currentAppLanguage(context))[index];
+      final section = StructuredNoteSectionConfig.defaultsFor(
+        currentAppLanguage(context),
+      )[index];
       _titleControllers[index].text = section.title;
       _instructionControllers[index].text = section.aiInstruction;
     }
@@ -1132,7 +1142,7 @@ class _StructuredNoteSectionsEditor extends StatelessWidget {
       builder: (context, constraints) {
         final stacked = constraints.maxWidth < 540;
         return Container(
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: colors.inputFill,
             borderRadius: BorderRadius.circular(18),
           ),
@@ -1372,7 +1382,7 @@ class _PromptEditDialogState extends State<_PromptEditDialog> {
       key: widget.dialogKey,
       backgroundColor: AppTheme.dialogSurface(context),
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(24)),
       child: SizedBox(
         width: 720,
         height: 680,
@@ -1425,7 +1435,7 @@ class _PromptEditDialogState extends State<_PromptEditDialog> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(16),
                         child: DecoratedBox(
-                          decoration: BoxDecoration(
+                          decoration: AppTheme.continuousBoxDecoration(
                             color: colors.inputFill,
                             borderRadius: BorderRadius.circular(16),
                           ),
@@ -1804,7 +1814,7 @@ class _PromptFimStatusPill extends StatelessWidget {
       duration: const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(6),
       ),
@@ -1989,7 +1999,7 @@ class _PromptVariableChip extends StatelessWidget {
     return Container(
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: colors.surfaceHover,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: colors.divider),
@@ -2202,7 +2212,7 @@ class _DataDirectoryActionButtonState
                     curve: Curves.easeOutCubic,
                     opacity: active ? 1 : 0,
                     child: DecoratedBox(
-                      decoration: BoxDecoration(
+                      decoration: AppTheme.continuousBoxDecoration(
                         color: backgroundColor,
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -2426,7 +2436,7 @@ class _FontPickerButtonState extends State<_FontPickerButton> {
           width: 220,
           height: 42,
           padding: const EdgeInsets.symmetric(horizontal: 13),
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: active ? colors.inputFocusedFill : colors.inputFill,
             border: Border.all(
               color: active ? colors.textSubtle : colors.border,
@@ -2511,7 +2521,7 @@ class _FontPickerDialogState extends State<_FontPickerDialog> {
     return Dialog(
       backgroundColor: AppTheme.dialogSurface(context),
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(22)),
       child: SizedBox(
         width: 460,
         height: 560,
@@ -2629,7 +2639,7 @@ class _FontOptionTile extends StatelessWidget {
                   curve: Curves.easeOutCubic,
                   opacity: active ? 1 : 0,
                   child: DecoratedBox(
-                    decoration: BoxDecoration(
+                    decoration: AppTheme.continuousBoxDecoration(
                       color: backgroundColor,
                       borderRadius: BorderRadius.circular(13),
                     ),
@@ -2727,7 +2737,7 @@ class _FontResetButtonState extends State<_FontResetButton> {
                     curve: Curves.easeOutCubic,
                     opacity: active ? 1 : 0,
                     child: DecoratedBox(
-                      decoration: BoxDecoration(
+                      decoration: AppTheme.continuousBoxDecoration(
                         color: backgroundColor,
                         borderRadius: BorderRadius.circular(12),
                       ),

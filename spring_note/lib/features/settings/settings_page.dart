@@ -345,7 +345,7 @@ class _SettingsPageState extends State<SettingsPage> {
           Container(
             width: 220,
             padding: const EdgeInsets.fromLTRB(18, 28, 18, 18),
-            decoration: BoxDecoration(
+            decoration: AppTheme.continuousBoxDecoration(
               color: colors.sidebar,
               border: Border(right: BorderSide(color: colors.divider)),
             ),
@@ -516,7 +516,7 @@ class _SettingsNavItemState extends State<_SettingsNavItem> {
                       curve: Curves.easeOutCubic,
                       builder: (context, color, _) {
                         return DecoratedBox(
-                          decoration: BoxDecoration(
+                          decoration: AppTheme.continuousBoxDecoration(
                             color: color ?? backgroundColor,
                             borderRadius: BorderRadius.circular(12),
                           ),

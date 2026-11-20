@@ -53,7 +53,7 @@ class _ProviderListItemState extends State<_ProviderListItem> {
                     curve: Curves.easeOutCubic,
                     builder: (context, color, _) {
                       return DecoratedBox(
-                        decoration: BoxDecoration(
+                        decoration: AppTheme.continuousBoxDecoration(
                           color: color ?? backgroundColor,
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -167,7 +167,7 @@ class _ProvidersSidebarState extends State<_ProvidersSidebar> {
     return Container(
       width: 320,
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         border: Border(
           right: BorderSide(color: colors.divider.withValues(alpha: 0.5)),
         ),
@@ -178,7 +178,10 @@ class _ProvidersSidebarState extends State<_ProvidersSidebar> {
             key: const ValueKey('provider-search-field'),
             onChanged: (value) => setState(() => _query = value),
             textInputAction: TextInputAction.search,
-            decoration: InputDecoration(hintText: strings.settingsProvidersSearchHint, isDense: true),
+            decoration: InputDecoration(
+              hintText: strings.settingsProvidersSearchHint,
+              isDense: true,
+            ),
           ),
           const SizedBox(height: 14),
           Expanded(
@@ -460,20 +463,28 @@ class _ProviderDetailsState extends State<_ProviderDetails> {
           onModelAdded: (model) async {
             await widget.onModelChanged(widget.provider, model);
             if (mounted) {
-              setState(() => _actionMessage = l10n(context).settingsModelAdded(model.displayName));
+              setState(
+                () => _actionMessage = l10n(
+                  context,
+                ).settingsModelAdded(model.displayName),
+              );
             }
           },
           onModelRemoved: (modelId) async {
             await widget.onModelDeleted(widget.provider, modelId);
             if (mounted) {
-              setState(() => _actionMessage = l10n(context).settingsModelRemoved);
+              setState(
+                () => _actionMessage = l10n(context).settingsModelRemoved,
+              );
             }
           },
         ),
       );
     } catch (_) {
       if (mounted) {
-        setState(() => _actionMessage = l10n(context).settingsFetchModelsFailed);
+        setState(
+          () => _actionMessage = l10n(context).settingsFetchModelsFailed,
+        );
       }
     } finally {
       if (mounted) {
@@ -558,7 +569,7 @@ class _DeleteProviderConfirmDialog extends StatelessWidget {
     final strings = l10n(context);
     return Dialog(
       backgroundColor: AppTheme.dialogSurface(context),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(22)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 340),
         child: Padding(
@@ -645,7 +656,7 @@ class _DeleteDialogButtonState extends State<_DeleteDialogButton> {
           curve: Curves.easeOutCubic,
           height: 40,
           padding: const EdgeInsets.symmetric(horizontal: 18),
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: backgroundColor,
             borderRadius: BorderRadius.circular(14),
           ),
@@ -788,7 +799,7 @@ class _ProviderConnectionTestDialogState
       key: const ValueKey('provider-connection-test-dialog'),
       backgroundColor: AppTheme.dialogSurface(context),
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(22)),
       child: SizedBox(
         width: 500,
         child: Column(
@@ -865,7 +876,9 @@ class _ProviderConnectionTestDialogState
                   ),
                   const SizedBox(width: 10),
                   _ProviderTestDialogButton(
-                    label: _testing ? strings.settingsTesting : strings.settingsTest,
+                    label: _testing
+                        ? strings.settingsTesting
+                        : strings.settingsTest,
                     filled: true,
                     onTap: _testing ? null : _runTest,
                   ),
@@ -961,7 +974,7 @@ class _ProviderSelectedModelButtonState
           duration: const Duration(milliseconds: 140),
           curve: Curves.easeOutCubic,
           height: 50,
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: _hovered ? colors.inputFocusedFill : colors.inputFill,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: colors.border),
@@ -1093,7 +1106,7 @@ class _ProviderConnectionModelPickerDialogState
       key: const ValueKey('provider-connection-model-picker-dialog'),
       backgroundColor: AppTheme.dialogSurface(context),
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(24)),
       child: SizedBox(
         width: 560,
         height: 600,
@@ -1182,7 +1195,7 @@ class _ProviderConnectionModelOptionTile extends StatelessWidget {
                   curve: Curves.easeOutCubic,
                   opacity: active ? 1 : 0,
                   child: DecoratedBox(
-                    decoration: BoxDecoration(
+                    decoration: AppTheme.continuousBoxDecoration(
                       color: selected
                           ? colors.surfacePressed
                           : colors.surfaceHover,
@@ -1245,7 +1258,7 @@ class _ProviderModelAvatar extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: colors.surfaceMuted,
         borderRadius: BorderRadius.circular(999),
       ),
@@ -1307,7 +1320,7 @@ class _ProviderTestDialogButtonState extends State<_ProviderTestDialogButton> {
           curve: Curves.easeOutCubic,
           height: 40,
           padding: const EdgeInsets.symmetric(horizontal: 18),
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: backgroundColor,
             borderRadius: BorderRadius.circular(14),
             border: widget.filled ? null : Border.all(color: colors.textSubtle),
@@ -1396,7 +1409,10 @@ class _ProviderModelFetchDialogState extends State<_ProviderModelFetchDialog> {
     final normalizedQuery = _query.trim().toLowerCase();
     final grouped = <String, List<ModelConfig>>{};
     for (final model in _models) {
-      final groupName = _providerModelGroupName(model.modelId, l10n(context).settingsOtherModels);
+      final groupName = _providerModelGroupName(
+        model.modelId,
+        l10n(context).settingsOtherModels,
+      );
       final searchable = '${model.displayName} ${model.modelId} $groupName'
           .toLowerCase();
       if (normalizedQuery.isNotEmpty && !searchable.contains(normalizedQuery)) {
@@ -1462,7 +1478,10 @@ class _ProviderModelFetchDialogState extends State<_ProviderModelFetchDialog> {
             b.displayName.toLowerCase(),
           ),
         );
-      final groups = _buildProviderModelGroups(models, l10n(context).settingsOtherModels);
+      final groups = _buildProviderModelGroups(
+        models,
+        l10n(context).settingsOtherModels,
+      );
       final selectedGroups = {
         for (final group in groups)
           if (group.models.any(
@@ -1548,7 +1567,7 @@ class _ProviderModelFetchDialogState extends State<_ProviderModelFetchDialog> {
       key: const ValueKey('provider-model-fetch-dialog'),
       backgroundColor: AppTheme.dialogSurface(context),
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(24)),
       child: SizedBox(
         width: 720,
         height: 660,
@@ -1563,7 +1582,9 @@ class _ProviderModelFetchDialogState extends State<_ProviderModelFetchDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          strings.settingsProviderModelsTitle(widget.provider.name),
+                          strings.settingsProviderModelsTitle(
+                            widget.provider.name,
+                          ),
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(
                             context,
@@ -1614,7 +1635,9 @@ class _ProviderModelFetchDialogState extends State<_ProviderModelFetchDialog> {
                       )
                     : groups.isEmpty
                     ? _ProviderModelEmptyView(
-                        message: _models.isEmpty ? strings.settingsNoModelsFetched : strings.settingsNoMatchingModels,
+                        message: _models.isEmpty
+                            ? strings.settingsNoModelsFetched
+                            : strings.settingsNoMatchingModels,
                       )
                     : ScrollConfiguration(
                         key: const ValueKey('provider-model-groups'),
@@ -1821,7 +1844,7 @@ class _ProviderModelGroupHeaderState extends State<_ProviderModelGroupHeader> {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 130),
                     curve: Curves.easeOutCubic,
-                    decoration: BoxDecoration(
+                    decoration: AppTheme.continuousBoxDecoration(
                       color: backgroundColor,
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -1860,7 +1883,7 @@ class _ProviderModelGroupHeaderState extends State<_ProviderModelGroupHeader> {
                             horizontal: 8,
                             vertical: 3,
                           ),
-                          decoration: BoxDecoration(
+                          decoration: AppTheme.continuousBoxDecoration(
                             color: colors.surface.withValues(alpha: 0.78),
                             borderRadius: BorderRadius.circular(999),
                           ),
@@ -1929,7 +1952,7 @@ class _ProviderModelOptionTile extends StatelessWidget {
                   curve: Curves.easeOutCubic,
                   opacity: active ? 1 : 0,
                   child: DecoratedBox(
-                    decoration: BoxDecoration(
+                    decoration: AppTheme.continuousBoxDecoration(
                       color: selected
                           ? colors.surfacePressed
                           : colors.surfaceHover,
@@ -1995,7 +2018,7 @@ class _ProviderModelToggleButton extends StatelessWidget {
       curve: Curves.easeOutCubic,
       width: 28,
       height: 28,
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: selected ? colors.text : colors.surfaceMuted,
         borderRadius: BorderRadius.circular(999),
       ),
@@ -2197,7 +2220,9 @@ class _ModelsList extends StatelessWidget {
         children: [
           _ProviderActionIconButton(
             key: const ValueKey('test-provider-connection-button'),
-            tooltip: testingConnection ? strings.settingsTesting : strings.settingsTestConnection,
+            tooltip: testingConnection
+                ? strings.settingsTesting
+                : strings.settingsTestConnection,
             onPressed: testingConnection ? null : onTestConnection,
             icon: testingConnection
                 ? const SizedBox(
@@ -2210,7 +2235,9 @@ class _ModelsList extends StatelessWidget {
           const SizedBox(width: 4),
           _ProviderActionIconButton(
             key: const ValueKey('fetch-provider-models-button'),
-            tooltip: fetchingModels ? strings.settingsFetching : strings.settingsFetchModels,
+            tooltip: fetchingModels
+                ? strings.settingsFetching
+                : strings.settingsFetchModels,
             onPressed: fetchingModels ? null : onFetchModels,
             icon: fetchingModels
                 ? const SizedBox(
@@ -2254,13 +2281,16 @@ class _ModelsList extends StatelessWidget {
             ),
           ),
         if (provider.models.isEmpty)
-          _SimpleRow(label: strings.settingsNoModels, value: strings.settingsAddModelViaButton)
+          _SimpleRow(
+            label: strings.settingsNoModels,
+            value: strings.settingsAddModelViaButton,
+          )
         else
           for (final model in provider.models)
             Container(
               height: 54,
               padding: const EdgeInsets.symmetric(horizontal: 18),
-              decoration: BoxDecoration(
+              decoration: AppTheme.continuousBoxDecoration(
                 border: Border(top: BorderSide(color: colors.divider)),
               ),
               child: Row(
@@ -2317,7 +2347,7 @@ class _ModelCountPill extends StatelessWidget {
       height: 22,
       constraints: const BoxConstraints(minWidth: 30),
       padding: const EdgeInsets.symmetric(horizontal: 9),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: colors.surfaceHover,
         borderRadius: BorderRadius.circular(999),
       ),
@@ -2392,7 +2422,7 @@ class _ProviderActionIconButtonState extends State<_ProviderActionIconButton> {
                     curve: Curves.easeOutCubic,
                     opacity: active ? 1 : 0,
                     child: DecoratedBox(
-                      decoration: BoxDecoration(
+                      decoration: AppTheme.continuousBoxDecoration(
                         color: colors.surfaceHover,
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -2482,14 +2512,20 @@ class _AddProviderDialogState extends State<_AddProviderDialog> {
             value: _enabled,
             onChanged: (value) => setState(() => _enabled = value),
           ),
-          _DialogTextField(label: strings.settingsProviderName, controller: _nameController),
+          _DialogTextField(
+            label: strings.settingsProviderName,
+            controller: _nameController,
+          ),
           _DialogTextField(
             label: 'API Key',
             controller: _apiKeyController,
             obscureText: true,
           ),
           _DialogTextField(label: 'Base URL', controller: _baseUrlController),
-          _DialogTextField(label: strings.settingsApiPath, controller: _apiPathController),
+          _DialogTextField(
+            label: strings.settingsApiPath,
+            controller: _apiPathController,
+          ),
           const SizedBox(height: 16),
           Align(
             alignment: Alignment.centerRight,
@@ -2555,7 +2591,7 @@ class _ProviderTemplateChipState extends State<_ProviderTemplateChip> {
           duration: const Duration(milliseconds: 130),
           curve: Curves.easeOutCubic,
           height: 42,
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: backgroundColor,
             borderRadius: BorderRadius.circular(13),
             border: Border.all(color: borderColor),
@@ -2707,7 +2743,10 @@ class _EditModelDialogState extends State<_EditModelDialog> {
             children: [
               _OptionGroup(
                 label: strings.settingsModelType,
-                values: {'chat': strings.settingsModelTypeChat, 'completion': strings.settingsModelTypeCompletion},
+                values: {
+                  'chat': strings.settingsModelTypeChat,
+                  'completion': strings.settingsModelTypeCompletion,
+                },
                 selected: _modelTypes,
                 onChanged: (value) => setState(() => _modelTypes = value),
               ),
@@ -2718,13 +2757,19 @@ class _EditModelDialogState extends State<_EditModelDialog> {
               ),
               _OptionGroup(
                 label: strings.settingsInputMode,
-                values: {'text': strings.settingsInputModeText, 'image': strings.settingsInputModeImage},
+                values: {
+                  'text': strings.settingsInputModeText,
+                  'image': strings.settingsInputModeImage,
+                },
                 selected: _inputModes,
                 onChanged: (value) => setState(() => _inputModes = value),
               ),
               _OptionGroup(
                 label: strings.settingsCapability,
-                values: {'tools': strings.settingsCapabilityTools, 'reasoning': strings.settingsCapabilityReasoning},
+                values: {
+                  'tools': strings.settingsCapabilityTools,
+                  'reasoning': strings.settingsCapabilityReasoning,
+                },
                 selected: _capabilities,
                 onChanged: (value) => setState(() => _capabilities = value),
               ),
@@ -2784,7 +2829,7 @@ class _ModelEditDialogShell extends StatelessWidget {
     return Dialog(
       backgroundColor: AppTheme.dialogSurface(context),
       insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+      shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(26)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 680),
         child: Padding(
@@ -3041,7 +3086,7 @@ class _ModelOptionChipState extends State<_ModelOptionChip> {
           width: 116,
           height: 36,
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: background,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: borderColor),
@@ -3190,7 +3235,7 @@ class _ModelFieldShell extends StatelessWidget {
     return Container(
       height: 58,
       padding: const EdgeInsets.fromLTRB(14, 7, 8, 7),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: colors.border),
@@ -3254,7 +3299,7 @@ class _ModelDialogButtonState extends State<_ModelDialogButton> {
           curve: Curves.easeOutCubic,
           height: 40,
           padding: const EdgeInsets.symmetric(horizontal: 22),
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: background,
             borderRadius: BorderRadius.circular(999),
             border: widget.filled ? null : Border.all(color: colors.border),
@@ -3312,7 +3357,7 @@ class _ModelDialogIconButtonState extends State<_ModelDialogIconButton> {
             curve: Curves.easeOutCubic,
             width: 32,
             height: 32,
-            decoration: BoxDecoration(
+            decoration: AppTheme.continuousBoxDecoration(
               color: active ? colors.surfaceHover : Colors.transparent,
               borderRadius: BorderRadius.circular(10),
             ),

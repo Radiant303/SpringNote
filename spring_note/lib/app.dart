@@ -108,7 +108,9 @@ class _SpringNoteAppState extends State<SpringNoteApp> {
               countryCode: 'CN',
             ),
             delegates: const [
-              _ForceEnglishDelegate<AppLocalizations>(AppLocalizations.delegate),
+              _ForceEnglishDelegate<AppLocalizations>(
+                AppLocalizations.delegate,
+              ),
               _ForceEnglishDelegate<MaterialLocalizations>(
                 GlobalMaterialLocalizations.delegate,
               ),
@@ -178,7 +180,7 @@ class AppStartupError extends StatelessWidget {
         child: Container(
           width: 520,
           padding: const EdgeInsets.all(28),
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: colors.surface,
             border: Border.all(color: colors.border),
             borderRadius: BorderRadius.circular(24),

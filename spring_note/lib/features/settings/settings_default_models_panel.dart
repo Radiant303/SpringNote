@@ -106,7 +106,7 @@ class _DefaultModelCard extends StatelessWidget {
               .firstOrNull;
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: colors.surface,
         border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(22),
@@ -127,7 +127,7 @@ class _DefaultModelCard extends StatelessWidget {
               child: Container(
                 height: 54,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
+                decoration: AppTheme.continuousBoxDecoration(
                   color: colors.surfaceMuted,
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -304,7 +304,7 @@ class _ModelPickerDialogState extends State<_ModelPickerDialog> {
     return Dialog(
       backgroundColor: AppTheme.dialogSurface(context),
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(24)),
       child: SizedBox(
         width: 720,
         height: 660,
@@ -525,7 +525,7 @@ class _ModelOptionTile extends StatelessWidget {
                   curve: Curves.easeOutCubic,
                   opacity: active ? 1 : 0,
                   child: DecoratedBox(
-                    decoration: BoxDecoration(
+                    decoration: AppTheme.continuousBoxDecoration(
                       color: backgroundColor,
                       borderRadius: BorderRadius.circular(
                         option == null ? 13 : 14,

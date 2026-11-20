@@ -37,7 +37,7 @@ class DesktopStatusWidget extends StatelessWidget {
               width: 260,
               height: 140,
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-              decoration: BoxDecoration(
+              decoration: AppTheme.continuousBoxDecoration(
                 color: colors.surface,
                 border: Border.all(color: colors.border),
                 borderRadius: BorderRadius.circular(12),
@@ -153,7 +153,7 @@ class _StatusDot extends StatelessWidget {
     return Container(
       width: 6,
       height: 6,
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: running ? const Color(0xFF10B981) : colors.textSubtle,
         shape: BoxShape.circle,
       ),

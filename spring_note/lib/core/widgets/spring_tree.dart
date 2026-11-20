@@ -812,7 +812,7 @@ class _SpringTreeBlockState extends State<SpringTreeBlock> {
     return Container(
       height: 34,
       padding: const EdgeInsets.only(left: 14, right: 8),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         border: Border(bottom: BorderSide(color: colors.divider)),
       ),
       child: Row(
@@ -898,7 +898,7 @@ class _SpringTreeBlockState extends State<SpringTreeBlock> {
     }
 
     return Container(
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: colors.surface,
         border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(8),
@@ -930,11 +930,23 @@ class _SpringTreeBlockState extends State<SpringTreeBlock> {
             ),
             Divider(height: 1, thickness: 1, color: colors.divider),
           ],
-          button(Icons.add_rounded, l10n(context).coreTreeZoomIn, () => _zoomBy(1.25)),
+          button(
+            Icons.add_rounded,
+            l10n(context).coreTreeZoomIn,
+            () => _zoomBy(1.25),
+          ),
           Divider(height: 1, thickness: 1, color: colors.divider),
-          button(Icons.remove_rounded, l10n(context).coreTreeZoomOut, () => _zoomBy(0.8)),
+          button(
+            Icons.remove_rounded,
+            l10n(context).coreTreeZoomOut,
+            () => _zoomBy(0.8),
+          ),
           Divider(height: 1, thickness: 1, color: colors.divider),
-          button(Icons.fit_screen_rounded, l10n(context).coreTreeFitAll, _fitAndFollow),
+          button(
+            Icons.fit_screen_rounded,
+            l10n(context).coreTreeFitAll,
+            _fitAndFollow,
+          ),
         ],
       ),
     );
@@ -948,7 +960,7 @@ class _SpringTreeBlockState extends State<SpringTreeBlock> {
         key: const ValueKey(_virtualRootId),
         width: 10,
         height: 10,
-        decoration: BoxDecoration(
+        decoration: AppTheme.continuousBoxDecoration(
           color: colors.textSubtle,
           shape: BoxShape.circle,
         ),
@@ -988,7 +1000,7 @@ class _SpringTreeBlockState extends State<SpringTreeBlock> {
     return Container(
       constraints: const BoxConstraints(maxWidth: 260),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: isRoot ? colors.text : colors.surface,
         borderRadius: BorderRadius.circular(isRoot ? 18 : 10),
         border: Border.all(

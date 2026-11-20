@@ -8,11 +8,12 @@ import '../../l10n/l10n.dart';
 
 /// 返回 null 表示 AI 不可用、已走本地兜底（弹窗关闭，首页展示提示）；
 /// 否则返回刷新后的最新全局签列表，弹窗原地更新。
-typedef GlobalSignConfirmCallback = Future<List<GlobalSignItem>?> Function(
-  List<GlobalSignItem> editedItems,
-  List<GlobalSignItem> doneItems,
-  List<GlobalSignItem> cancelledItems,
-);
+typedef GlobalSignConfirmCallback =
+    Future<List<GlobalSignItem>?> Function(
+      List<GlobalSignItem> editedItems,
+      List<GlobalSignItem> doneItems,
+      List<GlobalSignItem> cancelledItems,
+    );
 
 /// 彻底删除（不经过 AI、不写入日报），由主页负责落盘。
 typedef GlobalSignDeleteCallback = Future<void> Function(GlobalSignItem item);
@@ -464,7 +465,7 @@ class _GlobalSignConfirmButton extends StatelessWidget {
           duration: const Duration(milliseconds: 140),
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: background,
             borderRadius: BorderRadius.circular(12),
           ),
@@ -500,7 +501,7 @@ class _GlobalSignHardDeleteDialog extends StatelessWidget {
       key: const ValueKey('global-sign-hard-delete-dialog'),
       backgroundColor: AppTheme.dialogSurface(context),
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(20)),
       child: SizedBox(
         width: 360,
         child: Padding(
@@ -573,11 +574,9 @@ class _GlobalSignDialogButton extends StatelessWidget {
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: filled ? colors.text : Colors.transparent,
-            border: Border.all(
-              color: filled ? colors.text : colors.border,
-            ),
+            border: Border.all(color: filled ? colors.text : colors.border),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(

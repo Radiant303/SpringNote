@@ -202,6 +202,43 @@ class AppTheme {
     return color.withValues(alpha: minimumAlpha);
   }
 
+  static Decoration continuousBoxDecoration({
+    Color? color,
+    DecorationImage? image,
+    BoxBorder? border,
+    BorderRadiusGeometry? borderRadius,
+    List<BoxShadow>? boxShadow,
+    Gradient? gradient,
+    BlendMode? backgroundBlendMode,
+    BoxShape shape = BoxShape.rectangle,
+  }) {
+    if (borderRadius == null ||
+        border?.isUniform == false ||
+        backgroundBlendMode != null ||
+        shape != BoxShape.rectangle) {
+      return BoxDecoration(
+        color: color,
+        image: image,
+        border: border,
+        borderRadius: borderRadius,
+        boxShadow: boxShadow,
+        gradient: gradient,
+        backgroundBlendMode: backgroundBlendMode,
+        shape: shape,
+      );
+    }
+    return ShapeDecoration(
+      color: color,
+      image: image,
+      gradient: gradient,
+      shadows: boxShadow,
+      shape: RoundedSuperellipseBorder(
+        side: border?.top ?? BorderSide.none,
+        borderRadius: borderRadius,
+      ),
+    );
+  }
+
   static List<Color> activityHeatmapColors(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark
         ? darkActivityHeatmapColors
@@ -348,16 +385,22 @@ class AppTheme {
           horizontal: 14,
           vertical: 12,
         ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+        border: ShapedInputBorder(
+          shape: RoundedSuperellipseBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
           borderSide: BorderSide(color: colors.border),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+        enabledBorder: ShapedInputBorder(
+          shape: RoundedSuperellipseBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
           borderSide: BorderSide(color: colors.border),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+        focusedBorder: ShapedInputBorder(
+          shape: RoundedSuperellipseBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
           borderSide: BorderSide(color: colors.textSubtle),
         ),
       ),

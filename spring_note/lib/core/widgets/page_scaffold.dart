@@ -69,7 +69,9 @@ class SpringNoteIconButton extends StatelessWidget {
         maximumSize: const Size(34, 34),
         backgroundColor: Colors.transparent,
         hoverColor: colors.surfaceMuted,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
       ),
     );
     return button;
@@ -101,7 +103,7 @@ class SoftCard extends StatelessWidget {
     final colors = AppTheme.colors(context);
     return Container(
       padding: padding,
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: backgroundColor == AppTheme.surface
             ? colors.surface
             : backgroundColor,

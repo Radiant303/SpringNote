@@ -381,7 +381,7 @@ final value = 1;
     expect(tester.widget<AnimatedOpacity>(selectedBackground).opacity, 1);
     expect(
       (tester.widget<DecoratedBox>(selectedDecoration).decoration
-              as BoxDecoration)
+              as ShapeDecoration)
           .color,
       SpringThemeColors.light.surfacePressed,
     );

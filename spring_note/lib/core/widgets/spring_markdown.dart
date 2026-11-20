@@ -183,7 +183,7 @@ Widget springMarkdownTableBuilder(
               decoration:
                   tableRows[rowIndex].isHeader ||
                       _isEvenGithubTableBodyRow(tableRows, rowIndex)
-                  ? BoxDecoration(color: headerColor)
+                  ? AppTheme.continuousBoxDecoration(color: headerColor)
                   : null,
               children: [
                 for (var index = 0; index < maxColumns; index++)
@@ -626,7 +626,7 @@ class _SpringInlineCodeMd extends HighlightedText {
       child: Container(
         key: const ValueKey('markdown-inline-code'),
         padding: const EdgeInsets.symmetric(horizontal: 6),
-        decoration: BoxDecoration(
+        decoration: AppTheme.continuousBoxDecoration(
           color: colors.surfaceHover,
           borderRadius: BorderRadius.circular(6),
         ),
@@ -743,7 +743,7 @@ class _SpringTaskCheckboxIcon extends StatelessWidget {
       ),
       width: size,
       height: size,
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: checked ? _blue : Colors.transparent,
         border: Border.all(color: _blue, width: 1.1),
         borderRadius: BorderRadius.circular(2.2),

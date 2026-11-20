@@ -306,15 +306,14 @@ class _HomePageState extends State<HomePage> {
         );
       } else {
         // 默认提示词不使用栏目变量,结构化(三栏)与日报合并互不依赖,并发发起。
-        final (structuredResult, mergeResult) =
-            await (
-              _tryGenerateStructuredNote(submissionInput, aiImages),
-              _tryMergeDailyMarkdown(
-                existingMarkdown,
-                StructuredWorkNote(rawInput: submissionInput, sections: const []),
-                now,
-              ),
-            ).wait;
+        final (structuredResult, mergeResult) = await (
+          _tryGenerateStructuredNote(submissionInput, aiImages),
+          _tryMergeDailyMarkdown(
+            existingMarkdown,
+            StructuredWorkNote(rawInput: submissionInput, sections: const []),
+            now,
+          ),
+        ).wait;
         aiStructured = structuredResult;
         aiMergedMarkdown = mergeResult;
       }
@@ -485,7 +484,9 @@ class _HomePageState extends State<HomePage> {
       await _pasteClipboardText();
     } catch (_) {
       if (mounted) {
-        setState(() => _attachmentError = l10n(context).homeClipboardImageError);
+        setState(
+          () => _attachmentError = l10n(context).homeClipboardImageError,
+        );
       }
     } finally {
       _isPastingImages = false;
@@ -625,17 +626,16 @@ class _HomePageState extends State<HomePage> {
     }
     if (skippedForLimit > 0) {
       messages.add(
-        l10n(context).homeImageLimitExceeded(
-          skippedForLimit,
-          _maxHomeImageAttachments,
-        ),
+        l10n(
+          context,
+        ).homeImageLimitExceeded(skippedForLimit, _maxHomeImageAttachments),
       );
     }
     if (unsupportedAiNames.isNotEmpty) {
       messages.add(
-        l10n(context).homeImageUnsupportedForAi(
-          _formatNameList(unsupportedAiNames),
-        ),
+        l10n(
+          context,
+        ).homeImageUnsupportedForAi(_formatNameList(unsupportedAiNames)),
       );
     }
     if (added == 0 && messages.isEmpty) {
@@ -666,7 +666,9 @@ class _HomePageState extends State<HomePage> {
 
   String _formatNameList(List<String> names) {
     const maxNames = 3;
-    final visible = names.take(maxNames).join(l10n(context).homeImageNamesSeparator);
+    final visible = names
+        .take(maxNames)
+        .join(l10n(context).homeImageNamesSeparator);
     final remaining = names.length - maxNames;
     return remaining > 0
         ? l10n(context).homeImageNamesRemaining(remaining, visible)
@@ -891,12 +893,11 @@ class _HomePageState extends State<HomePage> {
     await showDialog<void>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.48),
-      builder: (context) =>
-          GlobalSignDialog(
-            items: items,
-            onConfirm: _handleGlobalSignConfirm,
-            onDeleteItem: _deleteGlobalSignItem,
-          ),
+      builder: (context) => GlobalSignDialog(
+        items: items,
+        onConfirm: _handleGlobalSignConfirm,
+        onDeleteItem: _deleteGlobalSignItem,
+      ),
     );
   }
 
@@ -1459,7 +1460,7 @@ class _IncomeSummary extends StatelessWidget {
                       horizontal: 8,
                       vertical: 3,
                     ),
-                    decoration: BoxDecoration(
+                    decoration: AppTheme.continuousBoxDecoration(
                       color: dark
                           ? const Color(0xFF0B3024)
                           : const Color(0xFFECFDF5),
@@ -1679,7 +1680,7 @@ class _ActivityPreview extends StatelessWidget {
     return Container(
       width: 392,
       padding: const EdgeInsets.only(left: 32),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         border: Border(left: BorderSide(color: colors.divider)),
       ),
       child: content,
@@ -1928,7 +1929,7 @@ class _HeatCell extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         curve: Curves.easeOut,
         child: DecoratedBox(
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(2.5),
           ),
@@ -1951,7 +1952,7 @@ class _HeatmapTooltip extends StatelessWidget {
     return IgnorePointer(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
+        decoration: AppTheme.continuousBoxDecoration(
           color: colors.surface,
           border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(8),
@@ -2116,7 +2117,7 @@ class _QuickCaptureCard extends StatelessWidget {
           duration: const Duration(milliseconds: 160),
           curve: Curves.easeOut,
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: dark
                 ? (focused ? colors.inputFocusedFill : colors.inputFill)
                 : (focused ? const Color(0xE6F5F5F5) : const Color(0x99F5F5F5)),
@@ -2252,7 +2253,7 @@ class _QuickCaptureCard extends StatelessWidget {
               ],
               Container(
                 padding: const EdgeInsets.only(top: 8),
-                decoration: BoxDecoration(
+                decoration: AppTheme.continuousBoxDecoration(
                   border: Border(
                     top: BorderSide(
                       color: colors.divider.withValues(alpha: 0.5),
@@ -2349,7 +2350,7 @@ class _SmartGenerateButtonState extends State<_SmartGenerateButton> {
           curve: Curves.easeInOut,
           height: 28,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: backgroundColor,
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
@@ -2445,7 +2446,7 @@ class _PendingImageChip extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: 280),
         height: 40,
         padding: const EdgeInsets.only(left: 6, right: 4),
-        decoration: BoxDecoration(
+        decoration: AppTheme.continuousBoxDecoration(
           color: colors.surface,
           border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(8),
@@ -2460,7 +2461,9 @@ class _PendingImageChip extends StatelessWidget {
                 height: 28,
                 child: image.isSvg
                     ? DecoratedBox(
-                        decoration: BoxDecoration(color: colors.surfaceMuted),
+                        decoration: AppTheme.continuousBoxDecoration(
+                          color: colors.surfaceMuted,
+                        ),
                         child: Icon(
                           Icons.image_outlined,
                           size: 16,
@@ -2472,7 +2475,9 @@ class _PendingImageChip extends StatelessWidget {
                         fit: BoxFit.cover,
                         gaplessPlayback: true,
                         errorBuilder: (_, _, _) => DecoratedBox(
-                          decoration: BoxDecoration(color: colors.surfaceMuted),
+                          decoration: AppTheme.continuousBoxDecoration(
+                            color: colors.surfaceMuted,
+                          ),
                           child: Icon(
                             Icons.image_outlined,
                             size: 16,
@@ -2571,7 +2576,7 @@ class _AttachmentChip extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: 280),
         height: 32,
         padding: const EdgeInsets.only(left: 10, right: 4),
-        decoration: BoxDecoration(
+        decoration: AppTheme.continuousBoxDecoration(
           color: colors.surface,
           border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(16),
@@ -2583,7 +2588,9 @@ class _AttachmentChip extends StatelessWidget {
             const SizedBox(width: 6),
             Flexible(
               child: Text(
-                l10n(context).homeAttachmentChipLabel(attachment.name, typeLabel),
+                l10n(
+                  context,
+                ).homeAttachmentChipLabel(attachment.name, typeLabel),
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: colors.textMuted,
@@ -2661,7 +2668,7 @@ class _ToolIconState extends State<_ToolIcon> {
                     curve: Curves.easeOutCubic,
                     opacity: _hovered && active ? 1 : 0,
                     child: DecoratedBox(
-                      decoration: BoxDecoration(
+                      decoration: AppTheme.continuousBoxDecoration(
                         color: colors.surface,
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -3110,7 +3117,7 @@ class _OverviewCardState extends State<_OverviewCard> {
           duration: const Duration(milliseconds: 160),
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.all(28),
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: _hovered ? colors.surfaceHover : colors.surface,
             border: Border.all(color: colors.border),
             borderRadius: BorderRadius.circular(16),
@@ -3408,7 +3415,7 @@ class _OverviewDetailsSelector extends StatelessWidget {
                         curve: Curves.easeOutCubic,
                         width: index == selectedIndex ? 26 : 0,
                         height: 2,
-                        decoration: BoxDecoration(
+                        decoration: AppTheme.continuousBoxDecoration(
                           color: colors.text,
                           borderRadius: BorderRadius.circular(1),
                         ),
@@ -3438,7 +3445,7 @@ class _SavedPathBanner extends StatelessWidget {
     final foreground = dark ? const Color(0xFF86EFAC) : const Color(0xFF047857);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: background,
         border: Border.all(color: border),
         borderRadius: BorderRadius.circular(16),
@@ -3477,7 +3484,7 @@ class _AiNoticeBanner extends StatelessWidget {
     final foreground = dark ? const Color(0xFFFCD34D) : const Color(0xFF92400E);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: background,
         border: Border.all(color: border),
         borderRadius: BorderRadius.circular(16),
@@ -3514,7 +3521,7 @@ class _CloudSyncIssueBanner extends StatelessWidget {
     final foreground = dark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
+      decoration: AppTheme.continuousBoxDecoration(
         color: background,
         border: Border.all(color: border),
         borderRadius: BorderRadius.circular(16),
@@ -3562,8 +3569,9 @@ class _UpdateNoticeBannerState extends State<_UpdateNoticeBanner> {
     final latest = widget.result.latest;
     final colors = AppTheme.colors(context);
     final message = switch (widget.result.status) {
-      UpdateCheckStatus.updateAvailable =>
-        l10n(context).homeUpdateAvailable(latest?.version ?? ''),
+      UpdateCheckStatus.updateAvailable => l10n(
+        context,
+      ).homeUpdateAvailable(latest?.version ?? ''),
       UpdateCheckStatus.failed => l10n(context).homeUpdateCheckFailed,
       UpdateCheckStatus.idle => '',
     };
@@ -3590,7 +3598,7 @@ class _UpdateNoticeBannerState extends State<_UpdateNoticeBanner> {
           duration: const Duration(milliseconds: 160),
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
+          decoration: AppTheme.continuousBoxDecoration(
             color: _hovered ? colors.surfaceHover : colors.surfaceMuted,
             borderRadius: BorderRadius.circular(16),
           ),
@@ -3763,7 +3771,7 @@ class _HomeMoreMenuState extends State<_HomeMoreMenu> {
       child: Container(
         width: 148,
         padding: const EdgeInsets.all(7),
-        decoration: BoxDecoration(
+        decoration: AppTheme.continuousBoxDecoration(
           color: AppTheme.menuSurface(context),
           border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(16),
@@ -3843,7 +3851,7 @@ class _HomeMoreMenuItem extends StatelessWidget {
                   curve: Curves.easeOutCubic,
                   opacity: hovered ? 1 : 0,
                   child: DecoratedBox(
-                    decoration: BoxDecoration(
+                    decoration: AppTheme.continuousBoxDecoration(
                       color: colors.surfaceHover,
                       borderRadius: BorderRadius.circular(11),
                     ),
@@ -3862,8 +3870,9 @@ class _HomeMoreMenuItem extends StatelessWidget {
                           label,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: contentColor),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodyMedium?.copyWith(color: contentColor),
                         ),
                       ),
                     ],
